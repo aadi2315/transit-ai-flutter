@@ -6,6 +6,7 @@ import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
 import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
+import '../widgets/stitch_formatted_text.dart';
 import '../services/supabase_service.dart';
 import '../config/gemini_config.dart';
 import '../services/gemini_service.dart';
@@ -2502,9 +2503,9 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  ans.content,
-                  style: GoogleFonts.plusJakartaSans(
+                StitchFormattedText(
+                  text: ans.content,
+                  baseStyle: GoogleFonts.plusJakartaSans(
                     fontSize: 10.5,
                     height: 1.25,
                     color: dark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
@@ -3634,9 +3635,9 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 3),
-                                  Text(
-                                    c.comment,
-                                    style: GoogleFonts.plusJakartaSans(
+                                  StitchFormattedText(
+                                    text: c.comment,
+                                    baseStyle: GoogleFonts.plusJakartaSans(
                                       fontSize: 10.5,
                                       color: dark
                                           ? const Color(0xFFE2E8F0)
@@ -4485,15 +4486,16 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    text,
-                                    style: GoogleFonts.plusJakartaSans(
+                                  StitchFormattedText(
+                                    text: text,
+                                    baseStyle: GoogleFonts.plusJakartaSans(
                                       fontSize: 11.5,
                                       height: 1.35,
                                       color: isUser
                                           ? const Color(0xFF002233)
                                           : primaryTextColor,
                                     ),
+                                    isUser: isUser,
                                   ),
 
                                   // If assistant message mentions a matching incident, provide interactive "View on Map" chip

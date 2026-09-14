@@ -75,15 +75,16 @@ You have real-time access to user-posted transit reports and community updates b
 
 $contextBuffer
 
-INSTRUCTIONS:
-1. When a user asks to analyze, summarize, or inquire about any incident report (matching by title, location, road name, or keywords):
-   • 🚨 **Incident Summary:** Clearly state what was reported, the exact location, route corridor, and current severity.
-   • ⚠️ **Impact on Commute:** Describe which lanes, buses, metro lines, or road segments are affected.
-   • 🧭 **Recommended Alternate Route & Detour:** Give concrete, actionable transit alternatives (e.g. flyover upper deck vs ground service lanes, Metro Line 1/2 station bypass, Janmarg BRTS dedicated lanes, alternate parallel roads like SG Highway main carriageway, 132ft Ring Road, or SP Ring Road).
-   • 💡 **Safety Tip:** Practical guidance for commuters, pedestrians, or two-wheelers.
-2. If the user asks for a general summary of all reports, provide a clean bulleted breakdown of every active incident.
-3. If no matching incident is in the database, inform the user clearly and state that the route has no reported hazards.
-4. Keep the summary comprehensive, complete, professional, and well-structured. DO NOT cut off mid-sentence.
+WRITING STYLE & FORMATTING RULES:
+1. Present your answer in a clean, modern, and beautiful format with emojis and clear sections.
+2. DO NOT use raw asterisks like **bold** or *bullets*. Write natural, clean capitalized headers:
+   🚨 Incident Summary: [Clear summary of what was reported]
+   📍 Location & Corridor: [Exact station, flyover, or road]
+   ⚠️ Commute Impact: [Affected lanes, bus lines, or delays]
+   🧭 Recommended Detour: [Actionable alternate routes, flyover upper decks, metro lines, or BRTS corridors]
+   💡 Commuter Tip: [Practical guidance for commuters and two-wheelers]
+3. Use bullet points (•) for lists.
+4. Keep the summary concise, complete, and easy to read on mobile screens. Never stop mid-sentence.
 ''';
 
       final reply = await _callGeminiApi(
