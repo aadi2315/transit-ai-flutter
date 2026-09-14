@@ -33,23 +33,35 @@ class GeminiService {
       return 'Please enter a question about active route reports, delays, or safe connections.';
     }
 
-    // Build context summarizing current active reports from the database
+    // Build context summarizing current active reports from the database dynamically
     final StringBuffer contextBuffer = StringBuffer();
-    contextBuffer.writeln('CURRENT ACTIVE AHMEDABAD TRANSIT INCIDENT REPORTS:');
+    contextBuffer.writeln('LIVE USER & COMMUTER INCIDENT REPORTS DATABASE:');
     if (activeReports.isEmpty) {
       contextBuffer.writeln(
-          '- No critical incidents currently reported. Transit running on schedule.');
+          '- No active incident reports currently posted. Transit network running normally on schedule.');
     } else {
       for (final r in activeReports) {
+        final title = r['title'] ?? 'Incident';
+        final loc = r['location_name'] ?? r['location'] ?? 'Ahmedabad';
+        final type = r['report_type'] ?? r['type'] ?? 'Incident';
+        final sev = (r['severity'] ?? 'MODERATE').toString().toUpperCase();
+        final desc = r['description'] ?? '';
+        final route = r['route_tag'] ?? r['route'] ?? 'Corridor';
+        final status = r['status'] ?? 'ACTIVE';
+        final comments = (r['comments'] is List)
+            ? (r['comments'] as List).join('; ')
+            : '';
+
         contextBuffer.writeln(
-          '- [${r['severity']?.toString().toUpperCase() ?? 'INFO'}] ${r['report_type'] ?? 'Report'}: '
-          '${r['title']} at ${r['location_name']}. Description: ${r['description']}. Status: ${r['status'] ?? 'ACTIVE'}.',
+          '• [$sev] $type: "$title" at "$loc" (Route/Corridor: $route, Status: $status).\n'
+          '  Description: $desc\n'
+          '${comments.isNotEmpty ? '  Commuter Updates: $comments\n' : ''}',
         );
       }
     }
 
     if (recentQuestions != null && recentQuestions.isNotEmpty) {
-      contextBuffer.writeln('\nRECENT COMMUTER DISCUSSIONS & ADVICE:');
+      contextBuffer.writeln('RECENT COMMUTER INQUIRIES:');
       for (final q in recentQuestions.take(3)) {
         contextBuffer.writeln('- Inquiry by ${q['author']}: "${q['question']}"');
       }
@@ -58,13 +70,20 @@ class GeminiService {
     // If Gemini Key is present, call Google Gemini REST API
     if (GeminiConfig.hasKey) {
       final systemPrompt = '''
-You are Transit AI Smart Assistant for Ahmedabad & Gujarat public transit (Ahmedabad Metro Line 1 & Line 2, Janmarg BRTS Corridors, AMTS feeder buses, and GSRTC EV connections).
-Your role:
-1. Answer the commuter's question accurately using live incident reports, road conditions, and route context provided below.
-2. Provide specific route advice, detour recommendations, safety tips (e.g. advise using flyover top decks if underpasses have waterlogging, suggest electric feeder buses, note station escalators/elevators).
-3. Keep answers concise, clear, and actionable (2-4 bullet points or short paragraphs).
+You are the official Transit AI Smart Assistant for Ahmedabad & Gujarat public transit (Ahmedabad Metro Line 1 & Line 2, Janmarg BRTS Corridors, AMTS buses, and regional GSRTC EV routes).
+You have real-time access to user-posted transit reports and community updates below:
 
 $contextBuffer
+
+INSTRUCTIONS:
+1. When a user asks to analyze, summarize, or inquire about any incident report (matching by title, location, road name, or keywords):
+   • 🚨 **Incident Summary:** Clearly state what was reported, the exact location, route corridor, and current severity.
+   • ⚠️ **Impact on Commute:** Describe which lanes, buses, metro lines, or road segments are affected.
+   • 🧭 **Recommended Alternate Route & Detour:** Give concrete, actionable transit alternatives (e.g. flyover upper deck vs ground service lanes, Metro Line 1/2 station bypass, Janmarg BRTS dedicated lanes, alternate parallel roads like SG Highway main carriageway, 132ft Ring Road, or SP Ring Road).
+   • 💡 **Safety Tip:** Practical guidance for commuters, pedestrians, or two-wheelers.
+2. If the user asks for a general summary of all reports, provide a clean bulleted breakdown of every active incident.
+3. If no matching incident is in the database, inform the user clearly and state that the route has no reported hazards.
+4. Keep the summary comprehensive, complete, professional, and well-structured. DO NOT cut off mid-sentence.
 ''';
 
       final reply = await _callGeminiApi(
@@ -72,12 +91,12 @@ $contextBuffer
         userPrompt: query,
       );
 
-      if (reply != null && reply.isNotEmpty) {
-        return reply;
+      if (reply != null && reply.trim().isNotEmpty) {
+        return reply.trim();
       }
     }
 
-    // Smart Local Intelligence Fallback (Synthesizes live reports immediately)
+    // Smart Local Dynamic Synthesizer Fallback (100% dynamic based on active reports, NO static manual data)
     return _generateLocalContextualAnswer(query, activeReports);
   }
 
@@ -91,14 +110,14 @@ $contextBuffer
     if (!GeminiConfig.hasKey) return null;
 
     final systemPrompt = '''
-You are the official Transit AI Assistant answering a public commuter thread in Ahmedabad.
-Route Inquiry: From "$origin" to "$destination".
+You are the official Transit AI Assistant answering a commuter question on Ahmedabad public transit.
+Origin: "$origin", Destination: "$destination".
 User Question: "$question"
 
-Active Reports Context:
-${activeReports.map((r) => '- ${r['title']} at ${r['location_name']}: ${r['description']}').join('\n')}
+Current Active Reports in Network:
+${activeReports.map((r) => '• ${r['title']} at ${r['location_name'] ?? r['location']}: ${r['description']}').join('\n')}
 
-Task: Provide a 2-3 sentence authoritative, friendly transit advice mentioning the best metro/BRTS connection and any relevant detour or tip.
+Task: Provide 2-3 concise, authoritative sentences with the best metro/BRTS connection and any relevant detour advice based on the active reports above.
 ''';
 
     return _callGeminiApi(
@@ -107,7 +126,7 @@ Task: Provide a 2-3 sentence authoritative, friendly transit advice mentioning t
     );
   }
 
-  /// Core HTTP caller to Google Gemini REST API with multi-model fallback
+  /// Core HTTP caller to Google Gemini REST API with multi-model fallback and adequate token capacity
   Future<String?> _callGeminiApi({
     required String systemPrompt,
     required String userPrompt,
@@ -127,13 +146,13 @@ Task: Provide a 2-3 sentence authoritative, friendly transit advice mentioning t
           'contents': [
             {
               'parts': [
-                {'text': '$systemPrompt\n\nUSER INQUIRY: $userPrompt'},
+                {'text': '$systemPrompt\n\nUSER QUERY: $userPrompt'},
               ],
             },
           ],
           'generationConfig': {
-            'temperature': 0.3,
-            'maxOutputTokens': 500,
+            'temperature': 0.2,
+            'maxOutputTokens': 2048,
           },
         };
 
@@ -143,7 +162,7 @@ Task: Provide a 2-3 sentence authoritative, friendly transit advice mentioning t
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(payload),
             )
-            .timeout(const Duration(seconds: 12));
+            .timeout(const Duration(seconds: 25));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -152,13 +171,15 @@ Task: Provide a 2-3 sentence authoritative, friendly transit advice mentioning t
             final content = candidates[0]['content'];
             final parts = content?['parts'] as List<dynamic>?;
             if (parts != null && parts.isNotEmpty) {
+              final StringBuffer textBuffer = StringBuffer();
               for (final part in parts) {
                 if (part is Map && part.containsKey('text')) {
-                  final text = part['text']?.toString().trim();
-                  if (text != null && text.isNotEmpty) {
-                    return text;
-                  }
+                  textBuffer.write(part['text']?.toString() ?? '');
                 }
+              }
+              final fullText = textBuffer.toString().trim();
+              if (fullText.isNotEmpty) {
+                return fullText;
               }
             }
           }
@@ -173,78 +194,97 @@ Task: Provide a 2-3 sentence authoritative, friendly transit advice mentioning t
     return null;
   }
 
-  /// Intelligent local fallback that reasons directly about the live database reports
+  /// 100% Dynamic local fallback that reasons directly about whatever reports users have posted
+  /// (Zero hardcoded manual locations or static strings)
   String _generateLocalContextualAnswer(
     String query,
     List<Map<String, dynamic>> reports,
   ) {
-    final lower = query.toLowerCase();
+    if (reports.isEmpty) {
+      return '✅ **All Corridors Clear:**\n'
+          'There are currently no active incident reports in the transit network. All Ahmedabad Metro lines and Janmarg BRTS corridors are running normally on schedule.';
+    }
 
-    // Check for Iskcon / Waterlogging queries
-    if (lower.contains('iskcon') ||
-        lower.contains('water') ||
-        lower.contains('flood') ||
-        lower.contains('sg highway')) {
-      final iskconReport = reports.firstWhere(
-        (r) =>
-            (r['location_name']?.toString().toLowerCase().contains('iskcon') ??
-                false) ||
-            (r['title']?.toString().toLowerCase().contains('water') ?? false),
-        orElse: () => <String, dynamic>{},
-      );
-      if (iskconReport.isNotEmpty) {
-        return '🚨 **Live Alert at Iskcon Cross Road:**\n'
-            'Heavy waterlogging is active under the Iskcon flyover service road (1.5 ft water).\n\n'
-            '**Recommended Detour:**\n'
-            '• Take the main Iskcon Flyover upper deck (BRTS corridor 9 buses are operating normally on the top deck).\n'
-            '• Avoid the ground-level service lanes and underpass.\n'
-            '• Tap **"View on Map"** to see live alternate routing.';
+    final queryLower = query.toLowerCase();
+    // Normalize query keywords (words >= 3 characters)
+    final words = queryLower
+        .replaceAll(RegExp(r'[^\w\s]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.length >= 3 && !['the', 'and', 'for', 'are', 'what', 'how'].contains(w))
+        .toList();
+
+    // Dynamically find matching reports based on keywords
+    Map<String, dynamic>? bestMatch;
+    int bestScore = 0;
+
+    for (final r in reports) {
+      final title = (r['title'] ?? '').toString().toLowerCase();
+      final loc = (r['location_name'] ?? r['location'] ?? '').toString().toLowerCase();
+      final route = (r['route_tag'] ?? r['route'] ?? '').toString().toLowerCase();
+      final desc = (r['description'] ?? '').toString().toLowerCase();
+      final combined = '$title $loc $route $desc';
+
+      int score = 0;
+      for (final w in words) {
+        if (combined.contains(w)) {
+          score += (title.contains(w) || loc.contains(w)) ? 3 : 1;
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = r;
       }
     }
 
-    // Check for Metro / Kalupur queries
-    if (lower.contains('metro') ||
-        lower.contains('kalupur') ||
-        lower.contains('delay') ||
-        lower.contains('railway')) {
-      final metroReport = reports.firstWhere(
-        (r) =>
-            (r['location_name']?.toString().toLowerCase().contains('kalupur') ??
-                false) ||
-            (r['title']?.toString().toLowerCase().contains('metro') ?? false),
-        orElse: () => <String, dynamic>{},
-      );
-      if (metroReport.isNotEmpty) {
-        return '⚡ **Kalupur Metro Line 1 Status:**\n'
-            'Signal maintenance was reported at Kalupur concourse platform 2 with 6-8 minute holding times.\n\n'
-            '**Commuter Advice:**\n'
-            '• Technical crews are active on site; frequency is returning to 7-minute intervals.\n'
-            '• Feeder electric buses (Route 4U) are available outside Bay 1 if you prefer road transit.';
+    // If a matching user-posted report is found
+    if (bestMatch != null && bestScore > 0) {
+      final title = bestMatch['title'] ?? 'Incident';
+      final loc = bestMatch['location_name'] ?? bestMatch['location'] ?? 'Ahmedabad Transit';
+      final desc = bestMatch['description'] ?? 'Active incident reported by commuter.';
+      final sev = (bestMatch['severity'] ?? 'Moderate').toString().toUpperCase();
+      final type = bestMatch['report_type'] ?? bestMatch['type'] ?? 'Report';
+      final route = bestMatch['route_tag'] ?? bestMatch['route'] ?? 'Corridor';
+
+      // Dynamically deduce intelligent detour suggestions based on the reported conditions
+      String detourAdvice = '';
+      final descLower = desc.toLowerCase();
+      if (descLower.contains('water') || descLower.contains('flood') || descLower.contains('rain') || descLower.contains('drain')) {
+        detourAdvice = '• Take the elevated flyover upper deck instead of ground-level service lanes or underpasses.\n'
+            '• Use Janmarg BRTS buses operating in elevated/central dedicated corridors.\n'
+            '• Tap **"View on Map"** to view real-time alternate routing.';
+      } else if (descLower.contains('delay') || descLower.contains('signal') || descLower.contains('metro') || descLower.contains('train')) {
+        detourAdvice = '• Switch to Janmarg BRTS rapid feeder buses as an immediate road alternative.\n'
+            '• Check concourse passenger information displays for updated train dispatch timings.\n'
+            '• Allow an additional 10-15 minutes of buffer time for your connection.';
+      } else if (descLower.contains('breakdown') || descLower.contains('accident') || descLower.contains('traffic') || descLower.contains('jam')) {
+        detourAdvice = '• Divert via parallel ring roads (132ft Ring Road or SP Ring Road).\n'
+            '• Board the nearest Ahmedabad Metro line to bypass surface road congestion entirely.\n'
+            '• Follow live updates in the community comment thread below.';
+      } else {
+        detourAdvice = '• Exercise caution while passing through this corridor.\n'
+            '• Consider taking the nearest Metro or BRTS connection to avoid delays.';
       }
+
+      return '🚨 **Live Incident Analysis: $title**\n\n'
+          '• **Location & Corridor:** $loc ($route)\n'
+          '• **Severity & Type:** $sev • $type\n'
+          '• **Reported Condition:** $desc\n\n'
+          '**Recommended Alternate Route & Detour:**\n'
+          '$detourAdvice';
     }
 
-    // Check for Vastrapur / Student / Feeder queries
-    if (lower.contains('vastrapur') ||
-        lower.contains('student') ||
-        lower.contains('pdpu') ||
-        lower.contains('bus')) {
-      return '🚌 **Vastrapur Feeder Bus Advisory:**\n'
-          'High passenger volume reported at Vastrapur Lake bus stand for university students.\n\n'
-          '• AC Electric feeder bus 4U connects directly toward PDPU Gandhinagar point.\n'
-          '• Digital QR ticketing is active on all turnstiles for fast boarding.';
+    // If user asked a general question or asked to summarize all reports
+    final buffer = StringBuffer();
+    buffer.writeln('📊 **Live Incident Reports Summary (${reports.length} Active in Network):**\n');
+    for (final r in reports.take(5)) {
+      final title = r['title'] ?? 'Incident';
+      final loc = r['location_name'] ?? r['location'] ?? 'Location';
+      final sev = (r['severity'] ?? 'INFO').toString().toUpperCase();
+      final desc = r['description'] ?? '';
+      buffer.writeln('• **$title** at $loc ([$sev]): $desc');
     }
-
-    // General Summary
-    final count = reports.length;
-    if (count > 0) {
-      final topReport = reports.first;
-      return '📊 **Transit Status Overview:**\n'
-          'There are currently **$count active transit reports** in the network.\n\n'
-          '• **Top Alert:** ${topReport['title']} at ${topReport['location_name']} (${topReport['severity']?.toString().toUpperCase()} severity).\n'
-          '• BRTS corridors and Metro lines are operational with recommended detours around reported hazard zones.';
-    }
-
-    return '✅ **All Corridors Clear:**\n'
-        'No major disruptions or delays reported across Ahmedabad Metro Line 1, BRTS Corridor 9, or feeder routes. Trains and buses are running on regular schedules.';
+    buffer.writeln('\n💡 **Tip:** Tap on any report card to ask AI about specific detours, or tap **"View on Map"** for GPS bypass routing.');
+    return buffer.toString();
   }
 }

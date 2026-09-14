@@ -4710,12 +4710,17 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
 
     final activeReportsData = _reports
         .map((r) => {
+              'id': r.id,
               'title': r.title,
+              'report_type': r.reportType,
               'type': r.reportType,
               'severity': r.severity,
+              'location_name': r.locationName,
               'location': r.locationName,
+              'route_tag': r.routeTag,
               'route': r.routeTag,
               'description': r.description,
+              'status': r.status,
               'time': r.time,
               'comments':
                   r.comments.map((c) => '${c.author}: ${c.comment}').toList(),
