@@ -9,6 +9,7 @@ import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../widgets/stitch_scanner_sheet.dart';
 import '../services/razorpay_service.dart';
+import '../services/supabase_service.dart';
 import '../config/razorpay_config.dart';
 
 class StitchPaymentQrScreen extends StatefulWidget {
@@ -40,6 +41,7 @@ class StitchPaymentQrScreen extends StatefulWidget {
 class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
     with SingleTickerProviderStateMixin {
   bool _isTicketView = false;
+  bool _hasPaid = false;
   String _selectedUpi = 'Google Pay';
   bool _receiptExpanded = false;
 
@@ -58,6 +60,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   void initState() {
     super.initState();
     _isTicketView = widget.initialIsTicketView;
+    _hasPaid = widget.initialIsTicketView;
     _laserController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2400),
@@ -81,9 +84,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           _isPaymentProcessing = false;
           _paymentId = response.paymentId ??
               'pay_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+          _hasPaid = true;
           _isTicketView = true;
           _paymentMethodUsed = 'Razorpay Gateway';
         });
+        _syncTicketToSupabase();
         _showPaymentSnackbar('Payment Successful! Ref: $_paymentId',
             isSuccess: true);
       },
@@ -102,6 +107,22 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
         _showPaymentSnackbar('Redirecting to ${response.walletName}');
       },
     );
+  }
+
+  Future<void> _syncTicketToSupabase() async {
+    try {
+      await SupabaseService.instance.saveTicket(
+        ticketId: 'TKT-${_paymentId.toUpperCase()}',
+        origin: 'Sola Bhagwat',
+        destination: 'Iskcon Cross Rd',
+        fare: 9.0,
+        lineInfo: 'Line 9U + Feeder 8D',
+        qrPayload:
+            'TRANSIT_AI|V3|$_paymentId|SOLA_TO_ISKCON|FARE_9.00|$_terminalId',
+      );
+    } catch (e) {
+      debugPrint('[StitchPaymentQrScreen] Ticket sync note: $e');
+    }
   }
 
   @override
@@ -125,9 +146,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           _isPaymentProcessing = false;
           _paymentId =
               'pay_sim_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+          _hasPaid = true;
           _isTicketView = true;
           _paymentMethodUsed = 'Razorpay Simulator';
         });
+        _syncTicketToSupabase();
         _showPaymentSnackbar('Payment Verified! Ref: $_paymentId',
             isSuccess: true);
       },
@@ -147,9 +170,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
         setState(() {
           _paymentId = paymentId;
           _terminalId = terminal;
+          _hasPaid = true;
           _isTicketView = true;
           _paymentMethodUsed = 'Terminal QR Scanner';
         });
+        _syncTicketToSupabase();
         _showPaymentSnackbar('Terminal Verified! Pass Activated ($paymentId)',
             isSuccess: true);
       },
@@ -1095,6 +1120,181 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   ),
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              // DEDICATED UPI PAYMENT QR SECTION (For scanning & paying ₹9.00)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0x3338BDF8),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.qr_code_2_rounded,
+                                  size: 15,
+                                  color: Color(0xFF38BDF8),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  'Pay via UPI QR Code',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'PAYMENT QR',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF38BDF8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Scan this payment QR with GPay, PhonePe, Paytm, or any UPI app to pay ₹9.00. Your ticket QR unlocks in the Ticket section once payment is confirmed.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        color: const Color(0xFF94A3B8),
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x40000000),
+                              blurRadius: 16,
+                            ),
+                          ],
+                        ),
+                        child: QrImageView(
+                          data:
+                              'upi://pay?pa=transitai.rzp@icici&pn=TransitAI&am=9.00&cu=INR&tn=Ticket-Sola-Iskcon',
+                          version: QrVersions.auto,
+                          size: 140.0,
+                          backgroundColor: Colors.white,
+                          eyeStyle: const QrEyeStyle(
+                            eyeShape: QrEyeShape.square,
+                            color: Color(0xFF0F172A),
+                          ),
+                          dataModuleStyle: const QrDataModuleStyle(
+                            dataModuleShape: QrDataModuleShape.square,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'UPI ID: transitai.rzp@icici • Fare: ₹9.00',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFCBD5E1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _paymentId =
+                              'pay_qr_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+                          _hasPaid = true;
+                          _isTicketView = true;
+                          _paymentMethodUsed = 'Dynamic UPI QR';
+                        });
+                        _syncTicketToSupabase();
+                        _showPaymentSnackbar(
+                            'UPI QR Payment Verified! Ref: $_paymentId',
+                            isSuccess: true);
+                      },
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF56E5A9).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF56E5A9),
+                            width: 1,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 16,
+                              color: Color(0xFF56E5A9),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Confirm / Simulate UPI QR Payment Received',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF56E5A9),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1188,6 +1388,244 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   }
 
   Widget _buildTicketView() {
+    if (!_hasPaid) {
+      return _buildNoActiveTicketView();
+    }
+    return _buildActiveTicketQrView();
+  }
+
+  Widget _buildNoActiveTicketView() {
+    return StitchGlassCard(
+      borderRadius: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      hasCyanGlow: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Locked Icon Circle
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFFFFB95F).withValues(alpha: 0.6),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFB95F).withValues(alpha: 0.2),
+                  blurRadius: 18,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.lock_outline_rounded,
+              size: 34,
+              color: Color(0xFFFFB95F),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Status Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFB95F).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFFFB95F).withValues(alpha: 0.35),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  size: 12,
+                  color: Color(0xFFFFB95F),
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    'PAYMENT REQUIRED • NO ACTIVE TICKET',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFFFB95F),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Title & Description
+          Text(
+            'No Active Ticket Yet',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Your cryptographic dynamic QR boarding ticket will be generated automatically as soon as your fare payment is confirmed. Please complete payment in the Fare Checkout section.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
+              color: const Color(0xFF94A3B8),
+              height: 1.45,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Pending Route Preview Card
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0x26FFFFFF),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.directions_bus_rounded,
+                    color: Color(0xFF38BDF8),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sola Crossroad → Iskcon Circle',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Fare: ₹9.00 • 2 Legs (9U ➔ 8D)',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 9.5,
+                          color: const Color(0xFF38BDF8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '₹9.00',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 22),
+
+          // Big Proceed to Payment Button
+          GestureDetector(
+            onTap: () => setState(() => _isTicketView = false),
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF38BDF8), Color(0xFF0284C7)],
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x6638BDF8),
+                    blurRadius: 18,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.payment_rounded,
+                    size: 18,
+                    color: Color(0xFF00354A),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Proceed to Payment (₹9.00)',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF00354A),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.verified_user_rounded,
+                size: 12,
+                color: Color(0xFF56E5A9),
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  'Anti-Fraud Protected • Ticket QR generates on payment',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF56E5A9),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveTicketQrView() {
     return StitchGlassCard(
       borderRadius: 26,
       padding: const EdgeInsets.all(18),
@@ -1627,6 +2065,53 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     ),
                   ),
               ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Action: Book Another Journey / Reset
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _hasPaid = false;
+                _isTicketView = false;
+              });
+            },
+            child: Container(
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: const Color(0x38FFFFFF),
+                  width: 1,
+                ),
+              ),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.replay_rounded,
+                    size: 15,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Book Another Journey / New Ticket',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

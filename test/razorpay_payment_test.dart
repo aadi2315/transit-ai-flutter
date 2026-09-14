@@ -141,5 +141,66 @@ void main() {
       expect(find.text('Ahmedabad BRTS'), findsOneWidget);
       expect(find.text('₹9.00 Paid'), findsOneWidget);
     });
+
+    testWidgets(
+        'Unpaid ticket tab shows locked state; only reveals ticket QR after payment',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StitchPaymentQrScreen(
+            onNavigateToHome: () {},
+            onNavigateToRouteDetails: () {},
+            onNavigateToAskRoute: () {},
+            onNavigateToPasses: () {},
+            onNavigateToProfile: () {},
+            onToggleTheme: () {},
+            isDarkMode: true,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Tap on Dynamic QR Ticket tab before paying
+      await tester.tap(find.text('Dynamic QR Ticket'));
+      await tester.pump();
+
+      // Verify locked / unpaid state
+      expect(find.text('No Active Ticket Yet'), findsOneWidget);
+      expect(find.text('PAYMENT REQUIRED • NO ACTIVE TICKET'), findsOneWidget);
+      expect(find.text('Proceed to Payment (₹9.00)'), findsOneWidget);
+      expect(find.text('CONFIRMED'), findsNothing);
+
+      // Tap Proceed to Payment button
+      await tester.tap(find.text('Proceed to Payment (₹9.00)'));
+      await tester.pump();
+
+      // Back on payment view
+      expect(find.text('Pay via UPI QR Code'), findsOneWidget);
+
+      // Tap Simulate UPI QR Payment
+      final simQrBtn = find.textContaining('Confirm / Simulate UPI QR Payment');
+      await tester.ensureVisible(simQrBtn);
+      await tester.pump();
+      await tester.tap(simQrBtn);
+      await tester.pump();
+
+      // Now Ticket QR is unlocked!
+      expect(find.text('CONFIRMED'), findsOneWidget);
+      expect(find.text('Ahmedabad BRTS'), findsOneWidget);
+      expect(find.text('₹9.00 Paid'), findsOneWidget);
+      expect(find.text('Book Another Journey / New Ticket'), findsOneWidget);
+
+      // Tap Book Another Journey / New Ticket to reset
+      await tester.tap(find.text('Book Another Journey / New Ticket'));
+      await tester.pump();
+
+      // Should be back to payment view and reset
+      expect(find.text('Fare Checkout'), findsOneWidget);
+    });
   });
 }
