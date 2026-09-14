@@ -15,6 +15,7 @@ dependencies:
   flutter_animate: ^4.5.2
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.8.3
+  razorpay_flutter: ^1.4.6
   http: ^1.2.2
 
 dev_dependencies:

@@ -7,6 +7,9 @@ import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
 import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
+import '../widgets/stitch_scanner_sheet.dart';
+import '../services/razorpay_service.dart';
+import '../config/razorpay_config.dart';
 
 class StitchPaymentQrScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
@@ -44,6 +47,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   late Timer _totpTimer;
   int _totpSeconds = 15;
 
+  // Razorpay & Scanner Integration State
+  final RazorpayService _razorpayService = RazorpayService();
+  String _paymentId = 'pay_test_amd9987';
+  bool _isPaymentProcessing = false;
+  String _terminalId = 'BRTS-SOLA-GATE-02';
+  String _paymentMethodUsed = 'Razorpay UPI';
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +64,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
     )..repeat(reverse: true);
 
     _totpTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
       setState(() {
         if (_totpSeconds > 1) {
           _totpSeconds--;
@@ -62,13 +73,130 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
         }
       });
     });
+
+    _razorpayService.initialize(
+      onSuccess: (response) {
+        if (!mounted) return;
+        setState(() {
+          _isPaymentProcessing = false;
+          _paymentId = response.paymentId ??
+              'pay_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+          _isTicketView = true;
+          _paymentMethodUsed = 'Razorpay Gateway';
+        });
+        _showPaymentSnackbar('Payment Successful! Ref: $_paymentId',
+            isSuccess: true);
+      },
+      onError: (errorMessage) {
+        if (!mounted) return;
+        setState(() {
+          _isPaymentProcessing = false;
+        });
+        _showPaymentSnackbar('Payment Error: $errorMessage', isSuccess: false);
+      },
+      onExternalWallet: (response) {
+        if (!mounted) return;
+        setState(() {
+          _isPaymentProcessing = false;
+        });
+        _showPaymentSnackbar('Redirecting to ${response.walletName}');
+      },
+    );
   }
 
   @override
   void dispose() {
     _laserController.dispose();
     _totpTimer.cancel();
+    _razorpayService.dispose();
     super.dispose();
+  }
+
+  void _startRazorpayPayment(
+      {required int amount, required String description}) {
+    setState(() => _isPaymentProcessing = true);
+    _razorpayService.openPayment(
+      amount: amount,
+      keyId: RazorpayConfig.keyId,
+      description: description,
+      onDesktopFallbackSimulateSuccess: () {
+        if (!mounted) return;
+        setState(() {
+          _isPaymentProcessing = false;
+          _paymentId =
+              'pay_sim_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+          _isTicketView = true;
+          _paymentMethodUsed = 'Razorpay Simulator';
+        });
+        _showPaymentSnackbar('Payment Verified! Ref: $_paymentId',
+            isSuccess: true);
+      },
+    );
+  }
+
+  void _openScannerSheet() {
+    StitchScannerSheet.show(
+      context: context,
+      fareAmount: 9,
+      routeName: 'Sola Crossroad → Iskcon Circle (9U ➔ 8D)',
+      isDarkMode: widget.isDarkMode,
+      onPayWithRazorpay: (amount, description) {
+        _startRazorpayPayment(amount: amount, description: description);
+      },
+      onScanPaymentComplete: (paymentId, terminal) {
+        setState(() {
+          _paymentId = paymentId;
+          _terminalId = terminal;
+          _isTicketView = true;
+          _paymentMethodUsed = 'Terminal QR Scanner';
+        });
+        _showPaymentSnackbar('Terminal Verified! Pass Activated ($paymentId)',
+            isSuccess: true);
+      },
+    );
+  }
+
+  void _showPaymentSnackbar(String message, {bool isSuccess = true}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor:
+            isSuccess ? const Color(0xFF0F172A) : const Color(0xFF7F1D1D),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: isSuccess ? const Color(0xFF56E5A9) : const Color(0xFFEF4444),
+            width: 1,
+          ),
+        ),
+        content: Row(
+          children: [
+            Icon(
+              isSuccess
+                  ? Icons.check_circle_rounded
+                  : Icons.error_outline_rounded,
+              color: isSuccess
+                  ? const Color(0xFF56E5A9)
+                  : const Color(0xFFEF4444),
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
@@ -85,7 +213,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
             child: Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 390),
+                constraints: const BoxConstraints(maxWidth: 480),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.only(
                       left: 16, right: 16, top: 8, bottom: 96),
@@ -124,14 +252,22 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                               ),
                             ),
                           ),
-                          Text(
-                            _isTicketView
-                                ? 'Dynamic QR Pass'
-                                : 'Unified Fare Checkout',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: dark ? Colors.white : const Color(0xFF0F172A),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                _isTicketView
+                                    ? 'Dynamic QR Pass'
+                                    : 'Unified Fare Checkout',
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: dark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                              ),
                             ),
                           ),
                           Row(
@@ -180,28 +316,32 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   alignment: Alignment.center,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.payment_rounded,
-                                        size: 14,
-                                        color: !_isTicketView
-                                            ? const Color(0xFF00354A)
-                                            : const Color(0xFF94A3B8),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Fare Checkout',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.payment_rounded,
+                                          size: 14,
                                           color: !_isTicketView
                                               ? const Color(0xFF00354A)
                                               : const Color(0xFF94A3B8),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Fare Checkout',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: !_isTicketView
+                                                ? const Color(0xFF00354A)
+                                                : const Color(0xFF94A3B8),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -217,28 +357,32 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   alignment: Alignment.center,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.qr_code_2_rounded,
-                                        size: 14,
-                                        color: _isTicketView
-                                            ? const Color(0xFF00354A)
-                                            : const Color(0xFF94A3B8),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Dynamic QR Ticket',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.qr_code_2_rounded,
+                                          size: 14,
                                           color: _isTicketView
                                               ? const Color(0xFF00354A)
                                               : const Color(0xFF94A3B8),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Dynamic QR Ticket',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: _isTicketView
+                                                ? const Color(0xFF00354A)
+                                                : const Color(0xFF94A3B8),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -348,50 +492,59 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 26,
-                        height: 26,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF38BDF8),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.alt_route_rounded,
-                          color: Color(0xFF00354A),
-                          size: 15,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Sola Crossroad → Iskcon Circle',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF38BDF8),
+                            shape: BoxShape.circle,
                           ),
-                          Text(
-                            'Interchange at Shivranjani',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9,
-                              color: const Color(0xFF38BDF8),
-                            ),
+                          child: const Icon(
+                            Icons.alt_route_rounded,
+                            color: Color(0xFF00354A),
+                            size: 15,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Sola Crossroad → Iskcon Circle',
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Interchange at Shivranjani',
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  color: const Color(0xFF38BDF8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     '₹9.00',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: const Color(0xFF38BDF8),
                     ),
                   ),
                 ],
@@ -424,13 +577,18 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               const SizedBox(height: 10),
 
               // Header Block
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
                         children: [
                           Text(
                             'Unified Fare Checkout',
@@ -440,7 +598,6 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                               color: Colors.white,
                             ),
                           ),
-                          const SizedBox(width: 6),
                           const Icon(
                             Icons.verified_rounded,
                             size: 16,
@@ -491,8 +648,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 ),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
                         Text(
                           'ROUTE BREAKDOWN • 2 LEGS',
@@ -663,10 +822,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     const Divider(color: Color(0x26FFFFFF), height: 18),
 
                     // Total
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
-                        Row(
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
                           children: [
                             Text(
                               'Unified Total Fare',
@@ -676,7 +840,6 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 5, vertical: 2),
@@ -712,9 +875,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
               const SizedBox(height: 14),
 
-              // FAST UPI CHECKOUT 2x2 Grid
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // FAST UPI CHECKOUT Header
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
                 children: [
                   Text(
                     'FAST UPI CHECKOUT',
@@ -759,11 +924,59 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
               const SizedBox(height: 14),
 
+              // Gateway Info Chip
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0x2638BDF8)),
+                ),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.shield_rounded,
+                            size: 14, color: Color(0xFF56E5A9)),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Razorpay Test Mode',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF56E5A9),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'YOUR_RAZORPAY_KEY_ID',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 8.5,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
               // Pay CTA Button
               GestureDetector(
-                onTap: () {
-                  setState(() => _isTicketView = true);
-                },
+                onTap: _isPaymentProcessing
+                    ? null
+                    : () {
+                        _startRazorpayPayment(
+                          amount: 9,
+                          description: 'Transit Fare ₹9.00 via $_selectedUpi',
+                        );
+                      },
                 child: Container(
                   height: 48,
                   decoration: BoxDecoration(
@@ -782,20 +995,46 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.qr_code_scanner_rounded,
-                        size: 18,
-                        color: Color(0xFF00354A),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Pay ₹9.00 via $_selectedUpi',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF00354A),
+                      if (_isPaymentProcessing) ...[
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF00354A),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Opening Razorpay Checkout...',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF00354A),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ] else ...[
+                        const Icon(
+                          Icons.payment_rounded,
+                          size: 18,
+                          color: Color(0xFF00354A),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Pay ₹9.00 via $_selectedUpi',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF00354A),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -803,9 +1042,49 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
               const SizedBox(height: 8),
 
+              // Secondary Scanner Action Button
+              GestureDetector(
+                onTap: _openScannerSheet,
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0x4038BDF8),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.qr_code_scanner_rounded,
+                        size: 16,
+                        color: Color(0xFF38BDF8),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Pay with Scanner (AFC Gate / Terminal QR)',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 6),
+
               Center(
                 child: GestureDetector(
-                  onTap: () => setState(() => _isTicketView = true),
+                  onTap: _openScannerSheet,
                   child: Text(
                     'Or scan dynamic UPI QR code on terminal',
                     style: GoogleFonts.plusJakartaSans(
@@ -919,24 +1198,30 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.directions_bus_rounded,
-                    size: 18,
-                    color: Color(0xFF38BDF8),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Ahmedabad BRTS',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.directions_bus_rounded,
+                      size: 18,
+                      color: Color(0xFF38BDF8),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'Ahmedabad BRTS',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -982,7 +1267,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     Text(
                       'Sola Bhagwat',
@@ -992,10 +1280,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(width: 6),
                     const Icon(Icons.arrow_forward_rounded,
                         size: 14, color: Color(0xFF38BDF8)),
-                    const SizedBox(width: 6),
                     Text(
                       'Iskcon Cross Rd',
                       style: GoogleFonts.plusJakartaSans(
@@ -1007,13 +1293,18 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   ],
                 ),
                 const SizedBox(height: 6),
-                Row(
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                        color:
+                            const Color(0xFF38BDF8).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -1025,7 +1316,6 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
@@ -1041,7 +1331,6 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         ),
                       ),
                     ),
-                    const Spacer(),
                     Text(
                       '₹9.00 Paid',
                       style: GoogleFonts.jetBrainsMono(
@@ -1053,8 +1342,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   ],
                 ),
                 const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     Text(
                       'Adult / General Passenger',
@@ -1105,7 +1396,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     children: [
                       QrImageView(
                         data:
-                            'TRANSIT_AI|V3|TKN-AMD-9987-OFFLINE|SOLA_TO_ISKCON|FARE_9.00|GATE_D',
+                            'TRANSIT_AI|V3|$_paymentId|SOLA_TO_ISKCON|FARE_9.00|$_terminalId',
                         version: QrVersions.auto,
                         size: 160.0,
                         backgroundColor: Colors.white,
@@ -1164,7 +1455,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         size: 14, color: Color(0xFF56E5A9)),
                     const SizedBox(width: 4),
                     Text(
-                      'TKN-AMD-9987-OFFLINE',
+                      _paymentId,
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -1289,12 +1580,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Digital Receipt & Turnstile Guide',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                        Expanded(
+                          child: Text(
+                            'Digital Receipt & Turnstile Guide',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                         Icon(
@@ -1318,7 +1611,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             color: Color(0x26FFFFFF), height: 12),
                         _buildReceiptRow('Base Transit Fare', '₹9.00'),
                         _buildReceiptRow('SGST / CGST (0%)', '₹0.00'),
-                        _buildReceiptRow('Ref ID', 'TXN-AHM-889104'),
+                        _buildReceiptRow('Razorpay Ref ID', _paymentId),
+                        _buildReceiptRow('Payment Method', _paymentMethodUsed),
+                        _buildReceiptRow('Gateway Account', 'Transit AI (${RazorpayConfig.keyId.substring(0, 8)}...)'),
+                        _buildReceiptRow('AFC Turnstile Gate', _terminalId),
                         const SizedBox(height: 6),
                         Text(
                           'Hold phone 2-4 inches above the AFC turnstile scanner at Platform 02 Gate D.',
