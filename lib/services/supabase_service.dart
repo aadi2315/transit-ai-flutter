@@ -321,4 +321,116 @@ class SupabaseService {
       return false;
     }
   }
+
+  // ==========================================
+  // LIVE TRANSIT REPORTS & INCIDENT ALERTS
+  // ==========================================
+
+  /// Fetch all active incident reports with nested comments
+  Future<List<Map<String, dynamic>>?> fetchReports() async {
+    final cl = client;
+    if (cl == null) return null;
+
+    try {
+      final reportsData = await cl
+          .from('transit_reports')
+          .select()
+          .order('created_at', ascending: false);
+      final commentsData = await cl.from('report_comments').select();
+
+      final List<Map<String, dynamic>> combined = [];
+      for (final r in reportsData) {
+        final rMap = Map<String, dynamic>.from(r);
+        final rId = rMap['id']?.toString();
+        final matchingComments = commentsData
+            .where((c) => c['report_id']?.toString() == rId)
+            .toList();
+        rMap['comments'] = matchingComments;
+        combined.add(rMap);
+      }
+      return combined;
+    } catch (e) {
+      debugPrint('[SupabaseService] fetchReports notice: $e');
+      return null;
+    }
+  }
+
+  /// Submit a new transit incident report
+  Future<Map<String, dynamic>?> submitReport({
+    required String reporterName,
+    required String reportType,
+    required String severity,
+    required String title,
+    required String description,
+    required String locationName,
+    String routeTag = 'Transit Network',
+  }) async {
+    final record = {
+      'reporter_name': reporterName,
+      'report_type': reportType,
+      'severity': severity,
+      'title': title,
+      'description': description,
+      'location_name': locationName,
+      'route_tag': routeTag,
+      'upvotes': 1,
+      'status': 'ACTIVE',
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    final cl = client;
+    if (cl == null) return record;
+
+    try {
+      final res = await cl.from('transit_reports').insert(record).select().maybeSingle();
+      return res ?? record;
+    } catch (e) {
+      debugPrint('[SupabaseService] submitReport notice: $e');
+      return record;
+    }
+  }
+
+  /// Submit a comment on a report
+  Future<Map<String, dynamic>?> submitReportComment({
+    required String reportId,
+    required String author,
+    required String comment,
+    String userLocality = 'Ahmedabad',
+  }) async {
+    final record = {
+      'report_id': reportId,
+      'author': author,
+      'comment': comment,
+      'user_locality': userLocality,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    final cl = client;
+    if (cl == null) return record;
+
+    try {
+      final res = await cl.from('report_comments').insert(record).select().maybeSingle();
+      return res ?? record;
+    } catch (e) {
+      debugPrint('[SupabaseService] submitReportComment notice: $e');
+      return record;
+    }
+  }
+
+  /// Upvote an incident report
+  Future<void> syncReportUpvote({
+    required String reportId,
+    required int upvotes,
+  }) async {
+    final cl = client;
+    if (cl == null) return;
+
+    try {
+      await cl.from('transit_reports').update({
+        'upvotes': upvotes,
+      }).eq('id', reportId);
+    } catch (e) {
+      debugPrint('[SupabaseService] syncReportUpvote notice: $e');
+    }
+  }
 }

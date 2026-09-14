@@ -214,3 +214,126 @@ VALUES
     0
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- ====================================================================
+-- TABLE 5: TRANSIT_REPORTS (Live Incidents, Waterlogging, Delays & Hazards)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.transit_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reporter_name TEXT NOT NULL,
+    report_type TEXT NOT NULL, -- 'Waterlogging', 'Metro Delay', 'BRTS Breakdown', 'Road Construction', 'Heavy Crowd'
+    severity TEXT NOT NULL DEFAULT 'medium', -- 'critical', 'high', 'medium', 'low'
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    location_name TEXT NOT NULL, -- e.g. 'Iskcon Cross Road, SG Highway'
+    route_tag TEXT DEFAULT 'Corridor #9',
+    upvotes INT DEFAULT 1,
+    status TEXT DEFAULT 'ACTIVE', -- 'ACTIVE', 'VERIFIED', 'RESOLVED'
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for Transit Reports
+ALTER TABLE public.transit_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read on transit_reports"
+    ON public.transit_reports FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow public insert on transit_reports"
+    ON public.transit_reports FOR INSERT
+    WITH CHECK (true);
+
+CREATE POLICY "Allow public update on transit_reports"
+    ON public.transit_reports FOR UPDATE
+    USING (true);
+
+-- ====================================================================
+-- TABLE 6: REPORT_COMMENTS (Community feedback on incident reports)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.report_comments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    report_id UUID REFERENCES public.transit_reports(id) ON DELETE CASCADE,
+    author TEXT NOT NULL,
+    comment TEXT NOT NULL,
+    user_locality TEXT DEFAULT 'Ahmedabad',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for Report Comments
+ALTER TABLE public.report_comments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read on report_comments"
+    ON public.report_comments FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow public insert on report_comments"
+    ON public.report_comments FOR INSERT
+    WITH CHECK (true);
+
+-- ====================================================================
+-- INITIAL SEED DATA FOR REPORTS
+-- ====================================================================
+INSERT INTO public.transit_reports (id, reporter_name, report_type, severity, title, description, location_name, route_tag, upvotes, status)
+VALUES
+(
+    'c0000000-0000-0000-0000-000000000001',
+    'Vikram Desai',
+    'Waterlogging',
+    'high',
+    'Heavy Waterlogging under Iskcon Flyover',
+    'Underpass service road flooded up to 1.5 ft after heavy showers. BRTS buses are operating via main flyover deck; autos avoiding service lanes.',
+    'Iskcon Cross Road, SG Highway',
+    'Corridor #9 BRTS',
+    28,
+    'VERIFIED'
+),
+(
+    'c0000000-0000-0000-0000-000000000002',
+    'Kiran Shah',
+    'Metro Delay',
+    'medium',
+    'Signal Maintenance at Kalupur Concourse',
+    'Metro East-West Line 1 trains held for 6-8 mins at Kalupur platform 2. Technicians on site; crowd moderate.',
+    'Kalupur Railway Interchange',
+    'Metro Line 1',
+    19,
+    'ACTIVE'
+),
+(
+    'c0000000-0000-0000-0000-000000000003',
+    'Sameer P.',
+    'Heavy Crowd',
+    'low',
+    'Rush at Vastrapur Feeder Bus Bay',
+    'High university student rush for feeder buses toward PDPU / Gandhinagar. Electric bus 4U arriving in 4 mins.',
+    'Vastrapur Lake Bus Stand',
+    'Route 4U Electric',
+    12,
+    'ACTIVE'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.report_comments (id, report_id, author, comment, user_locality)
+VALUES
+(
+    'd0000000-0000-0000-0000-000000000001',
+    'c0000000-0000-0000-0000-000000000001',
+    'Dev Patel',
+    'Confirmed. Took flyover top deck and saved 20 minutes. Avoid ground level underpass.',
+    'SG Highway'
+),
+(
+    'd0000000-0000-0000-0000-000000000002',
+    'c0000000-0000-0000-0000-000000000001',
+    'Traffic Warden',
+    'Traffic police diverting two-wheelers toward Judges Bungalow road.',
+    'Bodakdev'
+),
+(
+    'd0000000-0000-0000-0000-000000000003',
+    'c0000000-0000-0000-0000-000000000002',
+    'Harsh M.',
+    'Metro frequency back to 7 mins as of 10 mins ago.',
+    'Kalupur'
+)
+ON CONFLICT (id) DO NOTHING;

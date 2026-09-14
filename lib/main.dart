@@ -41,6 +41,8 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
   // 0: Search (Home), 1: Route, 2: Ask Route (Q&A), 3: Passes (Concessions), 4: Wallet (Fare & QR Ticket), 5: Auth / Profile
   int _currentScreenIndex = 0;
   int _previousScreenIndex = 0;
+  String? _focusedLocation;
+  String? _focusedIncident;
 
   void _toggleTheme() {
     setState(() {
@@ -55,6 +57,24 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
         _previousScreenIndex = _currentScreenIndex;
       }
       _currentScreenIndex = index;
+    });
+  }
+
+  void _navigateToRouteWithFocus(String location, String? incident) {
+    setState(() {
+      _focusedLocation = location;
+      _focusedIncident = incident;
+      if (_currentScreenIndex != 5) {
+        _previousScreenIndex = _currentScreenIndex;
+      }
+      _currentScreenIndex = 1;
+    });
+  }
+
+  void _clearRouteFocus() {
+    setState(() {
+      _focusedLocation = null;
+      _focusedIncident = null;
     });
   }
 
@@ -93,10 +113,13 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
           onNavigateToProfile: _openProfile,
           onToggleTheme: _toggleTheme,
           isDarkMode: isDark,
+          focusLocation: _focusedLocation,
+          focusIncident: _focusedIncident,
+          onClearFocus: _clearRouteFocus,
         );
         break;
       case 2:
-        // ASK ROUTE: Community Q&A, verified advice & interactive reactions
+        // ASK ROUTE: Community Q&A, Live Reports, Gemini Assistant & Reactions
         currentScreen = StitchAskRouteScreen(
           onNavigateToHome: () => _setScreen(0),
           onNavigateToRouteDetails: () => _setScreen(1),
@@ -105,6 +128,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
           onNavigateToProfile: _openProfile,
           onToggleTheme: _toggleTheme,
           isDarkMode: isDark,
+          onNavigateToRouteWithFocus: _navigateToRouteWithFocus,
         );
         break;
       case 3:

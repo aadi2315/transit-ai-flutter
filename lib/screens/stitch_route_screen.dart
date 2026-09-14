@@ -15,6 +15,9 @@ class StitchRouteScreen extends StatefulWidget {
   final VoidCallback onNavigateToProfile;
   final VoidCallback onToggleTheme;
   final bool isDarkMode;
+  final String? focusLocation;
+  final String? focusIncident;
+  final VoidCallback? onClearFocus;
 
   const StitchRouteScreen({
     super.key,
@@ -25,6 +28,9 @@ class StitchRouteScreen extends StatefulWidget {
     required this.onNavigateToProfile,
     required this.onToggleTheme,
     required this.isDarkMode,
+    this.focusLocation,
+    this.focusIncident,
+    this.onClearFocus,
   });
 
   @override
@@ -364,6 +370,117 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                           ),
                         ],
                       ),
+
+                      if (widget.focusLocation != null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0x33EF4444), Color(0x22DC2626)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.6),
+                              width: 1.2,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x40EF4444),
+                                blurRadius: 12,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Color(0xFFF87171),
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'LIVE INCIDENT MAP FOCUS',
+                                          style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.5,
+                                            color: const Color(0xFFF87171),
+                                          ),
+                                        ),
+                                        if (widget.onClearFocus != null)
+                                          GestureDetector(
+                                            onTap: widget.onClearFocus,
+                                            child: const Icon(
+                                              Icons.close_rounded,
+                                              size: 16,
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      widget.focusLocation!,
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    if (widget.focusIncident != null) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        widget.focusIncident!,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          color: const Color(0xFFFCA5A5),
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.alt_route_rounded,
+                                          size: 13,
+                                          color: Color(0xFF38BDF8),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Detour active • Avoiding ground-level corridor',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF38BDF8),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
 
                       const SizedBox(height: 12),
 
