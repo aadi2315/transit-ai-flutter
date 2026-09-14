@@ -9,6 +9,7 @@ import '../config/transit_map_config.dart';
 
 class StitchRouteScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
+  final VoidCallback onNavigateToAskRoute;
   final VoidCallback onNavigateToPasses;
   final VoidCallback onNavigateToWallet;
   final VoidCallback onNavigateToProfile;
@@ -18,6 +19,7 @@ class StitchRouteScreen extends StatefulWidget {
   const StitchRouteScreen({
     super.key,
     required this.onNavigateToHome,
+    required this.onNavigateToAskRoute,
     required this.onNavigateToPasses,
     required this.onNavigateToWallet,
     required this.onNavigateToProfile,
@@ -1129,8 +1131,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
               if (index == 0) {
                 widget.onNavigateToHome();
               } else if (index == 2) {
-                widget.onNavigateToPasses();
+                widget.onNavigateToAskRoute();
               } else if (index == 3) {
+                widget.onNavigateToPasses();
+              } else if (index == 4) {
                 widget.onNavigateToWallet();
               }
             },

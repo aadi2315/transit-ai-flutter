@@ -36,6 +36,8 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
 
   // Sign Up Controllers (empty by default)
   final TextEditingController _signupNameController = TextEditingController();
+  final TextEditingController _signupLocationController =
+      TextEditingController();
   final TextEditingController _signupPhoneController = TextEditingController();
   final TextEditingController _signupPasswordController =
       TextEditingController();
@@ -63,6 +65,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
         _loginPasswordController.text = 'transit@2026';
       } else {
         _signupNameController.text = 'Aarav Patel';
+        _signupLocationController.text = 'SG Highway, Ahmedabad';
         _signupPhoneController.text = '98790 44120';
         _signupPasswordController.text = 'Transit@2026';
         _checkPasswordStrength('Transit@2026');
@@ -75,6 +78,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
     _loginPhoneController.dispose();
     _loginPasswordController.dispose();
     _signupNameController.dispose();
+    _signupLocationController.dispose();
     _signupPhoneController.dispose();
     _signupPasswordController.dispose();
     super.dispose();
@@ -794,6 +798,184 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                     ),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // WHERE YOU'RE FROM (LOCALITY / CITY)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'WHERE YOU\'RE FROM (LOCALITY / CITY)',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.6,
+                                    color: subLabelColor,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _signupLocationController.text =
+                                        'Ahmedabad Hub (GPS Pin)';
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(6),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.my_location_rounded,
+                                        size: 11,
+                                        color: Color(0xFF00E5FF),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        'Use GPS',
+                                        style: GoogleFonts.jetBrainsMono(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF00E5FF),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 46,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: inputBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: inputBorder,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: chipBg,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.location_on_outlined,
+                                    size: 15,
+                                    color: Color(0xFF00E5FF),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _signupLocationController,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryTextColor,
+                                    ),
+                                    decoration: InputDecoration(
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      hintText:
+                                          'e.g. SG Highway, Vastrapur, Kalupur...',
+                                      hintStyle: GoogleFonts.plusJakartaSans(
+                                        color: const Color(0xFF94A3B8),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (_signupLocationController.text.isNotEmpty)
+                                  GestureDetector(
+                                    onTap: () => setState(
+                                        () => _signupLocationController.clear()),
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(right: 4),
+                                      child: Icon(
+                                        Icons.cancel_rounded,
+                                        size: 16,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 6),
+
+                          // Quick Locality Suggestion Chips
+                          SizedBox(
+                            height: 28,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              children: [
+                                for (final area in const [
+                                  'SG Highway',
+                                  'Vastrapur',
+                                  'Kalupur Stn',
+                                  'GIFT City',
+                                  'Iskcon Cross',
+                                  'Maninagar',
+                                ])
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 5),
+                                    child: InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _signupLocationController.text =
+                                              '$area, Ahmedabad';
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: dark
+                                              ? Colors.white
+                                                  .withValues(alpha: 0.05)
+                                              : const Color(0xFFF1F5F9),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          border: Border.all(
+                                            color: dark
+                                                ? const Color(0x2EFFFFFF)
+                                                : const Color(0xFFCBD5E1),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          area,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: dark
+                                                ? const Color(0xFFCBD5E1)
+                                                : const Color(0xFF475569),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),

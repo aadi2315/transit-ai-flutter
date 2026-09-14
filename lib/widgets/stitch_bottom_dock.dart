@@ -14,7 +14,7 @@ class StitchBottomDock extends StatelessWidget {
     this.isDarkMode,
   });
 
-  static const List<String> tabs = ['SEARCH', 'ROUTE', 'PASSES', 'WALLET'];
+  static const List<String> tabs = ['SEARCH', 'ROUTE', 'ASK', 'PASSES', 'WALLET'];
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +23,8 @@ class StitchBottomDock extends StatelessWidget {
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container(
-        margin: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
-        constraints: const BoxConstraints(maxWidth: 390),
+        margin: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+        constraints: const BoxConstraints(maxWidth: 396),
         height: 64,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(36),
@@ -84,11 +84,11 @@ class StitchBottomDock extends StatelessWidget {
                                 child: Text(
                                   tabs[index],
                                   style: GoogleFonts.jetBrainsMono(
-                                    fontSize: 11,
+                                    fontSize: 9.8,
                                     fontWeight: isSelected
                                         ? FontWeight.w800
                                         : FontWeight.w600,
-                                    letterSpacing: 0.8,
+                                    letterSpacing: 0.3,
                                     color: isSelected
                                         ? Colors.white
                                         : const Color(0xFF94A3B8),

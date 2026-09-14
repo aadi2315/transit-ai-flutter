@@ -11,6 +11,7 @@ import '../utils/device_file_picker.dart';
 class StitchPassesScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
   final VoidCallback onNavigateToRouteDetails;
+  final VoidCallback onNavigateToAskRoute;
   final VoidCallback onNavigateToWallet;
   final VoidCallback onNavigateToProfile;
   final VoidCallback onToggleTheme;
@@ -20,6 +21,7 @@ class StitchPassesScreen extends StatefulWidget {
     super.key,
     required this.onNavigateToHome,
     required this.onNavigateToRouteDetails,
+    required this.onNavigateToAskRoute,
     required this.onNavigateToWallet,
     required this.onNavigateToProfile,
     required this.onToggleTheme,
@@ -832,9 +834,9 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             ),
           ),
 
-          // BOTTOM DOCK (PASSES tab active - Index 2)
+          // BOTTOM DOCK (PASSES tab active - Index 3)
           StitchBottomDock(
-            activeIndex: 2,
+            activeIndex: 3,
             isDarkMode: dark,
             onTabSelected: (index) {
               if (index == 0) {
@@ -842,8 +844,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
               } else if (index == 1) {
                 widget.onNavigateToRouteDetails();
               } else if (index == 2) {
-                // Already on Passes
+                widget.onNavigateToAskRoute();
               } else if (index == 3) {
+                // Already on Passes
+              } else if (index == 4) {
                 widget.onNavigateToWallet();
               }
             },

@@ -8,6 +8,7 @@ import '../widgets/stitch_profile_button.dart';
 
 class StitchHomeScreen extends StatefulWidget {
   final VoidCallback onNavigateToRouteDetails;
+  final VoidCallback onNavigateToAskRoute;
   final VoidCallback onNavigateToPasses;
   final VoidCallback onNavigateToWallet;
   final VoidCallback onNavigateToProfile;
@@ -17,6 +18,7 @@ class StitchHomeScreen extends StatefulWidget {
   const StitchHomeScreen({
     super.key,
     required this.onNavigateToRouteDetails,
+    required this.onNavigateToAskRoute,
     required this.onNavigateToPasses,
     required this.onNavigateToWallet,
     required this.onNavigateToProfile,
@@ -760,8 +762,10 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
               if (index == 1) {
                 widget.onNavigateToRouteDetails();
               } else if (index == 2) {
-                widget.onNavigateToPasses();
+                widget.onNavigateToAskRoute();
               } else if (index == 3) {
+                widget.onNavigateToPasses();
+              } else if (index == 4) {
                 widget.onNavigateToWallet();
               }
             },
