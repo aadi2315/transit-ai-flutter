@@ -1243,51 +1243,59 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
         children: [
           // Header Row
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.20),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.document_scanner_rounded,
-                      color: Color(0xFF38BDF8),
-                      size: 17,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Upload Manually',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: primaryTextColor,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.20),
+                          width: 1,
                         ),
                       ),
-                      Text(
-                        'AI OCR ENGINE • INSTANT VERIFICATION',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 9,
-                          color: const Color(0xFF94A3B8),
-                          letterSpacing: 0.4,
-                        ),
+                      child: const Icon(
+                        Icons.document_scanner_rounded,
+                        color: Color(0xFF38BDF8),
+                        size: 17,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Upload Manually',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: primaryTextColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'AI OCR ENGINE • INSTANT VERIFICATION',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 8.5,
+                              color: const Color(0xFF94A3B8),
+                              letterSpacing: 0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               // Status Pill Badge
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -1514,38 +1522,47 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.tune_rounded,
-                      size: 16,
-                      color: _simulateFailure
-                          ? const Color(0xFFF87171)
-                          : const Color(0xFF94A3B8),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Simulate Verification Failure',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: primaryTextColor,
-                          ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.tune_rounded,
+                        size: 16,
+                        color: _simulateFailure
+                            ? const Color(0xFFF87171)
+                            : const Color(0xFF94A3B8),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Simulate Verification Failure',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: primaryTextColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              'Showcase rejection handling for demo',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 8.5,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        Text(
-                          'Showcase rejection handling for demo',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 9,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Transform.scale(
                   scale: 0.8,
                   child: Switch(
@@ -1742,7 +1759,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   // Green glowing glass badge
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                     decoration: BoxDecoration(
                       color: const Color(0xFF56E5A9).withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(10),
@@ -1757,16 +1774,20 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         const Icon(
                           Icons.check_circle_rounded,
                           color: Color(0xFF56E5A9),
-                          size: 15,
+                          size: 14,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '[DEMO ONLY] Document Verified Successfully!',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF56E5A9),
-                            letterSpacing: 0.3,
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            '[DEMO ONLY] Document Verified Successfully!',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF56E5A9),
+                              letterSpacing: 0.1,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -1825,7 +1846,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   // Red/Amber glowing glass badge
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEF4444).withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(10),
@@ -1840,16 +1861,20 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         const Icon(
                           Icons.error_outline_rounded,
                           color: Color(0xFFEF4444),
-                          size: 15,
+                          size: 14,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '[DEMO ONLY] Document Verification Failed',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFCA5A5),
-                            letterSpacing: 0.3,
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            '[DEMO ONLY] Document Verification Failed',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFFFCA5A5),
+                              letterSpacing: 0.1,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
