@@ -50,8 +50,8 @@ void main() {
     });
   });
 
-  group('Stitch Payment & Scanner Screen Widget Tests', () {
-    testWidgets('Renders Razorpay badge, Pay CTA, and Pay by Scanner button',
+  group('Stitch Payment Screen Widget Tests', () {
+    testWidgets('Renders Razorpay badge, Pay CTA, and UPI QR payment card',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(1170, 2532);
       tester.view.devicePixelRatio = 3.0;
@@ -80,62 +80,23 @@ void main() {
       // Verify Pay button
       expect(find.text('Pay ₹9.00 via Google Pay'), findsOneWidget);
 
-      // Verify Pay with Scanner button
-      final scannerBtn = find.textContaining('Pay with Scanner');
-      expect(scannerBtn, findsOneWidget);
+      // Verify Dedicated UPI Payment QR Section exists
+      expect(find.text('Pay via UPI QR Code'), findsOneWidget);
+      expect(find.text('PAYMENT QR'), findsOneWidget);
 
-      await tester.ensureVisible(scannerBtn);
+      // Verify simulation clearance button in UPI QR card
+      final simulateUpiPayBtn =
+          find.text('Confirm / Simulate UPI QR Payment Received');
+      expect(simulateUpiPayBtn, findsOneWidget);
+
+      await tester.ensureVisible(simulateUpiPayBtn);
       await tester.pump();
-      await tester.tap(scannerBtn);
-      // Wait for modal transition without timing out on infinite animation
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump(const Duration(milliseconds: 400));
-
-      // Verify Scanner modal elements
-      expect(find.text('Scan & Pay Fare'), findsOneWidget);
-      expect(find.text('Scan Terminal QR'), findsOneWidget);
-      expect(find.text('Dynamic UPI QR'), findsOneWidget);
-      expect(
-        find.textContaining('TERMINAL DETECTED'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Pay ₹9.00 with Razorpay Gateway'),
-        findsOneWidget,
-      );
-
-      // Switch to Dynamic UPI QR tab
-      await tester.tap(find.text('Dynamic UPI QR'));
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(
-        find.text('HOLD SCREEN AGAINST TERMINAL SCANNER'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Expires in'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Pay ₹9.00 Online via Razorpay'),
-        findsOneWidget,
-      );
-
-      // Switch back to Scan Terminal QR tab
-      await tester.tap(find.text('Scan Terminal QR'));
-      await tester.pump(const Duration(milliseconds: 300));
-
-      // Tap Simulate Instant Terminal QR Clearance (Test Bypass)
-      final bypassBtn =
-          find.text('Simulate Instant Terminal QR Clearance (Test Bypass)');
-      await tester.ensureVisible(bypassBtn);
-      await tester.pump();
-      await tester.tap(bypassBtn);
+      await tester.tap(simulateUpiPayBtn);
 
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
 
-      // Sheet should dismiss and transition to Dynamic QR Ticket
+      // Should transition to Dynamic QR Ticket pass upon payment
       expect(find.text('Dynamic QR Pass'), findsOneWidget);
       expect(find.text('CONFIRMED'), findsOneWidget);
       expect(find.text('Ahmedabad BRTS'), findsOneWidget);

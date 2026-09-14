@@ -7,7 +7,6 @@ import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
 import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
-import '../widgets/stitch_scanner_sheet.dart';
 import '../services/razorpay_service.dart';
 import '../services/supabase_service.dart';
 import '../config/razorpay_config.dart';
@@ -152,30 +151,6 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
         });
         _syncTicketToSupabase();
         _showPaymentSnackbar('Payment Verified! Ref: $_paymentId',
-            isSuccess: true);
-      },
-    );
-  }
-
-  void _openScannerSheet() {
-    StitchScannerSheet.show(
-      context: context,
-      fareAmount: 9,
-      routeName: 'Sola Crossroad → Iskcon Circle (9U ➔ 8D)',
-      isDarkMode: widget.isDarkMode,
-      onPayWithRazorpay: (amount, description) {
-        _startRazorpayPayment(amount: amount, description: description);
-      },
-      onScanPaymentComplete: (paymentId, terminal) {
-        setState(() {
-          _paymentId = paymentId;
-          _terminalId = terminal;
-          _hasPaid = true;
-          _isTicketView = true;
-          _paymentMethodUsed = 'Terminal QR Scanner';
-        });
-        _syncTicketToSupabase();
-        _showPaymentSnackbar('Terminal Verified! Pass Activated ($paymentId)',
             isSuccess: true);
       },
     );
@@ -1061,62 +1036,6 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         ),
                       ],
                     ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Secondary Scanner Action Button
-              GestureDetector(
-                onTap: _openScannerSheet,
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: const Color(0x4038BDF8),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.qr_code_scanner_rounded,
-                        size: 16,
-                        color: Color(0xFF38BDF8),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Pay with Scanner (AFC Gate / Terminal QR)',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 6),
-
-              Center(
-                child: GestureDetector(
-                  onTap: _openScannerSheet,
-                  child: Text(
-                    'Or scan dynamic UPI QR code on terminal',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      color: const Color(0xFF38BDF8),
-                      fontWeight: FontWeight.w600,
-                    ),
                   ),
                 ),
               ),
