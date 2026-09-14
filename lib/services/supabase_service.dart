@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
+import '../core/storage/local_transit_vault.dart';
 
 /// Singleton Service for Supabase Cloud Backend in Transit AI.
 /// Provides real-time synchronization, community Q&A feed persistence,
@@ -287,10 +288,11 @@ class SupabaseService {
   }
 
   // ==========================================
-  // TICKET BOOKINGS & PASSES
+  // ==========================================
+  // TICKET BOOKINGS & CONCESSION PASSES
   // ==========================================
 
-  /// Save generated transit ticket to Supabase
+  /// Save generated transit ticket to Supabase and Local Offline Vault
   Future<bool> saveTicket({
     required String ticketId,
     required String origin,
@@ -298,6 +300,7 @@ class SupabaseService {
     required double fare,
     required String lineInfo,
     required String qrPayload,
+    String? hmacSignature,
   }) async {
     final record = {
       'ticket_id': ticketId,
@@ -306,9 +309,14 @@ class SupabaseService {
       'fare': fare,
       'line_info': lineInfo,
       'qr_payload': qrPayload,
+      'hmac_signature': hmacSignature ?? '',
       'status': 'ACTIVE',
+      'is_validated': false,
       'created_at': DateTime.now().toIso8601String(),
     };
+
+    // Save to local offline vault first for 100% offline resilience
+    await LocalTransitVault.instance.saveActiveTicket(record);
 
     final cl = client;
     if (cl == null) return true;
@@ -317,12 +325,77 @@ class SupabaseService {
       await cl.from('tickets').insert(record);
       return true;
     } catch (e) {
-      debugPrint('[SupabaseService] saveTicket notice: $e');
-      return false;
+      debugPrint('[SupabaseService] saveTicket cloud sync notice: $e');
+      return true; // Still true because saved to local offline vault!
     }
   }
 
-  // ==========================================
+  /// Submit AI-extracted Student KYC Concession Application
+  Future<Map<String, dynamic>> submitKycApplication({
+    required String phone,
+    required String studentName,
+    required String institutionName,
+    required String rollNumber,
+    required Map<String, dynamic> ocrData,
+    bool isApproved = true,
+  }) async {
+    final record = {
+      'phone': phone,
+      'institution_name': institutionName,
+      'roll_number': rollNumber,
+      'ocr_extracted_data': ocrData,
+      'digilocker_verified': true,
+      'status': isApproved ? 'approved' : 'pending',
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    final cl = client;
+    if (cl != null) {
+      try {
+        final res = await cl.from('kyc_applications').insert(record).select().maybeSingle();
+        if (res != null) return res;
+      } catch (e) {
+        debugPrint('[SupabaseService] submitKycApplication notice: $e');
+      }
+    }
+    return record;
+  }
+
+  /// Save approved student concession pass
+  Future<bool> saveConcessionPass({
+    required String passNumber,
+    required String institutionName,
+    required String rollNumber,
+    int subsidyPercent = 80,
+    double monthlyFare = 60.0,
+  }) async {
+    final record = {
+      'pass_number': passNumber,
+      'institution_name': institutionName,
+      'roll_number': rollNumber,
+      'subsidy_discount_percent': subsidyPercent,
+      'monthly_fare': monthlyFare,
+      'valid_from': DateTime.now().toIso8601String(),
+      'valid_until': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+      'status': 'active',
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    // Save to local offline vault immediately
+    await LocalTransitVault.instance.saveActivePass(record);
+
+    final cl = client;
+    if (cl == null) return true;
+
+    try {
+      await cl.from('concession_passes').insert(record);
+      return true;
+    } catch (e) {
+      debugPrint('[SupabaseService] saveConcessionPass notice: $e');
+      return true;
+    }
+  }
+
   // LIVE TRANSIT REPORTS & INCIDENT ALERTS
   // ==========================================
 

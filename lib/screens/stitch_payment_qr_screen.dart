@@ -10,6 +10,8 @@ import '../widgets/stitch_profile_button.dart';
 import '../services/razorpay_service.dart';
 import '../services/supabase_service.dart';
 import '../config/razorpay_config.dart';
+import '../core/crypto/hmac_signer.dart';
+import '../core/storage/local_transit_vault.dart';
 
 class StitchPaymentQrScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
@@ -47,12 +49,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   late AnimationController _laserController;
   late Timer _totpTimer;
   int _totpSeconds = 15;
+  String _dynamicPayload = '';
 
   // Razorpay & Scanner Integration State
   final RazorpayService _razorpayService = RazorpayService();
   String _paymentId = 'pay_test_amd9987';
   bool _isPaymentProcessing = false;
-  String _terminalId = 'BRTS-SOLA-GATE-02';
+  final String _terminalId = 'BRTS-SOLA-GATE-02';
   String _paymentMethodUsed = 'Razorpay UPI';
 
   @override
@@ -65,13 +68,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
       duration: const Duration(milliseconds: 2400),
     )..repeat(reverse: true);
 
+    _loadOfflineActiveTicket();
+    _updateDynamicPayload();
+
     _totpTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
       setState(() {
-        if (_totpSeconds > 1) {
-          _totpSeconds--;
-        } else {
-          _totpSeconds = 15;
+        _totpSeconds = HmacTokenSigner.getRemainingWindowSeconds();
+        if (_totpSeconds == 15 || _totpSeconds == 1) {
+          _updateDynamicPayload();
         }
       });
     });
@@ -87,6 +92,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           _isTicketView = true;
           _paymentMethodUsed = 'Razorpay Gateway';
         });
+        _updateDynamicPayload();
         _syncTicketToSupabase();
         _showPaymentSnackbar('Payment Successful! Ref: $_paymentId',
             isSuccess: true);
@@ -108,6 +114,30 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
     );
   }
 
+  Future<void> _loadOfflineActiveTicket() async {
+    final cached = await LocalTransitVault.instance.getActiveTicket();
+    if (cached != null && mounted) {
+      setState(() {
+        _hasPaid = true;
+        _isTicketView = true;
+        if (cached['ticket_id'] != null) {
+          _paymentId = cached['ticket_id'].toString().replaceAll('TKT-', '').toLowerCase();
+        }
+      });
+      _updateDynamicPayload();
+    }
+  }
+
+  void _updateDynamicPayload() {
+    _dynamicPayload = HmacTokenSigner.generateDynamicTicketPayload(
+      ticketId: 'TKT-${_paymentId.toUpperCase()}',
+      origin: 'Sola Bhagwat',
+      destination: 'Iskcon Cross Rd',
+      fare: 9.0,
+      lineInfo: 'BRTS 9U + Feeder 8D',
+    );
+  }
+
   Future<void> _syncTicketToSupabase() async {
     try {
       await SupabaseService.instance.saveTicket(
@@ -115,14 +145,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
         origin: 'Sola Bhagwat',
         destination: 'Iskcon Cross Rd',
         fare: 9.0,
-        lineInfo: 'Line 9U + Feeder 8D',
-        qrPayload:
-            'TRANSIT_AI|V3|$_paymentId|SOLA_TO_ISKCON|FARE_9.00|$_terminalId',
+        lineInfo: 'BRTS 9U + Feeder 8D',
+        qrPayload: _dynamicPayload,
+        hmacSignature: _dynamicPayload.split('|').last,
       );
     } catch (e) {
       debugPrint('[StitchPaymentQrScreen] Ticket sync note: $e');
     }
   }
+
 
   @override
   void dispose() {
@@ -1752,8 +1783,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   child: Stack(
                     children: [
                       QrImageView(
-                        data:
-                            'TRANSIT_AI|V3|$_paymentId|SOLA_TO_ISKCON|FARE_9.00|$_terminalId',
+                        data: _dynamicPayload.isNotEmpty
+                            ? _dynamicPayload
+                            : HmacTokenSigner.generateDynamicTicketPayload(
+                                ticketId: 'TKT-${_paymentId.toUpperCase()}',
+                                origin: 'Sola Bhagwat',
+                                destination: 'Iskcon Cross Rd',
+                                fare: 9.0,
+                              ),
                         version: QrVersions.auto,
                         size: 160.0,
                         backgroundColor: Colors.white,
@@ -1822,10 +1859,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   ],
                 ),
                 Text(
-                  'AES-256 Authenticated GTFS Payload',
+                  'HMAC-SHA256 Signed Dynamic Token • Rotates Every 15s',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 8,
-                    color: const Color(0xFF94A3B8),
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF56E5A9),
                   ),
                 ),
 

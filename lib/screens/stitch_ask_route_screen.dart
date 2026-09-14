@@ -8,7 +8,6 @@ import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../widgets/stitch_formatted_text.dart';
 import '../services/supabase_service.dart';
-import '../config/gemini_config.dart';
 import '../services/gemini_service.dart';
 
 enum UserReaction { none, liked, disliked }

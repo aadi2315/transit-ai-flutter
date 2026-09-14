@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'stitch_glass_card.dart';
+import '../core/crypto/hmac_signer.dart';
+import '../core/storage/local_transit_vault.dart';
 
 class StitchScannerSheet extends StatefulWidget {
   final int fareAmount;
@@ -49,13 +51,20 @@ class StitchScannerSheet extends StatefulWidget {
 
 class _StitchScannerSheetState extends State<StitchScannerSheet>
     with SingleTickerProviderStateMixin {
-  int _activeTab = 0; // 0: Scan Terminal QR, 1: Show Dynamic UPI QR
+  int _activeTab = 0; // 0: Scan Terminal QR, 1: Show Dynamic UPI QR, 2: Conductor Mode
   late AnimationController _laserController;
   Timer? _qrTimer;
   int _qrCountdown = 180; // 3 minutes
   bool _flashOn = false;
   String _detectedTerminal = 'BRTS-SOLA-GATE-02';
   bool _isScanningTerminal = false;
+
+  // Conductor Shift State
+  bool _conductorUnlocked = false;
+  final TextEditingController _pinController = TextEditingController();
+  String? _pinError;
+  ConductorValidationResult? _lastScanResult;
+  bool _isCheckingTicket = false;
 
   final List<Map<String, String>> _availableTerminals = [
     {
@@ -102,6 +111,7 @@ class _StitchScannerSheetState extends State<StitchScannerSheet>
   void dispose() {
     _laserController.dispose();
     _qrTimer?.cancel();
+    _pinController.dispose();
     super.dispose();
   }
 
@@ -117,6 +127,91 @@ class _StitchScannerSheetState extends State<StitchScannerSheet>
         _isScanningTerminal = false;
       });
     });
+  }
+
+  Future<void> _unlockConductorShift() async {
+    final valid = await LocalTransitVault.instance.verifyConductorPin(_pinController.text);
+    if (valid) {
+      setState(() {
+        _conductorUnlocked = true;
+        _pinError = null;
+      });
+    } else {
+      setState(() {
+        _pinError = 'Invalid Shift PIN. (Default PIN: 1234)';
+      });
+    }
+  }
+
+  void _lockConductorShift() {
+    setState(() {
+      _conductorUnlocked = false;
+      _pinController.clear();
+      _pinError = null;
+      _lastScanResult = null;
+    });
+  }
+
+  Future<void> _verifyDynamicPayload(String payload) async {
+    setState(() => _isCheckingTicket = true);
+    await Future.delayed(const Duration(milliseconds: 250));
+    final result = HmacTokenSigner.verifyDynamicPayload(payload);
+    if (result.isValid && result.ticketId != null) {
+      final isNew = await LocalTransitVault.instance.markTicketValidatedInShift(result.ticketId!);
+      if (!isNew) {
+        setState(() {
+          _isCheckingTicket = false;
+          _lastScanResult = ConductorValidationResult(
+            isValid: false,
+            status: ValidationStatus.alreadyUsed,
+            ticketId: result.ticketId,
+            origin: result.origin,
+            destination: result.destination,
+            fare: result.fare,
+            message: 'Already Scanned on this vehicle (Duplicate Token)',
+          );
+        });
+        return;
+      }
+    }
+    setState(() {
+      _isCheckingTicket = false;
+      _lastScanResult = result;
+    });
+  }
+
+  Future<void> _simulateLiveTicketScan() async {
+    final ticket = await LocalTransitVault.instance.getActiveTicket();
+    final ticketId = ticket?['ticket_id'] ?? 'TKT-SOLA9987';
+    final origin = ticket?['origin'] ?? 'Sola Bhagwat';
+    final dest = ticket?['destination'] ?? 'Iskcon Cross Rd';
+    final fare = (ticket?['fare'] is num) ? (ticket!['fare'] as num).toDouble() : 9.0;
+
+    final livePayload = HmacTokenSigner.generateDynamicTicketPayload(
+      ticketId: ticketId,
+      origin: origin,
+      destination: dest,
+      fare: fare,
+    );
+    await _verifyDynamicPayload(livePayload);
+  }
+
+  Future<void> _simulateExpiredTicketScan() async {
+    final expiredTime = DateTime.now().subtract(const Duration(seconds: 45));
+    final expiredPayload = HmacTokenSigner.generateDynamicTicketPayload(
+      ticketId: 'TKT-EXPIRED-PASS',
+      origin: 'Sola Bhagwat',
+      destination: 'Iskcon Cross Rd',
+      fare: 9.0,
+      time: expiredTime,
+    );
+    await _verifyDynamicPayload(expiredPayload);
+  }
+
+  Future<void> _simulateTamperedTicketScan() async {
+    const tamperedPayload =
+        'TKT-AI|V1|TKT-FAKE999|Sola Bhagwat|Iskcon Cross Rd|9.00|123456|BAD_SIGNATURE_99';
+    await _verifyDynamicPayload(tamperedPayload);
   }
 
   @override
@@ -231,7 +326,7 @@ class _StitchScannerSheetState extends State<StitchScannerSheet>
 
               const SizedBox(height: 14),
 
-              // Tab Switcher: Scan Terminal vs Show Dynamic QR
+              // Tab Switcher: Scan Terminal vs Show Dynamic QR vs Conductor Shift
               Container(
                 height: 42,
                 padding: const EdgeInsets.all(3),
@@ -264,17 +359,17 @@ class _StitchScannerSheetState extends State<StitchScannerSheet>
                             children: [
                               Icon(
                                 Icons.document_scanner_rounded,
-                                size: 14,
+                                size: 13,
                                 color: _activeTab == 0
                                     ? const Color(0xFF00354A)
                                     : (dark ? Colors.white70 : Colors.black54),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  'Scan Terminal QR',
+                                  'Terminal QR',
                                   style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 11,
+                                    fontSize: 10.5,
                                     fontWeight: FontWeight.w700,
                                     color: _activeTab == 0
                                         ? const Color(0xFF00354A)
@@ -306,19 +401,61 @@ class _StitchScannerSheetState extends State<StitchScannerSheet>
                             children: [
                               Icon(
                                 Icons.qr_code_2_rounded,
-                                size: 15,
+                                size: 14,
                                 color: _activeTab == 1
                                     ? const Color(0xFF00354A)
                                     : (dark ? Colors.white70 : Colors.black54),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  'Dynamic UPI QR',
+                                  'Fare UPI QR',
                                   style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 11,
+                                    fontSize: 10.5,
                                     fontWeight: FontWeight.w700,
                                     color: _activeTab == 1
+                                        ? const Color(0xFF00354A)
+                                        : (dark
+                                            ? Colors.white70
+                                            : Colors.black54),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _activeTab = 2),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _activeTab == 2
+                                ? const Color(0xFF56E5A9)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.security_rounded,
+                                size: 13,
+                                color: _activeTab == 2
+                                    ? const Color(0xFF00354A)
+                                    : (dark ? Colors.white70 : Colors.black54),
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'Conductor',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: _activeTab == 2
                                         ? const Color(0xFF00354A)
                                         : (dark
                                             ? Colors.white70
@@ -340,8 +477,10 @@ class _StitchScannerSheetState extends State<StitchScannerSheet>
 
               if (_activeTab == 0)
                 _buildScanTerminalView(dark)
+              else if (_activeTab == 1)
+                _buildDynamicQrView(dark)
               else
-                _buildDynamicQrView(dark),
+                _buildConductorValidatorView(dark),
             ],
           ),
         ),
@@ -910,6 +1049,411 @@ class _StitchScannerSheetState extends State<StitchScannerSheet>
                 ),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConductorValidatorView(bool dark) {
+    if (!_conductorUnlocked) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: dark ? const Color(0xFF0F172A).withValues(alpha: 0.85) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
+              blurRadius: 20,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.admin_panel_settings_rounded,
+                color: Color(0xFF38BDF8),
+                size: 26,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Conductor Shift Authentication',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: dark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Enter 4-digit device PIN to unlock offline HMAC dynamic boarding pass scanner.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11.5,
+                color: const Color(0xFF94A3B8),
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: 160,
+              decoration: BoxDecoration(
+                color: dark ? Colors.black.withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                  width: 1.2,
+                ),
+              ),
+              child: TextField(
+                controller: _pinController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 4,
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 10,
+                  color: dark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                ),
+                decoration: const InputDecoration(
+                  counterText: '',
+                  hintText: '••••',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+            if (_pinError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _pinError!,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: _unlockConductorShift,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF38BDF8),
+                  foregroundColor: const Color(0xFF00354A),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  'Unlock Conductor Scanner (Default: 1234)',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final res = _lastScanResult;
+    final bool isSuccess = res?.status == ValidationStatus.valid;
+    final bool isExpired = res?.status == ValidationStatus.expiredWindow;
+    final bool isUsed = res?.status == ValidationStatus.alreadyUsed;
+
+    Color statusColor = const Color(0xFF56E5A9);
+    IconData statusIcon = Icons.verified_rounded;
+    String statusTitle = 'READY TO SCAN';
+
+    if (res != null) {
+      if (isSuccess) {
+        statusColor = const Color(0xFF56E5A9);
+        statusIcon = Icons.verified_rounded;
+        statusTitle = 'VALID BOARDING PASS';
+      } else if (isExpired) {
+        statusColor = const Color(0xFFFFB95F);
+        statusIcon = Icons.timer_off_rounded;
+        statusTitle = 'QR TOKEN EXPIRED';
+      } else if (isUsed) {
+        statusColor = const Color(0xFFEF4444);
+        statusIcon = Icons.block_rounded;
+        statusTitle = 'ALREADY USED / DUPLICATE';
+      } else {
+        statusColor = const Color(0xFFEF4444);
+        statusIcon = Icons.gpp_bad_rounded;
+        statusTitle = 'TAMPERED / FRAUD DETECTED';
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Active Conductor Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF56E5A9).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFF56E5A9).withValues(alpha: 0.35),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF56E5A9),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AMTS / BRTS SHIFT #8D ACTIVE',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF56E5A9),
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: _lockConductorShift,
+                child: Text(
+                  'End Shift',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Conductor Scan Result HUD Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: res != null
+                ? statusColor.withValues(alpha: 0.10)
+                : (dark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC)),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: res != null ? statusColor.withValues(alpha: 0.6) : const Color(0x33FFFFFF),
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.20),
+                  shape: BoxShape.circle,
+                ),
+                child: _isCheckingTicket
+                    ? const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation(Color(0xFF38BDF8)),
+                        ),
+                      )
+                    : Icon(
+                        statusIcon,
+                        size: 32,
+                        color: statusColor,
+                      ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                statusTitle,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: statusColor,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                res?.message ?? 'Ready for passenger scanning. Point at dynamic HMAC token.',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11.5,
+                  color: dark ? Colors.white70 : const Color(0xFF475569),
+                  height: 1.35,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              if (res?.isValid == true) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Text(
+                        'ID: ${res!.ticketId}',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF38BDF8),
+                        ),
+                      ),
+                      Text(
+                        '${res.origin} ➔ ${res.destination}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '₹${res.fare?.toStringAsFixed(2)}',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF56E5A9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Conductor Test Simulator Buttons
+        Text(
+          'Offline Conductor Verification Controls:',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _simulateLiveTicketScan,
+                icon: const Icon(Icons.check_circle_outline, size: 14),
+                label: const Text('Test Live Pass'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF56E5A9).withValues(alpha: 0.2),
+                  foregroundColor: const Color(0xFF56E5A9),
+                  elevation: 0,
+                  side: const BorderSide(color: Color(0xFF56E5A9)),
+                  textStyle: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w700),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _simulateExpiredTicketScan,
+                icon: const Icon(Icons.timer_off_outlined, size: 14),
+                label: const Text('Test Expired (>15s)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFB95F).withValues(alpha: 0.2),
+                  foregroundColor: const Color(0xFFFFB95F),
+                  elevation: 0,
+                  side: const BorderSide(color: Color(0xFFFFB95F)),
+                  textStyle: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w700),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _simulateTamperedTicketScan,
+                icon: const Icon(Icons.gpp_bad_outlined, size: 14),
+                label: const Text('Test Counterfeit'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                  foregroundColor: const Color(0xFFEF4444),
+                  elevation: 0,
+                  side: const BorderSide(color: Color(0xFFEF4444)),
+                  textStyle: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w700),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Privacy Compliance Strip
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: dark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: const Color(0x22FFFFFF),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.privacy_tip_rounded,
+                size: 14,
+                color: Color(0xFF38BDF8),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Security Compliant: Commuter phone, identity and financial data are strictly shielded from conductor terminals (PRD §3.4).',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9.5,
+                    color: dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
