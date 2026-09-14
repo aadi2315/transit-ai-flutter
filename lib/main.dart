@@ -7,8 +7,9 @@ import 'screens/stitch_route_screen.dart';
 import 'screens/stitch_ask_route_screen.dart';
 import 'screens/stitch_passes_screen.dart';
 import 'screens/stitch_payment_qr_screen.dart';
+import 'services/supabase_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -16,6 +17,14 @@ void main() {
       statusBarIconBrightness: Brightness.light,
     ),
   );
+
+  // Initialize Supabase Cloud Backend
+  try {
+    await SupabaseService.instance.init();
+  } catch (e) {
+    debugPrint('Supabase init notice: $e');
+  }
+
   runApp(const StitchTransitApp());
 }
 

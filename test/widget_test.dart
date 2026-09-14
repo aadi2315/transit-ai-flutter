@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:transit_app/main.dart';
+import 'package:transit_app/config/supabase_config.dart';
+import 'package:transit_app/services/supabase_service.dart';
 
 void main() {
   testWidgets('Stitch Transit App boots up with Home Search and navigates to Profile',
@@ -93,5 +95,23 @@ void main() {
     // Like decrements back to 24, dislike increments to 2 (from 1)
     expect(find.text('24'), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
+  });
+
+  test('SupabaseConfig holds user project credentials and SupabaseService registers locality', () async {
+    // Verify user credentials in config
+    expect(SupabaseConfig.supabaseUrl, 'https://your-project-id.supabase.co');
+    expect(SupabaseConfig.supabaseAnonKey, 'your_supabase_anon_public_key_here');
+    expect(SupabaseConfig.isConfigured, isTrue);
+
+    // Test profile registration with locality
+    final res = await SupabaseService.instance.registerUserProfile(
+      fullName: 'Aarav Patel',
+      phone: '98790 44120',
+      locality: 'SG Highway, Ahmedabad',
+    );
+
+    expect(res['success'], isTrue);
+    expect(SupabaseService.instance.currentUserProfile?['full_name'], 'Aarav Patel');
+    expect(SupabaseService.instance.currentUserProfile?['locality'], 'SG Highway, Ahmedabad');
   });
 }

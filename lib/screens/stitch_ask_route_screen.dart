@@ -6,6 +6,7 @@ import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
 import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
+import '../services/supabase_service.dart';
 
 enum UserReaction { none, liked, disliked }
 
@@ -110,11 +111,78 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
   Timer? _toastTimer;
 
   late List<QuestionItem> _questions;
+  bool _isLoadingCloud = false;
 
   @override
   void initState() {
     super.initState();
     _initDefaultQuestions();
+    _loadQuestionsFromSupabase();
+  }
+
+  Future<void> _loadQuestionsFromSupabase() async {
+    setState(() => _isLoadingCloud = true);
+    try {
+      final cloudQuestions = await SupabaseService.instance.fetchQuestions(
+        category: _selectedCategory,
+      );
+      if (cloudQuestions != null && cloudQuestions.isNotEmpty && mounted) {
+        final List<QuestionItem> parsed = [];
+        for (final raw in cloudQuestions) {
+          final List<AnswerItem> answers = [];
+          final rawAnswers = raw['answers'] as List<dynamic>? ?? [];
+          for (final a in rawAnswers) {
+            answers.add(
+              AnswerItem(
+                id: a['id']?.toString() ??
+                    'ans_${DateTime.now().millisecondsSinceEpoch}',
+                author: a['author'] ?? 'Commuter',
+                roleBadge: a['role_badge'],
+                time: 'Recent',
+                content: a['content'] ?? '',
+                avatarLetter: (a['avatar_letter'] ?? 'C').toString(),
+                avatarColor: const Color(0xFF06B6D4),
+                likes: (a['likes'] as num?)?.toInt() ?? 0,
+                dislikes: (a['dislikes'] as num?)?.toInt() ?? 0,
+                reaction: UserReaction.none,
+              ),
+            );
+          }
+
+          parsed.add(
+            QuestionItem(
+              id: raw['id']?.toString() ??
+                  'q_${DateTime.now().millisecondsSinceEpoch}',
+              author: raw['author'] ?? 'Commuter',
+              role: raw['role'] ?? 'Traveler',
+              timeLocation: raw['origin'] != null
+                  ? 'Live • ${raw['origin']}'
+                  : 'Live inquiry',
+              badgeText: raw['badge_text'] ?? 'LIVE INQUIRY',
+              badgeColor: const Color(0xFF00E5FF),
+              question: raw['question'] ?? '',
+              upvotes: (raw['upvotes'] as num?)?.toInt() ?? 1,
+              routeTag: raw['route_tag'] ?? 'Leg #LIVE',
+              category: raw['category'] ?? 'all',
+              isThreadExpanded: true,
+              answers: answers,
+            ),
+          );
+        }
+
+        if (mounted) {
+          setState(() {
+            _questions = parsed;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('[AskRouteScreen] cloud fetch notice: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingCloud = false);
+      }
+    }
   }
 
   void _initDefaultQuestions() {
@@ -274,6 +342,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
         answer.reaction = targetReaction;
       }
     });
+
+    // Sync reaction count to Supabase backend asynchronously
+    SupabaseService.instance.syncAnswerReaction(
+      answerId: answer.id,
+      likes: answer.likes,
+      dislikes: answer.dislikes,
+    );
   }
 
   void _toggleUpvote(QuestionItem item) {
@@ -281,6 +356,12 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
       item.isUpvoted = !item.isUpvoted;
       item.upvotes += item.isUpvoted ? 1 : -1;
     });
+
+    // Sync upvote count to Supabase backend asynchronously
+    SupabaseService.instance.syncQuestionUpvote(
+      questionId: item.id,
+      upvotes: item.upvotes,
+    );
   }
 
   void _submitQuestion() {
@@ -322,6 +403,20 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
       _questionController.clear();
     });
 
+    // Persist question to Supabase backend
+    SupabaseService.instance.postQuestion(
+      author: 'You',
+      role: _posterType,
+      question: '$qText\n\nRoute: From $from to $to',
+      origin: from,
+      destination: to,
+      routeTag: 'Leg #AMD-LIVE',
+      category: _selectedCategory,
+      badgeText: _selectedTags.isNotEmpty
+          ? _selectedTags.first.toUpperCase()
+          : 'LIVE INQUIRY',
+    );
+
     _showToast('Broadcasting question to 140+ active commuters!');
   }
 
@@ -348,6 +443,15 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
       item.isThreadExpanded = true;
       controller?.clear();
     });
+
+    // Save reply to Supabase backend
+    SupabaseService.instance.postAnswer(
+      questionId: item.id,
+      author: 'You (Commuter)',
+      roleBadge: 'Advice',
+      content: text,
+      avatarLetter: 'Y',
+    );
 
     _showToast('Your advice was shared with the commuter thread!');
   }
@@ -593,6 +697,51 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                               fontSize: 8.5,
                                               fontWeight: FontWeight.w600,
                                               color: const Color(0xFF00E5FF),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF10B981)
+                                            .withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: const Color(0xFF10B981)
+                                              .withValues(alpha: 0.4),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _isLoadingCloud
+                                              ? const SizedBox(
+                                                  width: 9,
+                                                  height: 9,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 1.5,
+                                                    color: Color(0xFF10B981),
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.cloud_done_rounded,
+                                                  color: Color(0xFF10B981),
+                                                  size: 9,
+                                                ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            _isLoadingCloud
+                                                ? 'Syncing...'
+                                                : 'Supabase Synced',
+                                            style: GoogleFonts.jetBrainsMono(
+                                              fontSize: 8.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF10B981),
                                             ),
                                           ),
                                         ],
