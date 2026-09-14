@@ -51,6 +51,199 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
     super.dispose();
   }
 
+  void _showGoogleMapsConfigModal(BuildContext context) {
+    final dark = widget.isDarkMode;
+    final controller = TextEditingController(text: TransitMapConfig.googleMapsApiKey);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          decoration: BoxDecoration(
+            color: dark ? const Color(0xFF0F172A) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(
+              color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.map_rounded,
+                      color: Color(0xFF38BDF8),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Google Maps API Setup',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: dark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      Text(
+                        'Configure for live satellite & corridor rendering',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'GOOGLE MAPS API KEY',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF38BDF8),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: dark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: dark
+                        ? const Color(0x38FFFFFF)
+                        : const Color(0xFFCBD5E1),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: TextField(
+                  controller: controller,
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 12.5,
+                    color: dark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'AIzaSy...',
+                    hintStyle: GoogleFonts.jetBrainsMono(
+                      color: const Color(0xFF94A3B8),
+                      fontSize: 12,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: Color(0xFF10B981),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'You can also set this permanently in lib/config/transit_map_config.dart',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: dark
+                              ? const Color(0xFFE2E8F0)
+                              : const Color(0xFF334155),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      TransitMapConfig.setApiKey(controller.text);
+                    });
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          TransitMapConfig.hasGoogleMapsApiKey
+                              ? 'Google Maps API Key activated!'
+                              : 'API Key cleared',
+                        ),
+                        backgroundColor: const Color(0xFF0284C7),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF38BDF8),
+                    foregroundColor: const Color(0xFF00354A),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Save & Apply API Key',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = widget.isDarkMode;
@@ -1169,87 +1362,90 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
     return Column(
       children: [
         // 1. Google Maps Integration & Readiness Banner
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: dark
-                ? const Color(0x330284C7)
-                : const Color(0x200284C7),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: const Color(0xFF0284C7).withValues(alpha: 0.5),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.map_rounded,
-                  color: Color(0xFF38BDF8),
-                  size: 18,
-                ),
+        GestureDetector(
+          onTap: () => _showGoogleMapsConfigModal(context),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: dark
+                  ? const Color(0x330284C7)
+                  : const Color(0x200284C7),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: const Color(0xFF0284C7).withValues(alpha: 0.5),
+                width: 1,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Google Maps Ready',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: primaryTextColor,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: TransitMapConfig.hasGoogleMapsApiKey
-                                ? const Color(0xFF10B981).withValues(alpha: 0.2)
-                                : const Color(0xFFF59E0B).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            TransitMapConfig.hasGoogleMapsApiKey
-                                ? 'Key Active'
-                                : 'Awaiting API Key',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 8.5,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.25),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.map_rounded,
+                    color: Color(0xFF38BDF8),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Google Maps API Ready',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: TransitMapConfig.hasGoogleMapsApiKey
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFFF59E0B),
+                              color: primaryTextColor,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      TransitMapConfig.hasGoogleMapsApiKey
-                          ? 'Google Maps API key is configured and active.'
-                          : 'Set your Google Maps API key in lib/config/transit_map_config.dart',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9.5,
-                        color: secondaryTextColor,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: TransitMapConfig.hasGoogleMapsApiKey
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                                  : const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              TransitMapConfig.hasGoogleMapsApiKey
+                                  ? 'Key Active'
+                                  : 'Tap to Setup Key',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w700,
+                                color: TransitMapConfig.hasGoogleMapsApiKey
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        TransitMapConfig.hasGoogleMapsApiKey
+                            ? 'Google Maps API key is configured and active. Tap to modify.'
+                            : 'Tap here to configure or paste your Google Maps API Key.',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9.5,
+                          color: secondaryTextColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
 

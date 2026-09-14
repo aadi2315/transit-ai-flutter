@@ -4,6 +4,7 @@ import 'theme/stitch_theme.dart';
 import 'screens/stitch_auth_screen.dart';
 import 'screens/stitch_home_screen.dart';
 import 'screens/stitch_route_screen.dart';
+import 'screens/stitch_passes_screen.dart';
 import 'screens/stitch_payment_qr_screen.dart';
 
 void main() {
@@ -27,7 +28,7 @@ class StitchTransitApp extends StatefulWidget {
 class _StitchTransitAppState extends State<StitchTransitApp> {
   ThemeMode _themeMode = ThemeMode.dark;
 
-  // 0: Search (Home), 1: Route, 2: Passes (QR Ticket), 3: Wallet (UPI Payment), 4: Auth / Profile
+  // 0: Search (Home), 1: Route, 2: Passes (Stitch Concessions), 3: Wallet (Fare & QR Ticket), 4: Auth / Profile
   int _currentScreenIndex = 0;
   int _previousScreenIndex = 0;
 
@@ -49,7 +50,9 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
 
   void _openProfile() {
     setState(() {
-      _previousScreenIndex = _currentScreenIndex;
+      if (_currentScreenIndex != 4) {
+        _previousScreenIndex = _currentScreenIndex;
+      }
       _currentScreenIndex = 4;
     });
   }
@@ -81,25 +84,25 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
         );
         break;
       case 2:
-        // PASSES: Opens Dynamic QR Pass & Ticket view directly
-        currentScreen = StitchPaymentQrScreen(
+        // PASSES: Student & Commuter Passes & AI KYC Concessions (exact Stitch implementation)
+        currentScreen = StitchPassesScreen(
           onNavigateToHome: () => _setScreen(0),
           onNavigateToRouteDetails: () => _setScreen(1),
+          onNavigateToWallet: () => _setScreen(3),
           onNavigateToProfile: _openProfile,
           onToggleTheme: _toggleTheme,
           isDarkMode: isDark,
-          initialIsTicketView: true,
         );
         break;
       case 3:
-        // WALLET: Opens Unified UPI Fare Checkout & payment options
+        // WALLET: Unified UPI Fare Checkout & Dynamic QR Ticket
         currentScreen = StitchPaymentQrScreen(
           onNavigateToHome: () => _setScreen(0),
           onNavigateToRouteDetails: () => _setScreen(1),
+          onNavigateToPasses: () => _setScreen(2),
           onNavigateToProfile: _openProfile,
           onToggleTheme: _toggleTheme,
           isDarkMode: isDark,
-          initialIsTicketView: false,
         );
         break;
       case 4:

@@ -15,7 +15,7 @@ class StitchProfileButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Account & Profile',
+      message: 'Sign In / Profile',
       child: Material(
         color: Colors.transparent,
         child: InkWell(

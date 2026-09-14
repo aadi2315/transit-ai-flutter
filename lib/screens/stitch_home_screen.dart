@@ -34,6 +34,9 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
   final TextEditingController _destController =
       TextEditingController(text: 'Iskcon Cross Road');
 
+  final FocusNode _originFocusNode = FocusNode();
+  final FocusNode _destFocusNode = FocusNode();
+
   // Quick suggestions for easy one-tap input
   final List<String> _quickStations = [
     'Sola Bhagwat',
@@ -62,6 +65,8 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
   void dispose() {
     _originController.dispose();
     _destController.dispose();
+    _originFocusNode.dispose();
+    _destFocusNode.dispose();
     super.dispose();
   }
 
@@ -221,193 +226,232 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
 
                             // Interactive Inputs with Connecting Rail and Swap Button
                             Stack(
+                              clipBehavior: Clip.none,
                               children: [
                                 Column(
                                   children: [
                                     // From Origin Editable TextField
-                                    Container(
-                                      height: 52,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12),
-                                      decoration: BoxDecoration(
-                                        color: inputBg,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: inputBorder,
-                                          width: 1,
+                                    GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => _originFocusNode.requestFocus(),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: inputBg,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: _originFocusNode.hasFocus
+                                                ? const Color(0xFF38BDF8)
+                                                : inputBorder,
+                                            width: _originFocusNode.hasFocus ? 1.5 : 1,
+                                          ),
                                         ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 24,
-                                            height: 24,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF10B981)
-                                                  .withValues(alpha: 0.25),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFF10B981),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 24,
+                                              height: 24,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF10B981)
+                                                    .withValues(alpha: 0.25),
                                                 shape: BoxShape.circle,
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'From Origin',
-                                                  style:
-                                                      GoogleFonts.plusJakartaSans(
-                                                    fontSize: 9,
-                                                    color: secondaryTextColor,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
+                                              alignment: Alignment.center,
+                                              child: Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFF10B981),
+                                                  shape: BoxShape.circle,
                                                 ),
-                                                TextField(
-                                                  controller: _originController,
-                                                  style: GoogleFonts
-                                                      .plusJakartaSans(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: primaryTextColor,
-                                                  ),
-                                                  decoration: InputDecoration(
-                                                    border: InputBorder.none,
-                                                    isDense: true,
-                                                    contentPadding:
-                                                        EdgeInsets.zero,
-                                                    hintText:
-                                                        'Enter origin stop or landmark',
-                                                    hintStyle: GoogleFonts
-                                                        .plusJakartaSans(
-                                                      fontSize: 12,
-                                                      color: const Color(
-                                                          0xFF94A3B8),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          // GPS My Location Action
-                                          Tooltip(
-                                            message: 'Use Current Location',
-                                            child: GestureDetector(
-                                              onTap: _setCurrentLocation,
-                                              child: const Icon(
-                                                Icons.my_location_rounded,
-                                                size: 18,
-                                                color: Color(0xFF0284C7),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                        ],
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'FROM ORIGIN',
+                                                    style:
+                                                        GoogleFonts.jetBrainsMono(
+                                                      fontSize: 8.5,
+                                                      color: const Color(0xFF10B981),
+                                                      fontWeight: FontWeight.w700,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  TextField(
+                                                    controller: _originController,
+                                                    focusNode: _originFocusNode,
+                                                    onChanged: (_) => setState(() {}),
+                                                    style: GoogleFonts
+                                                        .plusJakartaSans(
+                                                      fontSize: 13.5,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: primaryTextColor,
+                                                    ),
+                                                    decoration: InputDecoration(
+                                                      border: InputBorder.none,
+                                                      isDense: true,
+                                                      contentPadding:
+                                                          EdgeInsets.zero,
+                                                      hintText:
+                                                          'Enter origin stop or landmark',
+                                                      hintStyle: GoogleFonts
+                                                          .plusJakartaSans(
+                                                        fontSize: 12,
+                                                        color: const Color(
+                                                            0xFF94A3B8),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            // Clear origin button if not empty
+                                            if (_originController.text.isNotEmpty)
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _originController.clear();
+                                                  });
+                                                },
+                                                child: Padding(
+                                                  padding: const EdgeInsets.only(right: 6),
+                                                  child: Icon(
+                                                    Icons.cancel_rounded,
+                                                    size: 16,
+                                                    color: secondaryTextColor,
+                                                  ),
+                                                ),
+                                              ),
+                                            // GPS My Location Action
+                                            Tooltip(
+                                              message: 'Use Current Location',
+                                              child: GestureDetector(
+                                                onTap: _setCurrentLocation,
+                                                child: const Icon(
+                                                  Icons.my_location_rounded,
+                                                  size: 18,
+                                                  color: Color(0xFF0284C7),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 32),
+                                          ],
+                                        ),
                                       ),
                                     ),
 
                                     const SizedBox(height: 10),
 
                                     // To Destination Editable TextField
-                                    Container(
-                                      height: 52,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12),
-                                      decoration: BoxDecoration(
-                                        color: inputBg,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: inputBorder,
-                                          width: 1,
+                                    GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => _destFocusNode.requestFocus(),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: inputBg,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: _destFocusNode.hasFocus
+                                                ? const Color(0xFF38BDF8)
+                                                : inputBorder,
+                                            width: _destFocusNode.hasFocus ? 1.5 : 1,
+                                          ),
                                         ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 24,
-                                            height: 24,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF43F5E)
-                                                  .withValues(alpha: 0.25),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: const Icon(
-                                              Icons.location_on_rounded,
-                                              size: 14,
-                                              color: Color(0xFFF43F5E),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'To Destination',
-                                                  style:
-                                                      GoogleFonts.plusJakartaSans(
-                                                    fontSize: 9,
-                                                    color: secondaryTextColor,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                TextField(
-                                                  controller: _destController,
-                                                  style: GoogleFonts
-                                                      .plusJakartaSans(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: primaryTextColor,
-                                                  ),
-                                                  decoration: InputDecoration(
-                                                    border: InputBorder.none,
-                                                    isDense: true,
-                                                    contentPadding:
-                                                        EdgeInsets.zero,
-                                                    hintText:
-                                                        'Enter destination stop or landmark',
-                                                    hintStyle: GoogleFonts
-                                                        .plusJakartaSans(
-                                                      fontSize: 12,
-                                                      color: const Color(
-                                                          0xFF94A3B8),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          // Clear text button if not empty
-                                          if (_destController.text.isNotEmpty)
-                                            GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  _destController.clear();
-                                                });
-                                              },
-                                              child: Icon(
-                                                Icons.cancel_rounded,
-                                                size: 16,
-                                                color: secondaryTextColor,
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 24,
+                                              height: 24,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF43F5E)
+                                                    .withValues(alpha: 0.25),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: const Icon(
+                                                Icons.location_on_rounded,
+                                                size: 14,
+                                                color: Color(0xFFF43F5E),
                                               ),
                                             ),
-                                          const SizedBox(width: 4),
-                                        ],
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'TO DESTINATION',
+                                                    style:
+                                                        GoogleFonts.jetBrainsMono(
+                                                      fontSize: 8.5,
+                                                      color: const Color(0xFFF43F5E),
+                                                      fontWeight: FontWeight.w700,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  TextField(
+                                                    controller: _destController,
+                                                    focusNode: _destFocusNode,
+                                                    onChanged: (_) => setState(() {}),
+                                                    style: GoogleFonts
+                                                        .plusJakartaSans(
+                                                      fontSize: 13.5,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: primaryTextColor,
+                                                    ),
+                                                    decoration: InputDecoration(
+                                                      border: InputBorder.none,
+                                                      isDense: true,
+                                                      contentPadding:
+                                                          EdgeInsets.zero,
+                                                      hintText:
+                                                          'Enter destination stop or landmark',
+                                                      hintStyle: GoogleFonts
+                                                          .plusJakartaSans(
+                                                        fontSize: 12,
+                                                        color: const Color(
+                                                            0xFF94A3B8),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            // Clear text button if not empty
+                                            if (_destController.text.isNotEmpty)
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _destController.clear();
+                                                  });
+                                                },
+                                                child: Padding(
+                                                  padding: const EdgeInsets.only(right: 6),
+                                                  child: Icon(
+                                                    Icons.cancel_rounded,
+                                                    size: 16,
+                                                    color: secondaryTextColor,
+                                                  ),
+                                                ),
+                                              ),
+                                            const SizedBox(width: 32),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -415,13 +459,13 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
 
                                 // Floating Swap Button on the right
                                 Positioned(
-                                  right: 28,
-                                  top: 38,
+                                  right: 10,
+                                  top: 40,
                                   child: GestureDetector(
                                     onTap: _swap,
                                     child: Container(
-                                      width: 34,
-                                      height: 34,
+                                      width: 36,
+                                      height: 36,
                                       decoration: BoxDecoration(
                                         color: dark
                                             ? const Color(0xFF0F172A)
@@ -429,12 +473,12 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: const Color(0xFF0284C7),
-                                          width: 1.2,
+                                          width: 1.5,
                                         ),
                                         boxShadow: [
                                           BoxShadow(
                                             color: Colors.black
-                                                .withValues(alpha: 0.2),
+                                                .withValues(alpha: 0.25),
                                             blurRadius: 10,
                                           ),
                                         ],

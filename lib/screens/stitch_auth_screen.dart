@@ -29,13 +29,12 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
   bool _obscureLoginPassword = true;
   bool _obscureSignupPassword = true;
 
-  // Login Controllers
-  final TextEditingController _loginPhoneController =
-      TextEditingController(text: '98790 44120');
+  // Login Controllers (empty by default)
+  final TextEditingController _loginPhoneController = TextEditingController();
   final TextEditingController _loginPasswordController =
-      TextEditingController(text: 'transit@2026');
+      TextEditingController();
 
-  // Sign Up Controllers
+  // Sign Up Controllers (empty by default)
   final TextEditingController _signupNameController = TextEditingController();
   final TextEditingController _signupPhoneController = TextEditingController();
   final TextEditingController _signupPasswordController =
@@ -53,6 +52,20 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
         _passwordStrength = 2;
       } else {
         _passwordStrength = 3;
+      }
+    });
+  }
+
+  void _fillDemoCredentials() {
+    setState(() {
+      if (_isLogin) {
+        _loginPhoneController.text = '98790 44120';
+        _loginPasswordController.text = 'transit@2026';
+      } else {
+        _signupNameController.text = 'Aarav Patel';
+        _signupPhoneController.text = '98790 44120';
+        _signupPasswordController.text = 'Transit@2026';
+        _checkPasswordStrength('Transit@2026');
       }
     });
   }
@@ -303,7 +316,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      'Login',
+                                      'Sign In',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
@@ -365,7 +378,52 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
+
+                        // Demo Auto-fill Helper Chip
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            GestureDetector(
+                              onTap: _fillDemoCredentials,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF38BDF8)
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFF38BDF8)
+                                        .withValues(alpha: 0.35),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.auto_fix_high_rounded,
+                                      size: 12,
+                                      color: Color(0xFF38BDF8),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Demo Auto-fill',
+                                      style: GoogleFonts.jetBrainsMono(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF38BDF8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 8),
 
                         // VIEW 1: LOGIN FORM
                         if (_isLogin) ...[
@@ -438,34 +496,37 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   child: TextField(
                                     controller: _loginPhoneController,
                                     keyboardType: TextInputType.phone,
+                                    onChanged: (_) => setState(() {}),
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                       color: primaryTextColor,
                                     ),
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       border: InputBorder.none,
                                       isDense: true,
                                       contentPadding: EdgeInsets.zero,
+                                      hintText: 'Enter 10-digit mobile number',
+                                      hintStyle: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        color: const Color(0xFF94A3B8),
+                                      ),
                                     ),
                                   ),
                                 ),
 
-                                // Change & Checkmark
-                                Text(
-                                  'Change',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF0284C7),
+                                if (_loginPhoneController.text.isNotEmpty)
+                                  GestureDetector(
+                                    onTap: () => setState(() => _loginPhoneController.clear()),
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(right: 4),
+                                      child: Icon(
+                                        Icons.cancel_rounded,
+                                        size: 16,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.check_rounded,
-                                  size: 16,
-                                  color: Color(0xFF10B981),
-                                ),
                               ],
                             ),
                           ),
@@ -625,7 +686,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                 children: [
                                   Flexible(
                                     child: Text(
-                                      'Log In & Open Wallet',
+                                      'Sign In to Transit AI',
                                       style: GoogleFonts.spaceGrotesk(
                                         color: Colors.white,
                                         fontSize: 13.5,
@@ -1026,7 +1087,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
 
                           const SizedBox(height: 14),
 
-                          // Already have an account? Log In
+                          // Already have an account? Sign In
                           Center(
                             child: GestureDetector(
                               onTap: () => setState(() => _isLogin = true),
@@ -1039,7 +1100,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   ),
                                   children: [
                                     TextSpan(
-                                      text: 'Log In',
+                                      text: 'Sign In',
                                       style: GoogleFonts.plusJakartaSans(
                                         color: const Color(0xFF0284C7),
                                         fontWeight: FontWeight.w700,

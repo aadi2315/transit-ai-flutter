@@ -11,6 +11,7 @@ import '../widgets/stitch_profile_button.dart';
 class StitchPaymentQrScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
   final VoidCallback onNavigateToRouteDetails;
+  final VoidCallback onNavigateToPasses;
   final VoidCallback onNavigateToProfile;
   final VoidCallback onToggleTheme;
   final bool isDarkMode;
@@ -20,6 +21,7 @@ class StitchPaymentQrScreen extends StatefulWidget {
     super.key,
     required this.onNavigateToHome,
     required this.onNavigateToRouteDetails,
+    required this.onNavigateToPasses,
     required this.onNavigateToProfile,
     required this.onToggleTheme,
     required this.isDarkMode,
@@ -257,9 +259,9 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
             ),
           ),
 
-          // BOTTOM DOCK (PASSES tab active - Index 2 or WALLET - Index 3)
+          // BOTTOM DOCK (WALLET tab active - Index 3)
           StitchBottomDock(
-            activeIndex: _isTicketView ? 2 : 3,
+            activeIndex: 3,
             isDarkMode: dark,
             onTabSelected: (index) {
               if (index == 0) {
@@ -267,9 +269,9 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               } else if (index == 1) {
                 widget.onNavigateToRouteDetails();
               } else if (index == 2) {
-                setState(() => _isTicketView = true);
+                widget.onNavigateToPasses();
               } else if (index == 3) {
-                setState(() => _isTicketView = false);
+                // Already on Wallet
               }
             },
           ),
