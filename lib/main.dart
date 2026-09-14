@@ -7,6 +7,7 @@ import 'screens/stitch_route_screen.dart';
 import 'screens/stitch_ask_route_screen.dart';
 import 'screens/stitch_passes_screen.dart';
 import 'screens/stitch_payment_qr_screen.dart';
+import 'screens/pravha_splash_screen.dart';
 import 'services/supabase_service.dart';
 
 void main() async {
@@ -37,6 +38,7 @@ class StitchTransitApp extends StatefulWidget {
 
 class _StitchTransitAppState extends State<StitchTransitApp> {
   ThemeMode _themeMode = ThemeMode.dark;
+  bool _showSplash = true;
 
   // 0: Search (Home), 1: Route, 2: Ask Route (Q&A), 3: Passes (Concessions), 4: Wallet (Fare & QR Ticket), 5: Auth / Profile
   int _currentScreenIndex = 0;
@@ -174,7 +176,26 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
       theme: StitchTheme.lightTheme,
       darkTheme: StitchTheme.darkTheme,
       themeMode: _themeMode,
-      home: currentScreen,
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeInOut,
+        child: _showSplash
+            ? PravhaSplashScreen(
+                key: const ValueKey('pravha_splash'),
+                onFinish: () {
+                  if (mounted) {
+                    setState(() {
+                      _showSplash = false;
+                    });
+                  }
+                },
+              )
+            : KeyedSubtree(
+                key: const ValueKey('transit_main_content'),
+                child: currentScreen,
+              ),
+      ),
     );
   }
 }
