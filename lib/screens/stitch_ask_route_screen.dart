@@ -170,13 +170,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
   String _selectedReportSeverity = 'high';
   final Map<String, TextEditingController> _reportCommentControllers = {};
 
-  // Gemini AI Chatbot State
+  // AI Chatbot State (Static in-memory chat session persists across screen switches until app closes)
   final TextEditingController _geminiInputController = TextEditingController();
-  final List<Map<String, String>> _geminiChatMessages = [
+  static final List<Map<String, String>> _geminiChatMessages = [
     {
       'role': 'assistant',
       'text':
-          'Hello! I am your AI Transit Assistant powered by Gemini. I monitor live incident reports, waterlogging, metro delays, and detours across Ahmedabad. How can I help your commute today?'
+          'Hello! I am your AI Transit Assistant. I monitor live incident reports, waterlogging, metro delays, and detours across Ahmedabad. How can I help your commute today?'
     }
   ];
   bool _isGeminiThinking = false;
@@ -1783,7 +1783,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       const Text('✨', style: TextStyle(fontSize: 13)),
                       const SizedBox(width: 6),
                       Text(
-                        'Ask Gemini AI',
+                        'Ask AI',
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -2901,7 +2901,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            'Ask Gemini AI',
+                            'Ask AI',
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -4321,7 +4321,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                               Row(
                                 children: [
                                   Text(
-                                    'Gemini Transit AI',
+                                    'Transit AI Assistant',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
@@ -4342,7 +4342,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                       ),
                                     ),
                                     child: Text(
-                                      '⚡ GEMINI 3.6 FLASH • ACTIVE',
+                                      '⚡ ACTIVE AI • ONLINE',
                                       style: GoogleFonts.jetBrainsMono(
                                         fontSize: 7.5,
                                         fontWeight: FontWeight.w700,
@@ -4473,7 +4473,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        isUser ? '👤 You' : '✨ Gemini Assistant',
+                                        isUser ? '👤 You' : '✨ AI Assistant',
                                         style: GoogleFonts.jetBrainsMono(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w700,
@@ -4526,7 +4526,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Gemini is analyzing live reports & routes...',
+                            'AI is analyzing live reports & routes...',
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 10,
                               color: const Color(0xFF00E5FF),
