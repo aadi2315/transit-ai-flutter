@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// A sleek, modern text renderer that formats AI transit responses,
 /// converting markdown bold syntax (**text**), headers (###), and bullet points (* / •)
@@ -63,7 +62,7 @@ class StitchFormattedText extends StatelessWidget {
     final highlightColor = boldColor ??
         (isUser
             ? const Color(0xFF001E2B)
-            : (baseStyle.color == Colors.white || baseStyle.color?.opacity == 1.0
+            : (baseStyle.color == Colors.white || baseStyle.color?.a == 1.0
                 ? const Color(0xFF38BDF8)
                 : const Color(0xFF0284C7)));
 
