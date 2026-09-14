@@ -666,6 +666,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
     );
 
     _showToast('Broadcasting question to 140+ active commuters!');
+    _triggerGeminiAnswerForQuestion(newQ, from, to, qText);
   }
 
   void _addReply(QuestionItem item) {
@@ -742,6 +743,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
     );
 
     _showToast('Comment added to live incident report!');
+    _triggerGeminiReportInsight(report, text);
   }
 
   void _submitNewReport() {
@@ -3320,54 +3322,100 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // DIRECT MAP ROUTING: VIEW ON MAP BUTTON
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      widget.onNavigateToRouteWithFocus
-                          ?.call(r.locationName, r.title);
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.16),
+                Row(
+                  children: [
+                    // DIRECT MAP ROUTING: VIEW ON MAP BUTTON
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          widget.onNavigateToRouteWithFocus
+                              ?.call(r.locationName, r.title);
+                        },
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: const Color(0xFF00E5FF),
-                          width: 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF00E5FF).withValues(alpha: 0.2),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.map_rounded,
-                            color: Color(0xFF00E5FF),
-                            size: 13,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'View on Map',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                              color: dark ? Colors.white : const Color(0xFF0284C7),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 9, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00E5FF).withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF00E5FF),
+                              width: 1.2,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00E5FF).withValues(alpha: 0.2),
+                                blurRadius: 6,
+                              ),
+                            ],
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.map_rounded,
+                                color: Color(0xFF00E5FF),
+                                size: 13,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'View on Map',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: dark ? Colors.white : const Color(0xFF0284C7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    // ONE-TAP GEMINI AI INTEL FOR REPORT
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          _openGeminiChatbotModal(
+                            dark,
+                            initialQuery:
+                                'Analyze the incident "${r.title}" at ${r.locationName} and recommend the best alternate transit route.',
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED).withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF7C3AED),
+                              width: 1.1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('✨', style: TextStyle(fontSize: 11)),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Ask AI',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: dark ? Colors.white : const Color(0xFF6D28D9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 Row(
@@ -4187,7 +4235,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
   }
 
   // Modal: Gemini AI Transit Assistant Chatbot
-  void _openGeminiChatbotModal(bool dark) {
+  void _openGeminiChatbotModal(bool dark, {String? initialQuery}) {
     final primaryTextColor = dark ? Colors.white : const Color(0xFF0F172A);
     final secondaryTextColor =
         dark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
@@ -4197,6 +4245,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
         dark ? const Color(0x38FFFFFF) : const Color(0xFFCBD5E1);
 
     final ScrollController chatScrollController = ScrollController();
+    bool hasTriggeredInitial = false;
 
     showModalBottomSheet(
       context: context,
@@ -4205,6 +4254,16 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (modalCtx, modalSetState) {
+            if (initialQuery != null &&
+                initialQuery.isNotEmpty &&
+                !hasTriggeredInitial) {
+              hasTriggeredInitial = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _sendQuickPrompt(
+                    initialQuery, modalSetState, chatScrollController);
+              });
+            }
+
             return Container(
               height: MediaQuery.of(sheetContext).size.height * 0.82,
               padding: EdgeInsets.only(
@@ -4272,18 +4331,18 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                   const SizedBox(width: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 5, vertical: 1.5),
+                                        horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF10B981)
-                                          .withValues(alpha: 0.15),
+                                          .withValues(alpha: 0.18),
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
                                         color: const Color(0xFF10B981)
-                                            .withValues(alpha: 0.4),
+                                            .withValues(alpha: 0.5),
                                       ),
                                     ),
                                     child: Text(
-                                      'LIVE REPORTS AWARE',
+                                      '⚡ GEMINI 3.6 FLASH • ACTIVE',
                                       style: GoogleFonts.jetBrainsMono(
                                         fontSize: 7.5,
                                         fontWeight: FontWeight.w700,
@@ -4304,21 +4363,10 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                           ),
                         ],
                       ),
-                      Row(
-                        children: [
-                          // API Key settings button
-                          IconButton(
-                            icon: const Icon(Icons.key_rounded,
-                                color: Color(0xFF00E5FF), size: 18),
-                            tooltip: 'Gemini API Key Settings',
-                            onPressed: () => _openGeminiKeySettingsDialog(dark),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.close_rounded,
-                                color: secondaryTextColor, size: 18),
-                            onPressed: () => Navigator.of(sheetContext).pop(),
-                          ),
-                        ],
+                      IconButton(
+                        icon: Icon(Icons.close_rounded,
+                            color: secondaryTextColor, size: 18),
+                        onPressed: () => Navigator.of(sheetContext).pop(),
                       ),
                     ],
                   ),
@@ -4697,143 +4745,122 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
     }
   }
 
-  // Dialog: Gemini API Key Settings
-  void _openGeminiKeySettingsDialog(bool dark) {
-    final TextEditingController keyCtrl =
-        TextEditingController(text: GeminiConfig.geminiApiKey);
-    bool obscure = true;
+  // Trigger Gemini AI answer when a commuter submits a question
+  void _triggerGeminiAnswerForQuestion(
+    QuestionItem item,
+    String origin,
+    String destination,
+    String questionText,
+  ) async {
+    try {
+      final activeReportsList = _reports
+          .map((r) => {
+                'title': r.title,
+                'location_name': r.locationName,
+                'description': r.description,
+                'severity': r.severity,
+                'report_type': r.reportType,
+              })
+          .toList();
 
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (ctx, dialogSetState) {
-            final hasKey = GeminiConfig.hasKey;
-            return AlertDialog(
-              backgroundColor: dark ? const Color(0xFF0B132B) : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-                side: BorderSide(
-                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
-                ),
-              ),
-              title: Row(
-                children: [
-                  const Text('🔑', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Gemini API Key',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: dark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: (hasKey
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFF00E5FF))
-                          .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      hasKey
-                          ? '✅ Active Custom Key Configured'
-                          : '⚡ Local AI Fallback Active (No key needed)',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: hasKey
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFF00E5FF),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Paste your Gemini API key from Google AI Studio (aistudio.google.com). Even without a key, Transit AI provides smart local incident guidance!',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10.5,
-                      height: 1.35,
-                      color: dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: keyCtrl,
-                    obscureText: obscure,
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 11,
-                      color: dark ? Colors.white : Colors.black,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'AIzaSy...',
-                      filled: true,
-                      fillColor: dark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : const Color(0xFFF1F5F9),
-                      isDense: true,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscure ? Icons.visibility_off : Icons.visibility,
-                          size: 16,
-                        ),
-                        onPressed: () =>
-                            dialogSetState(() => obscure = !obscure),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Colors.white24),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogCtx).pop(),
-                  child: Text(
-                    'Close',
-                    style: GoogleFonts.spaceGrotesk(color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00E5FF),
-                    foregroundColor: const Color(0xFF00354A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () {
-                    final newKey = keyCtrl.text.trim();
-                    GeminiConfig.geminiApiKey = newKey;
-                    Navigator.of(dialogCtx).pop();
-                    _showToast(newKey.isNotEmpty
-                        ? '✨ Gemini API Key connected!'
-                        : 'Using smart local transit intelligence');
-                  },
-                  child: Text(
-                    'Save Key',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
+      final aiReply =
+          await GeminiService.instance.generateTransitAnswerForQuestion(
+        question: questionText,
+        origin: origin,
+        destination: destination,
+        activeReports: activeReportsList,
+      );
+
+      if (aiReply != null && aiReply.trim().isNotEmpty && mounted) {
+        final aiAnswer = AnswerItem(
+          id: 'ans_gemini_${DateTime.now().millisecondsSinceEpoch}',
+          author: '✨ Gemini Transit AI',
+          roleBadge: 'Verified AI Advice',
+          time: 'Just now',
+          content: aiReply.trim(),
+          avatarLetter: '✦',
+          avatarColor: const Color(0xFF00E5FF),
+          likes: 5,
+          dislikes: 0,
+          reaction: UserReaction.none,
         );
-      },
-    );
+
+        setState(() {
+          item.answers.insert(0, aiAnswer);
+          item.isThreadExpanded = true;
+        });
+
+        // Sync AI answer to Supabase backend
+        SupabaseService.instance.postAnswer(
+          questionId: item.id,
+          author: '✨ Gemini Transit AI',
+          roleBadge: 'Verified AI Advice',
+          content: aiReply.trim(),
+          avatarLetter: '✦',
+        );
+      }
+    } catch (e) {
+      debugPrint('[GeminiTrigger] Question answer error: $e');
+    }
+  }
+
+  // Trigger Gemini AI guidance when someone comments on an incident report
+  void _triggerGeminiReportInsight(
+    TransitReportItem report,
+    String userComment,
+  ) async {
+    try {
+      final isQuery = userComment.contains('?') ||
+          userComment.toLowerCase().contains('how') ||
+          userComment.toLowerCase().contains('alternate') ||
+          userComment.toLowerCase().contains('detour') ||
+          userComment.toLowerCase().contains('metro') ||
+          userComment.toLowerCase().contains('bus') ||
+          userComment.toLowerCase().contains('route') ||
+          userComment.toLowerCase().contains('safe') ||
+          userComment.toLowerCase().contains('status') ||
+          userComment.toLowerCase().contains('update');
+
+      if (!isQuery) return;
+
+      final activeReportsList = [
+        {
+          'title': report.title,
+          'location_name': report.locationName,
+          'description': report.description,
+          'severity': report.severity,
+          'report_type': report.reportType,
+        }
+      ];
+
+      final aiReply = await GeminiService.instance.askTransitAssistant(
+        userQuery:
+            'A commuter commented on incident "${report.title}" at "${report.locationName}": "$userComment". Give a concise 1-2 sentence real-time transit guidance or alternate route.',
+        activeReports: activeReportsList,
+      );
+
+      if (aiReply.isNotEmpty && mounted) {
+        final aiComment = ReportCommentItem(
+          id: 'rc_gemini_${DateTime.now().millisecondsSinceEpoch}',
+          author: '✨ Gemini Transit AI',
+          comment: aiReply.replaceAll('**', '').trim(),
+          userLocality: 'AI Transit Dispatch',
+          time: 'Just now',
+        );
+
+        setState(() {
+          report.comments.add(aiComment);
+        });
+
+        SupabaseService.instance.submitReportComment(
+          reportId: report.id,
+          author: '✨ Gemini Transit AI',
+          comment: aiReply.replaceAll('**', '').trim(),
+          userLocality: 'AI Transit Dispatch',
+        );
+      }
+    } catch (e) {
+      debugPrint('[GeminiTrigger] Report comment insight error: $e');
+    }
   }
 }
