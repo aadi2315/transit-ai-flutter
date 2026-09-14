@@ -14,6 +14,7 @@ class StitchHomeScreen extends StatefulWidget {
   final VoidCallback onNavigateToProfile;
   final VoidCallback onToggleTheme;
   final bool isDarkMode;
+  final VoidCallback? onReplaySplash;
 
   const StitchHomeScreen({
     super.key,
@@ -24,6 +25,7 @@ class StitchHomeScreen extends StatefulWidget {
     required this.onNavigateToProfile,
     required this.onToggleTheme,
     required this.isDarkMode,
+    this.onReplaySplash,
   });
 
   @override
@@ -110,66 +112,69 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           // Brand Pill
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 7),
-                            decoration: BoxDecoration(
-                              color: brandPillBg,
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                color: brandPillBorder,
-                                width: 1,
+                          GestureDetector(
+                            onTap: widget.onReplaySplash,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: brandPillBg,
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: brandPillBorder,
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: dark
+                                        ? Colors.black.withValues(alpha: 0.25)
+                                        : Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 10,
+                                  ),
+                                ],
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: dark
-                                      ? Colors.black.withValues(alpha: 0.25)
-                                      : Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 10,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF38BDF8),
-                                    shape: BoxShape.circle,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF38BDF8),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.directions_bus_rounded,
+                                      color: Color(0xFF00354A),
+                                      size: 14,
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.directions_bus_rounded,
-                                    color: Color(0xFF00354A),
-                                    size: 14,
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Transit AI',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryTextColor,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Transit AI',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: primaryTextColor,
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF10B981),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Color(0xFF10B981),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF10B981),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Color(0xFF10B981),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
 

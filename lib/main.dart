@@ -7,6 +7,7 @@ import 'screens/stitch_route_screen.dart';
 import 'screens/stitch_ask_route_screen.dart';
 import 'screens/stitch_passes_screen.dart';
 import 'screens/stitch_payment_qr_screen.dart';
+import 'screens/pravha_splash_screen.dart';
 import 'services/supabase_service.dart';
 
 void main() async {
@@ -29,7 +30,9 @@ void main() async {
 }
 
 class StitchTransitApp extends StatefulWidget {
-  const StitchTransitApp({super.key});
+  final bool enableSplash;
+
+  const StitchTransitApp({super.key, this.enableSplash = true});
 
   @override
   State<StitchTransitApp> createState() => _StitchTransitAppState();
@@ -37,6 +40,13 @@ class StitchTransitApp extends StatefulWidget {
 
 class _StitchTransitAppState extends State<StitchTransitApp> {
   ThemeMode _themeMode = ThemeMode.dark;
+  late bool _showSplash;
+
+  @override
+  void initState() {
+    super.initState();
+    _showSplash = widget.enableSplash;
+  }
 
   // 0: Search (Home), 1: Route, 2: Ask Route (Q&A), 3: Passes (Concessions), 4: Wallet (Fare & QR Ticket), 5: Auth / Profile
   int _currentScreenIndex = 0;
@@ -102,6 +112,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
           onNavigateToProfile: _openProfile,
           onToggleTheme: _toggleTheme,
           isDarkMode: isDark,
+          onReplaySplash: () => setState(() => _showSplash = true),
         );
         break;
       case 1:
@@ -174,7 +185,17 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
       theme: StitchTheme.lightTheme,
       darkTheme: StitchTheme.darkTheme,
       themeMode: _themeMode,
-      home: currentScreen,
+      home: _showSplash
+          ? PravhaSplashScreen(
+              onFinish: () {
+                if (mounted) {
+                  setState(() {
+                    _showSplash = false;
+                  });
+                }
+              },
+            )
+          : currentScreen,
     );
   }
 }

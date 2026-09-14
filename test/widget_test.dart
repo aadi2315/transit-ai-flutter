@@ -12,7 +12,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const StitchTransitApp());
+    await tester.pumpWidget(const StitchTransitApp(enableSplash: false));
     await tester.pump();
 
     // Home screen verification
