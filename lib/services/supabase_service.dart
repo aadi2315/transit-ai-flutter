@@ -155,17 +155,27 @@ class SupabaseService {
     if (cl == null) return null;
 
     try {
-      var query = cl.from('route_questions').select('''
-        *,
-        answers:route_answers(*)
-      ''');
+      var query = cl.from('route_questions').select();
 
       if (category != 'all') {
         query = query.eq('category', category);
       }
 
-      final data = await query.order('created_at', ascending: false);
-      return List<Map<String, dynamic>>.from(data);
+      final questionsData = await query.order('created_at', ascending: false);
+      final answersData = await cl.from('route_answers').select();
+
+      final List<Map<String, dynamic>> combined = [];
+      for (final q in questionsData) {
+        final qMap = Map<String, dynamic>.from(q);
+        final qId = qMap['id']?.toString();
+        final matchingAnswers = answersData
+            .where((a) => a['question_id']?.toString() == qId)
+            .toList();
+        qMap['answers'] = matchingAnswers;
+        combined.add(qMap);
+      }
+
+      return combined;
     } catch (e) {
       debugPrint('[SupabaseService] fetchQuestions notice (falling back to local): $e');
       return null;
