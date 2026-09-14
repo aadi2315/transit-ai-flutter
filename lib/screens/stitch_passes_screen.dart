@@ -7,6 +7,8 @@ import '../widgets/stitch_background.dart';
 import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../utils/device_file_picker.dart';
+import '../services/razorpay_service.dart';
+import '../config/razorpay_config.dart';
 
 class StitchPassesScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
@@ -48,6 +50,53 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
   // Toast notification state
   String? _toastMessage;
   Timer? _toastTimer;
+
+  // Razorpay payment state
+  final RazorpayService _razorpayService = RazorpayService();
+  bool _isProcessingPayment = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpayService.initialize(
+      onSuccess: (response) {
+        if (!mounted) return;
+        setState(() => _isProcessingPayment = false);
+        _showToast('Pass Activated! ID: ${response.paymentId ?? "Confirmed"}');
+        Future.delayed(const Duration(milliseconds: 700), () {
+          if (mounted) {
+            widget.onNavigateToWallet();
+          }
+        });
+      },
+      onError: (errorMessage) {
+        if (!mounted) return;
+        setState(() => _isProcessingPayment = false);
+        _showToast('Payment Failed: $errorMessage');
+      },
+    );
+  }
+
+  void _payForPass() {
+    setState(() => _isProcessingPayment = true);
+    _razorpayService.openPayment(
+      amount: 300,
+      keyId: RazorpayConfig.keyId,
+      description: RazorpayConfig.passBookingDescription,
+      onDesktopFallbackSimulateSuccess: () {
+        if (!mounted) return;
+        setState(() => _isProcessingPayment = false);
+        final simId =
+            'pay_pass_${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}';
+        _showToast('Pass Activated! Ref: $simId');
+        Future.delayed(const Duration(milliseconds: 700), () {
+          if (mounted) {
+            widget.onNavigateToWallet();
+          }
+        });
+      },
+    );
+  }
 
   void _showToast(String message) {
     _toastTimer?.cancel();
@@ -118,6 +167,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
   @override
   void dispose() {
     _toastTimer?.cancel();
+    _razorpayService.dispose();
     super.dispose();
   }
 
@@ -780,15 +830,8 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 ],
                               ),
                               child: ElevatedButton(
-                                onPressed: () {
-                                  _showToast('Pass Activated! Opening Wallet QR Ticket...');
-                                  Future.delayed(
-                                      const Duration(milliseconds: 600), () {
-                                    if (mounted) {
-                                      widget.onNavigateToWallet();
-                                    }
-                                  });
-                                },
+                                onPressed:
+                                    _isProcessingPayment ? null : _payForPass,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
@@ -799,27 +842,48 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
-                                      Icons.account_balance_wallet_rounded,
-                                      color: Color(0xFF060E20),
-                                      size: 19,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Pay ₹300 via UPI & Activate Pass',
-                                      style: GoogleFonts.spaceGrotesk(
-                                        color: const Color(0xFF060E20),
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.2,
+                                    if (_isProcessingPayment) ...[
+                                      const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF060E20),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Icon(
-                                      Icons.arrow_forward_rounded,
-                                      color: Color(0xFF060E20),
-                                      size: 17,
-                                    ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Opening Razorpay...',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          color: const Color(0xFF060E20),
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ] else ...[
+                                      const Icon(
+                                        Icons.account_balance_wallet_rounded,
+                                        color: Color(0xFF060E20),
+                                        size: 19,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Pay ₹300 via UPI & Activate Pass',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          color: const Color(0xFF060E20),
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: Color(0xFF060E20),
+                                        size: 17,
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
