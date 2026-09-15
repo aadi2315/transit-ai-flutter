@@ -44,3 +44,15 @@ void updateInteractiveGps(String divId, double lat, double lng) {}
 
 void centerInteractiveGps(String divId, double lat, double lng) {}
 
+bool updateTransitRoute(
+  String divId,
+  String legsJson, {
+  double? originLat,
+  double? originLng,
+  double? destLat,
+  double? destLng,
+}) {
+  return false;
+}
+
+void clearInteractiveRoute(String divId) {}

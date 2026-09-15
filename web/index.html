@@ -288,6 +288,11 @@
           instance.destMarker.setMap(null);
           instance.destMarker = null;
         }
+        // Clear any transit segments
+        (instance.transitPolylines || []).forEach(function(p) { p.setMap(null); });
+        (instance.transitMarkers || []).forEach(function(m) { m.setMap(null); });
+        instance.transitPolylines = [];
+        instance.transitMarkers = [];
 
         if (!polylineEnc) return false;
 
@@ -370,6 +375,166 @@
         return false;
       }
     };
+
+    // =========================================================================
+    // MULTI-LEG TRANSIT ROUTE RENDERER
+    // Renders each bus leg as its own colored polyline + bus-stop markers.
+    // legsJson: JSON array of { polylineEnc, color, busNumber,
+    //           boardLat, boardLng, boardName, alightLat, alightLng, alightName,
+    //           isTransfer }
+    // =========================================================================
+    window.transitUpdateTransitRoute = function(divId, legsJson, originLat, originLng, destLat, destLng) {
+      try {
+        var instance = window.transitMaps[divId];
+        if (!instance || !instance.map) return false;
+        var map = instance.map;
+
+        // Clear everything
+        if (instance.polyline) { instance.polyline.setMap(null); instance.polyline = null; }
+        if (instance.originMarker) { instance.originMarker.setMap(null); instance.originMarker = null; }
+        if (instance.destMarker) { instance.destMarker.setMap(null); instance.destMarker = null; }
+        (instance.transitPolylines || []).forEach(function(p) { p.setMap(null); });
+        (instance.transitMarkers || []).forEach(function(m) { m.setMap(null); });
+        instance.transitPolylines = [];
+        instance.transitMarkers = [];
+
+        var legs;
+        try { legs = JSON.parse(legsJson); } catch(e) { return false; }
+        if (!legs || !legs.length) return false;
+
+        var bounds = new google.maps.LatLngBounds();
+        var legColors = ['#1A73E8','#EA4335','#34A853','#FBBC05','#9B59B6'];
+
+        legs.forEach(function(leg, idx) {
+          var color = leg.color || legColors[idx % legColors.length];
+
+          // Draw polyline for this leg
+          if (leg.polylineEnc) {
+            var path = google.maps.geometry.encoding.decodePath(leg.polylineEnc);
+            if (path && path.length > 0) {
+              var poly = new google.maps.Polyline({
+                path: path,
+                geodesic: true,
+                strokeColor: color,
+                strokeOpacity: 0.92,
+                strokeWeight: idx === 0 ? 6 : 5,
+                map: map
+              });
+              instance.transitPolylines.push(poly);
+              path.forEach(function(pt) { bounds.extend(pt); });
+            }
+          } else {
+            // Straight-line fallback between board & alight
+            var straight = [
+              new google.maps.LatLng(leg.boardLat, leg.boardLng),
+              new google.maps.LatLng(leg.alightLat, leg.alightLng)
+            ];
+            var poly = new google.maps.Polyline({
+              path: straight,
+              geodesic: true,
+              strokeColor: color,
+              strokeOpacity: 0.9,
+              strokeWeight: 5,
+              icons: [{icon:{path:'M 0,-1 0,1',strokeOpacity:1,scale:3},offset:'0',repeat:'12px'}],
+              map: map
+            });
+            instance.transitPolylines.push(poly);
+          }
+
+          // Board marker (first stop of this leg)
+          if (leg.boardLat && leg.boardLng) {
+            var isTransferBoard = leg.isTransfer === true;
+            var boardIcon = {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="24" viewBox="0 0 44 24">' +
+                '<rect rx="12" width="44" height="24" fill="' + color + '"/>' +
+                '<text x="22" y="16" font-family="sans-serif" font-size="11" font-weight="bold" fill="white" text-anchor="middle">' + (leg.busNumber || '') + '</text>' +
+                '</svg>'
+              ),
+              scaledSize: new google.maps.Size(44, 24),
+              anchor: new google.maps.Point(22, 12)
+            };
+            var boardMarker = new google.maps.Marker({
+              position: { lat: leg.boardLat, lng: leg.boardLng },
+              map: map,
+              icon: boardIcon,
+              zIndex: 120 + idx * 10,
+              title: (leg.boardName || 'Board') + (isTransferBoard ? ' [Transfer]' : '')
+            });
+            instance.transitMarkers.push(boardMarker);
+            bounds.extend(new google.maps.LatLng(leg.boardLat, leg.boardLng));
+          }
+
+          // Alight marker (last stop of this leg) only for the final leg
+          if (idx === legs.length - 1 && leg.alightLat && leg.alightLng) {
+            var destPinSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="38" height="52" viewBox="0 0 38 52">' +
+              '<filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.35"/></filter>' +
+              '<g filter="url(#sh)">' +
+              '<path fill="' + color + '" stroke="#333" stroke-width="1" d="M19 1C9.61 1 2 8.61 2 18c0 12.8 17 31 17 31s17-18.2 17-31C36 8.61 28.39 1 19 1z"/>' +
+              '<circle fill="#FFFFFF" cx="19" cy="18" r="6.5"/>' +
+              '</g></svg>';
+            var alightIcon = {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(destPinSvg),
+              scaledSize: new google.maps.Size(34, 48),
+              anchor: new google.maps.Point(17, 47)
+            };
+            var alightMarker = new google.maps.Marker({
+              position: { lat: leg.alightLat, lng: leg.alightLng },
+              map: map,
+              icon: alightIcon,
+              zIndex: 200,
+              title: leg.alightName || 'Destination'
+            });
+            instance.transitMarkers.push(alightMarker);
+            bounds.extend(new google.maps.LatLng(leg.alightLat, leg.alightLng));
+          } else if (idx < legs.length - 1 && leg.alightLat && leg.alightLng) {
+            // Transfer marker between legs
+            var transferIcon = {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">' +
+                '<circle fill="#FFFFFF" cx="14" cy="14" r="12" stroke="#FF8C00" stroke-width="3"/>' +
+                '<text x="14" y="18" font-family="sans-serif" font-size="9" font-weight="bold" fill="#FF8C00" text-anchor="middle">&#x21C4;</text>' +
+                '</svg>'
+              ),
+              scaledSize: new google.maps.Size(28, 28),
+              anchor: new google.maps.Point(14, 14)
+            };
+            var transferMarker = new google.maps.Marker({
+              position: { lat: leg.alightLat, lng: leg.alightLng },
+              map: map,
+              icon: transferIcon,
+              zIndex: 150 + idx * 10,
+              title: (leg.alightName || 'Transfer') + ' — Transfer Point'
+            });
+            instance.transitMarkers.push(transferMarker);
+            bounds.extend(new google.maps.LatLng(leg.alightLat, leg.alightLng));
+          }
+        });
+
+        instance.routeBounds = bounds;
+        if (!bounds.isEmpty()) {
+          map.fitBounds(bounds, { top: 60, bottom: 60, left: 50, right: 50 });
+        }
+        return true;
+      } catch (e) {
+        console.error('[transitUpdateTransitRoute error]', e);
+        return false;
+      }
+    };
+
+    window.transitClearRoute = function(divId) {
+      var instance = window.transitMaps[divId];
+      if (!instance) return;
+      if (instance.polyline) { instance.polyline.setMap(null); instance.polyline = null; }
+      if (instance.originMarker) { instance.originMarker.setMap(null); instance.originMarker = null; }
+      if (instance.destMarker) { instance.destMarker.setMap(null); instance.destMarker = null; }
+      (instance.transitPolylines || []).forEach(function(p) { p.setMap(null); });
+      (instance.transitMarkers || []).forEach(function(m) { m.setMap(null); });
+      instance.transitPolylines = [];
+      instance.transitMarkers = [];
+      instance.routeBounds = null;
+    };
+
 
     window.transitSetMapScope = function(divId, scope) {
       var instance = window.transitMaps[divId];

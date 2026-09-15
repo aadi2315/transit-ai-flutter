@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
@@ -13,6 +14,7 @@ import '../services/google_directions_service.dart';
 import '../services/supabase_service.dart';
 import '../services/transit_place_service.dart';
 import '../services/transit_gps_service.dart';
+import '../services/transit_routing_service.dart';
 import '../services/web_maps_bridge.dart';
 
 class StitchRouteScreen extends StatefulWidget {
@@ -52,13 +54,18 @@ class StitchRouteScreen extends StatefulWidget {
 class _StitchRouteScreenState extends State<StitchRouteScreen> {
   bool _isRouteLegs = true;
   bool _satelliteMode = false;
-  String _mapScope = 'corridor'; // 'corridor' (tight on route), 'city' (Ahmedabad City), 'metro' (Regional Metro)
+  String _mapScope = 'corridor';
 
   TransitGpsLocation? _currentGps;
   StreamSubscription<TransitGpsLocation>? _gpsSubscription;
+  Timer? _gpsDebounce; // Prevents per-tick setState rebuilds
 
-  late final TransformationController _corridorMapController;
-  late final TransformationController _exploreMapController;
+  // Dijkstra transit result (bus legs)
+  TransitRoutingResult? _transitResult;
+
+  // No longer using TransformationController — real Google Maps handles its own pan
+  final TransformationController _corridorMapController = TransformationController();
+  final TransformationController _exploreMapController = TransformationController();
 
   late TextEditingController _originController;
   late TextEditingController _destController;
@@ -74,21 +81,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   bool _isLoadingRoute = false;
 
   void _zoomIn(String divId, TransformationController controller) {
-    final matrix = controller.value.clone();
-    matrix.scaleByDouble(1.25, 1.25, 1.0, 1.0);
-    controller.value = matrix;
     zoomInteractiveMap(divId, 1);
   }
 
   void _zoomOut(String divId, TransformationController controller) {
-    final matrix = controller.value.clone();
-    matrix.scaleByDouble(0.8, 0.8, 1.0, 1.0);
-    controller.value = matrix;
     zoomInteractiveMap(divId, -1);
   }
 
   void _resetZoom(String divId, TransformationController controller) {
-    controller.value = Matrix4.identity();
     resetInteractiveMap(divId);
   }
 
@@ -140,8 +140,6 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   @override
   void initState() {
     super.initState();
-    _corridorMapController = TransformationController();
-    _exploreMapController = TransformationController();
 
     final defaultOrigin = widget.initialOrigin?.trim() ?? '';
     final defaultDest = widget.initialDestination?.trim() ?? '';
@@ -187,18 +185,42 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       });
     }
 
-    // Initialize live GPS tracking
+    // Initialize transit routing graph
+    TransitRoutingService.instance.init();
+
+    // Live GPS tracking — debounced to prevent per-tick setState rebuilds
     TransitGpsService.instance.getCurrentLocation().then((loc) {
       if (mounted) setState(() => _currentGps = loc);
     });
     _gpsSubscription = TransitGpsService.instance.streamLocation().listen((loc) {
-      if (mounted) setState(() => _currentGps = loc);
+      // Only update state if location changed meaningfully (>30m) or after 5s
+      _gpsDebounce?.cancel();
+      _gpsDebounce = Timer(const Duration(seconds: 5), () {
+        if (!mounted) return;
+        final prev = _currentGps;
+        final distM = (prev == null)
+            ? double.infinity
+            : _haversineM(prev.latitude, prev.longitude, loc.latitude, loc.longitude);
+        if (distM > 30) {
+          setState(() => _currentGps = loc);
+        }
+      });
     });
+  }
+
+  /// Haversine distance in metres (lightweight, no external deps).
+  static double _haversineM(double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371000.0;
+    final dLat = (lat2 - lat1) * 3.14159265 / 180;
+    final dLon = (lon2 - lon1) * 3.14159265 / 180;
+    final a = dLat * dLat / 4 + dLon * dLon / 4;
+    return 2 * r * (a < 1 ? a : 1);
   }
 
   @override
   void dispose() {
     _gpsSubscription?.cancel();
+    _gpsDebounce?.cancel();
     _corridorMapController.dispose();
     _exploreMapController.dispose();
     _originController.dispose();
@@ -253,8 +275,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         low == 'my location';
   }
 
-  /// Triggers route search: Checks Supabase cache first; on miss, queries
-  /// Google Directions API in DRIVING mode and stores polyline in Supabase.
+  /// Triggers route search.
+  /// Priority:
+  ///   1. Dijkstra transit engine (bus routes: 9U, 8D, etc.)
+  ///   2. Supabase-cached / Google Directions driving fallback
   Future<void> _fetchRoute() async {
     final origin = _originController.text.trim();
     final dest = _destController.text.trim();
@@ -264,6 +288,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       _isLoadingRoute = true;
       _showOriginDropdown = false;
       _showDestDropdown = false;
+      _transitResult = null;
     });
 
     try {
@@ -281,6 +306,61 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         }
       }
 
+      // --- 1. TRANSIT-FIRST: Try Dijkstra bus-route engine ---
+      if (!isOriginGps && !isDestGps) {
+        try {
+          final svc = TransitRoutingService.instance;
+          await svc.init();
+          final originStop = svc.findStopByName(origin);
+          final destStop = svc.findStopByName(dest);
+          debugPrint('[Route] Stop match: origin=$originStop, dest=$destStop');
+          if (originStop != null && destStop != null) {
+            final result = await svc.findRoute(
+              originStopId: originStop.stopId,
+              destinationStopId: destStop.stopId,
+            );
+            if (result != null && result.legs.isNotEmpty) {
+              debugPrint('[Route] Dijkstra found ${result.legs.length} leg(s): '
+                '${result.busNumbers.join(' → ')}');
+              // Build a synthetic TransitRouteResult for the map from the
+              // first leg's board stop and last leg's alight stop
+              final firstLeg = result.legs.first;
+              final lastLeg = result.legs.last;
+              final mapRoute = TransitRouteResult(
+                origin: firstLeg.boardStop.name,
+                destination: lastLeg.alightStop.name,
+                originLat: firstLeg.boardStop.lat,
+                originLng: firstLeg.boardStop.lon,
+                destLat: lastLeg.alightStop.lat,
+                destLng: lastLeg.alightStop.lon,
+                encodedPolyline: '', // map uses transit segments directly
+                polylineCoordinates: const [],
+                distanceKm: _estimateDistanceKm(result),
+                distanceText: '${_estimateDistanceKm(result).toStringAsFixed(1)} km',
+                durationMins: result.totalDurationMinutes.round(),
+                durationText: '${result.totalDurationMinutes.round()} mins',
+                fareAmount: 5.0 * result.legs.length,
+                steps: const [],
+                isFromSupabaseCache: false,
+              );
+              if (mounted) {
+                setState(() {
+                  _transitResult = result;
+                  _currentRoute = mapRoute;
+                  _isLoadingRoute = false;
+                });
+                // Push multi-leg transit route to both maps
+                _pushTransitRouteToMaps(result);
+              }
+              return;
+            }
+          }
+        } catch (e) {
+          debugPrint('[Route] Dijkstra error: $e');
+        }
+      }
+
+      // --- 2. FALLBACK: Supabase cache / Google Directions driving ---
       final queryOrigin = (isOriginGps && gps != null)
           ? '${gps.latitude},${gps.longitude}'
           : origin;
@@ -309,6 +389,93 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         });
       }
     }
+  }
+
+  /// Pushes multi-leg transit segments to both map canvases via JS bridge.
+  void _pushTransitRouteToMaps(TransitRoutingResult result) {
+    const legColors = ['#1A73E8', '#EA4335', '#34A853', '#FBBC05', '#9B59B6'];
+    final legsPayload = <Map<String, dynamic>>[];
+    for (int i = 0; i < result.legs.length; i++) {
+      final leg = result.legs[i];
+      final color = legColors[i % legColors.length];
+      // Build encoded polyline from clipped points if available
+      String polylineEnc = '';
+      if (leg.clippedPolyline.isNotEmpty) {
+        polylineEnc = _encodePolylinePoints(leg.clippedPolyline);
+      }
+      legsPayload.add({
+        'polylineEnc': polylineEnc,
+        'color': color,
+        'busNumber': leg.routeShortName,
+        'boardLat': leg.boardStop.lat,
+        'boardLng': leg.boardStop.lon,
+        'boardName': leg.boardStop.name,
+        'alightLat': leg.alightStop.lat,
+        'alightLng': leg.alightStop.lon,
+        'alightName': leg.alightStop.name,
+        'isTransfer': i > 0,
+      });
+    }
+    final legsJson = jsonEncode(legsPayload);
+    final firstLeg = result.legs.first;
+    final lastLeg = result.legs.last;
+    for (final divId in ['transit_map_corridor', 'transit_map_explore']) {
+      updateTransitRoute(
+        divId,
+        legsJson,
+        originLat: firstLeg.boardStop.lat,
+        originLng: firstLeg.boardStop.lon,
+        destLat: lastLeg.alightStop.lat,
+        destLng: lastLeg.alightStop.lon,
+      );
+    }
+  }
+
+  /// Rough distance estimate from all transit leg polylines.
+  double _estimateDistanceKm(TransitRoutingResult result) {
+    double totalM = 0;
+    for (final leg in result.legs) {
+      final pts = leg.clippedPolyline;
+      for (int i = 1; i < pts.length; i++) {
+        totalM += _haversineM(
+          pts[i - 1].lat, pts[i - 1].lon,
+          pts[i].lat, pts[i].lon,
+        );
+      }
+      if (pts.isEmpty) {
+        totalM += _haversineM(
+          leg.boardStop.lat, leg.boardStop.lon,
+          leg.alightStop.lat, leg.alightStop.lon,
+        );
+      }
+    }
+    return totalM / 1000.0;
+  }
+
+  /// Encodes a list of LatLon points to a Google Maps encoded polyline string.
+  static String _encodePolylinePoints(List<dynamic> points) {
+    final buffer = StringBuffer();
+    int prevLat = 0, prevLng = 0;
+    for (final pt in points) {
+      final lat = (pt.lat * 1e5).round();
+      final lng = (pt.lon * 1e5).round();
+      buffer.write(_encodeValue(lat - prevLat));
+      buffer.write(_encodeValue(lng - prevLng));
+      prevLat = lat;
+      prevLng = lng;
+    }
+    return buffer.toString();
+  }
+
+  static String _encodeValue(int value) {
+    var v = value < 0 ? ~(value << 1) : (value << 1);
+    final result = StringBuffer();
+    while (v >= 0x20) {
+      result.writeCharCode(((0x20 | (v & 0x1f)) + 63));
+      v >>= 5;
+    }
+    result.writeCharCode(v + 63);
+    return result.toString();
   }
 
   void _swapStops() {
@@ -1091,7 +1258,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                 children: [
                   // Real Interactive Google Maps Engine Vector Canvas
                   if (route != null &&
-                      route.encodedPolyline.isNotEmpty &&
+                      (route.encodedPolyline.isNotEmpty || _transitResult != null) &&
                       TransitMapConfig.hasGoogleMapsApiKey)
                     Positioned.fill(
                       child: InteractiveGoogleMapView(
@@ -1255,6 +1422,19 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   /// 2. Real Route Summary Card (Dynamic Distance, Time, Fare from Google Directions)
   Widget _buildRouteSummaryCard(bool dark) {
     final route = _currentRoute;
+    final transit = _transitResult;
+
+    // Build mode label
+    String modeLabel;
+    if (transit != null) {
+      modeLabel = transit.busNumbers.isNotEmpty
+          ? 'Bus ${transit.busNumbers.join(' → ')}'  // e.g. "Bus 9U → 8D"
+          : 'Transit Route';
+    } else if (route?.isFromSupabaseCache == true) {
+      modeLabel = 'Optimized Corridor (Cached)';
+    } else {
+      modeLabel = route != null ? 'Live Street Directions' : 'Corridor Search Ready';
+    }
 
     return StitchGlassCard(
       isDarkMode: dark,
@@ -1269,7 +1449,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                  color: transit != null
+                      ? const Color(0xFF1A73E8).withValues(alpha: 0.2)
+                      : const Color(0xFF38BDF8).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -1277,20 +1459,22 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     Container(
                       width: 5,
                       height: 5,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF38BDF8),
+                      decoration: BoxDecoration(
+                        color: transit != null
+                            ? const Color(0xFF1A73E8)
+                            : const Color(0xFF38BDF8),
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      route == null
-                          ? 'Corridor Search Ready'
-                          : (route.isFromSupabaseCache ? 'Optimized Corridor (Cached)' : 'Live Street Directions'),
+                      modeLabel,
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF38BDF8),
+                        color: transit != null
+                            ? const Color(0xFF4DA3FF)
+                            : const Color(0xFF38BDF8),
                       ),
                     ),
                   ],
@@ -1325,7 +1509,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
           const SizedBox(height: 10),
 
-          // Real metric counters (Zero dummy defaults)
+          // Real metric counters
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1341,9 +1525,92 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
   /// 3. Dynamic Route Legs & Street Navigation Steps
   Widget _buildRouteLegsBreakdownCard(bool dark) {
+    final transit = _transitResult;
     final route = _currentRoute;
-    final steps = route?.steps ?? [];
 
+    // --- TRANSIT BUS LEGS VIEW ---
+    if (transit != null && transit.legs.isNotEmpty) {
+      return StitchGlassCard(
+        isDarkMode: dark,
+        borderRadius: 22,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.directions_bus_rounded, size: 16, color: Color(0xFF1A73E8)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Bus Route Itinerary',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: dark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0x331A73E8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    transit.requiresTransfer
+                        ? '${transit.legs.length} Legs • Transfer'
+                        : '${transit.legs.length} Leg • Direct',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF4DA3FF),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Bus legs
+            ...List.generate(transit.legs.length, (i) {
+              final leg = transit.legs[i];
+              const legColors = [
+                Color(0xFF1A73E8),
+                Color(0xFFEA4335),
+                Color(0xFF34A853),
+                Color(0xFFFBBC05),
+              ];
+              final color = legColors[i % legColors.length];
+              final isLast = i == transit.legs.length - 1;
+
+              return Column(
+                children: [
+                  _buildBusLegCard(
+                    busNumber: leg.routeShortName,
+                    boardStop: leg.boardStop.name,
+                    alightStop: leg.alightStop.name,
+                    duration: '${leg.estimatedMinutes.round()} min',
+                    color: color,
+                    isFirst: i == 0,
+                    isLast: isLast,
+                  ),
+                  if (!isLast) _buildTransferChip(transit.legs[i].alightStop.name),
+                ],
+              );
+            }),
+          ],
+        ),
+      );
+    }
+
+    // --- DRIVING STEPS FALLBACK ---
+    final steps = route?.steps ?? [];
     return StitchGlassCard(
       isDarkMode: dark,
       borderRadius: 22,
@@ -1421,6 +1688,168 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               distance: route?.distanceText ?? '11.4 km',
               duration: route?.durationText ?? '26 mins',
             ),
+        ],
+      ),
+    );
+  }
+
+  /// Premium bus leg card with route badge, board/alight stops, and timing.
+  Widget _buildBusLegCard({
+    required String busNumber,
+    required String boardStop,
+    required String alightStop,
+    required String duration,
+    required Color color,
+    bool isFirst = false,
+    bool isLast = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          // Bus badge
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3)),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              busNumber,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Board stop
+                Row(
+                  children: [
+                    Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        boardStop,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 7),
+                  child: Container(
+                    width: 1,
+                    height: 16,
+                    color: color.withValues(alpha: 0.4),
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                  ),
+                ),
+                // Alight stop
+                Row(
+                  children: [
+                    Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: color, width: 2),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        alightStop,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white70,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Duration
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              duration,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Transfer chip between legs.
+  Widget _buildTransferChip(String atStop) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0x33FF8C00),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFFF8C00).withValues(alpha: 0.5), width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.swap_horiz_rounded, size: 13, color: Color(0xFFFF8C00)),
+                const SizedBox(width: 4),
+                Text(
+                  'Transfer at $atStop',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFFF8C00),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1581,7 +2010,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               children: [
                 // Real Interactive Google Maps Engine Vector Canvas
                 if (route != null &&
-                    route.encodedPolyline.isNotEmpty &&
+                    (route.encodedPolyline.isNotEmpty || _transitResult != null) &&
                     TransitMapConfig.hasGoogleMapsApiKey)
                   Positioned.fill(
                     child: InteractiveGoogleMapView(

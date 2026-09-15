@@ -212,3 +212,38 @@ void centerInteractiveGps(String divId, double lat, double lng) {
   } catch (_) {}
 }
 
+/// Renders a multi-leg transit route (bus lines with stop markers, transfer icons).
+/// [legsJson] is a JSON-encoded list of leg objects: each has polylineEnc, color,
+/// busNumber, boardLat, boardLng, boardName, alightLat, alightLng, alightName, isTransfer.
+bool updateTransitRoute(
+  String divId,
+  String legsJson, {
+  double? originLat,
+  double? originLng,
+  double? destLat,
+  double? destLng,
+}) {
+  try {
+    if (js.context.hasProperty('transitUpdateTransitRoute')) {
+      final res = js.context.callMethod('transitUpdateTransitRoute', [
+        divId,
+        legsJson,
+        originLat,
+        originLng,
+        destLat,
+        destLng,
+      ]);
+      return res == true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+/// Clears all route polylines and markers from the map.
+void clearInteractiveRoute(String divId) {
+  try {
+    if (js.context.hasProperty('transitClearRoute')) {
+      js.context.callMethod('transitClearRoute', [divId]);
+    }
+  } catch (_) {}
+}

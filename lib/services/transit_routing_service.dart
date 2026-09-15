@@ -298,21 +298,68 @@ class TransitRoutingService {
     );
   }
 
-  /// Locates a stop by case-insensitive name match or fuzzy contains.
+  /// Locates a stop by case-insensitive name match or fuzzy alias matching.
+  ///
+  /// Matching priority:
+  ///   1. Exact match (lowercased)
+  ///   2. One string contains the other
+  ///   3. Token-overlap score: strips common transit suffixes (BRTS, Station,
+  ///      Bus Stop, Cross Road, Char Rasta, etc.) then counts shared tokens.
+  ///      Highest overlap wins (minimum 2 shared tokens required).
   Stop? findStopByName(String query) {
     if (query.trim().isEmpty) return null;
-    final q = query.trim().toLowerCase();
+    final q = _normalizeStopName(query);
 
+    // 1. Exact match
     for (final stop in _stopsById.values) {
-      if (stop.name.toLowerCase() == q) return stop;
+      if (_normalizeStopName(stop.name) == q) return stop;
     }
+
+    // 2. Substring contains
     for (final stop in _stopsById.values) {
-      if (stop.name.toLowerCase().contains(q) ||
-          q.contains(stop.name.toLowerCase())) {
-        return stop;
+      final sn = _normalizeStopName(stop.name);
+      if (sn.contains(q) || q.contains(sn)) return stop;
+    }
+
+    // 3. Token-overlap fuzzy match
+    final qTokens = _tokenize(q);
+    Stop? bestMatch;
+    int bestScore = 1; // Require at least 2 shared tokens
+    for (final stop in _stopsById.values) {
+      final sTokens = _tokenize(_normalizeStopName(stop.name));
+      final overlap =
+          qTokens.where((t) => sTokens.contains(t)).length;
+      if (overlap > bestScore) {
+        bestScore = overlap;
+        bestMatch = stop;
       }
     }
-    return null;
+    return bestMatch;
+  }
+
+  /// Strips common transit-system suffixes and normalizes to lowercase.
+  static final _transitSuffixes = RegExp(
+    r'\b(brts|station|bus\s*stop|cross\s*road|char\s*rasta|chowk'
+    r'|circle|approach|nagar|township|vidhyapith|mandir|mall|hostel'
+    r'|park|hospital|college|office|library|cinema|darwaja'
+    r'|workshop|market|mill|towers|zone|east|west|north|south)\b',
+    caseSensitive: false,
+  );
+
+  static String _normalizeStopName(String s) {
+    return s
+        .toLowerCase()
+        .replaceAll(_transitSuffixes, '')
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static Set<String> _tokenize(String normalized) {
+    return normalized
+        .split(' ')
+        .where((t) => t.length > 2)
+        .toSet();
   }
 
   /// Finds the closest stop to a geographic coordinate.
