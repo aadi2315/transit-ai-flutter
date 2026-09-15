@@ -1,0 +1,811 @@
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../domain/models/transit_graph_models.dart';
+import '../domain/engines/dijkstra_router.dart';
+import '../domain/engines/route_polyline_slicer.dart';
+import '../presentation/map/route_map_segment_builder.dart';
+import 'google_directions_service.dart';
+import 'supabase_service.dart';
+
+/// Detailed summary of one leg of a multimodal transit itinerary.
+class TripLegDetail {
+  final String routeId;
+  final String routeShortName;
+  final Stop boardStop;
+  final Stop alightStop;
+  final double estimatedMinutes;
+  final List<LatLon> clippedPolyline;
+
+  const TripLegDetail({
+    required this.routeId,
+    required this.routeShortName,
+    required this.boardStop,
+    required this.alightStop,
+    required this.estimatedMinutes,
+    required this.clippedPolyline,
+  });
+}
+
+/// Comprehensive routing result produced by [TransitRoutingService].
+class TransitRoutingResult {
+  final Itinerary itinerary;
+  final List<MapDisplaySegment> displaySegments;
+  final List<TripLegDetail> legs;
+  final List<String> busNumbers;
+  final List<Stop> transferPoints;
+  final double totalDurationMinutes;
+  final bool requiresTransfer;
+
+  const TransitRoutingResult({
+    required this.itinerary,
+    required this.displaySegments,
+    required this.legs,
+    required this.busNumbers,
+    required this.transferPoints,
+    required this.totalDurationMinutes,
+    required this.requiresTransfer,
+  });
+}
+
+/// Transit Routing Service
+///
+/// 1. Synchronizes stop sequences, headways, and route shapes from Supabase
+///    (`gtfs_stops`, `gtfs_routes`, `gtfs_route_stops`).
+/// 2. Builds a directed transfer graph using [TransitRouter] where in-vehicle
+///    edges represent consecutive stops weighted by travel time, and transfer
+///    edges connect shared stops weighted by bus headway penalty.
+/// 3. Computes the optimal path via Dijkstra search.
+/// 4. Clips route geometry using [RoutePolylineSlicer] so Google Maps only
+///    renders the actual segment ridden.
+class TransitRoutingService {
+  static final TransitRoutingService instance =
+      TransitRoutingService._internal();
+  TransitRoutingService._internal();
+
+  final Map<String, Stop> _stopsById = {};
+  final Map<String, RouteShape> _shapesByRouteId = {};
+  final List<RouteStopSequence> _routeSequences = [];
+  TransitRouter? _router;
+  bool _isGraphBuilt = false;
+
+  Map<String, Stop> get stopsById => Map.unmodifiable(_stopsById);
+  List<Stop> get allStops => _stopsById.values.toList();
+  bool get isReady => _isGraphBuilt && _router != null;
+
+  /// Initializes the routing graph from Supabase, falling back to embedded
+  /// GTFS data if offline or before database migration is executed.
+  Future<bool> init({bool forceRefresh = false}) async {
+    if (_isGraphBuilt && !forceRefresh) return true;
+
+    try {
+      final client = SupabaseService.instance.client;
+      bool fetchedFromSupabase = false;
+
+      if (client != null) {
+        fetchedFromSupabase = await _loadFromSupabase(client);
+      }
+
+      if (!fetchedFromSupabase) {
+        debugPrint(
+          '[TransitRoutingService] Using embedded high-fidelity GTFS dataset (9U & 8D).',
+        );
+        _loadEmbeddedDataset();
+      }
+
+      _router = TransitRouter(
+        stopsById: _stopsById,
+        sequences: _routeSequences,
+      );
+
+      _isGraphBuilt = true;
+      debugPrint(
+        '[TransitRoutingService] Graph built: ${_stopsById.length} stops, '
+        '${_routeSequences.length} routes, ${_shapesByRouteId.length} shapes.',
+      );
+      return true;
+    } catch (e, st) {
+      debugPrint('[TransitRoutingService] Error initializing router: $e\n$st');
+      _loadEmbeddedDataset();
+      _router = TransitRouter(
+        stopsById: _stopsById,
+        sequences: _routeSequences,
+      );
+      _isGraphBuilt = true;
+      return true;
+    }
+  }
+
+  /// Queries Supabase for `gtfs_stops`, `gtfs_routes`, and `gtfs_route_stops`.
+  Future<bool> _loadFromSupabase(SupabaseClient client) async {
+    try {
+      // 1. Fetch Stops
+      final stopsRes = await client.from('gtfs_stops').select();
+      final stopsList = stopsRes as List<dynamic>;
+      if (stopsList.isEmpty) return false;
+
+      _stopsById.clear();
+      for (final s in stopsList) {
+        final stop = Stop.fromSupabase(s as Map<String, dynamic>);
+        if (stop.stopId.isNotEmpty) {
+          _stopsById[stop.stopId] = stop;
+        }
+      }
+
+      // 2. Fetch Routes
+      final routesRes = await client.from('gtfs_routes').select();
+      final routesList = routesRes as List<dynamic>;
+      final Map<String, String> shortNameByRouteId = {};
+      _shapesByRouteId.clear();
+
+      for (final r in routesList) {
+        final map = r as Map<String, dynamic>;
+        final routeId = map['route_id']?.toString() ?? '';
+        final shortName = map['route_short_name']?.toString() ?? routeId;
+        shortNameByRouteId[routeId] = shortName;
+
+        final encPoly = map['encoded_polyline']?.toString() ?? '';
+        List<LatLon> points = [];
+
+        if (encPoly.isNotEmpty) {
+          final decoded = GoogleDirectionsService.decodePolyline(encPoly);
+          points = decoded.map((c) => LatLon(c.latitude, c.longitude)).toList();
+        } else if (map['polyline_points'] is List) {
+          final rawPts = map['polyline_points'] as List;
+          points = rawPts
+              .map((p) => LatLon(
+                    (p['lat'] as num).toDouble(),
+                    (p['lng'] as num).toDouble(),
+                  ))
+              .toList();
+        }
+
+        if (points.isNotEmpty) {
+          _shapesByRouteId[routeId] =
+              RouteShape(routeId: routeId, points: points);
+        }
+      }
+
+      // 3. Fetch Ordered Route Stops
+      final routeStopsRes = await client
+          .from('gtfs_route_stops')
+          .select()
+          .order('route_id')
+          .order('stop_sequence', ascending: true);
+
+      final routeStopsList = routeStopsRes as List<dynamic>;
+      if (routeStopsList.isEmpty) return false;
+
+      // Group by routeId
+      final Map<String, List<Map<String, dynamic>>> byRoute = {};
+      for (final item in routeStopsList) {
+        final row = item as Map<String, dynamic>;
+        final rid = row['route_id']?.toString() ?? '';
+        byRoute.putIfAbsent(rid, () => []).add(row);
+      }
+
+      _routeSequences.clear();
+      for (final entry in byRoute.entries) {
+        final rid = entry.key;
+        final rows = entry.value;
+        rows.sort((a, b) => ((a['stop_sequence'] as num?) ?? 0)
+            .compareTo((b['stop_sequence'] as num?) ?? 0));
+
+        final stopIds = <String>[];
+        final travelTimes = <String, int>{};
+        int headway = 15;
+
+        for (final r in rows) {
+          final sid = r['stop_id']?.toString() ?? '';
+          stopIds.add(sid);
+          final prevTime = (r['travel_time_from_prev_mins'] as num?)?.toInt() ?? 3;
+          travelTimes[sid] = prevTime;
+          headway = (r['headway_mins'] as num?)?.toInt() ?? headway;
+        }
+
+        _routeSequences.add(RouteStopSequence(
+          routeId: rid,
+          routeShortName: shortNameByRouteId[rid] ?? rid,
+          stopIdsInOrder: stopIds,
+          travelTimeFromPrevMins: travelTimes,
+          headwayMins: headway,
+        ));
+      }
+
+      return _routeSequences.isNotEmpty && _stopsById.isNotEmpty;
+    } catch (e) {
+      debugPrint('[TransitRoutingService] Supabase query fallback: $e');
+      return false;
+    }
+  }
+
+  /// Executes the Dijkstra solver between [originStopId] and [destinationStopId],
+  /// and returns sliced map display segments and leg details.
+  Future<TransitRoutingResult?> findRoute({
+    required String originStopId,
+    required String destinationStopId,
+  }) async {
+    await init();
+    if (_router == null) return null;
+
+    final itinerary = _router!.route(
+      originStopId: originStopId,
+      destinationStopId: destinationStopId,
+    );
+
+    if (itinerary == null || itinerary.legs.isEmpty) return null;
+
+    final displaySegments = RouteMapSegmentBuilder.buildDisplaySegments(
+      itinerary: itinerary,
+      stopsById: _stopsById,
+      shapesByRouteId: _shapesByRouteId,
+    );
+
+    final legs = <TripLegDetail>[];
+    final busNumbers = <String>{};
+    final transferPoints = <Stop>[];
+
+    for (int i = 0; i < itinerary.legs.length; i++) {
+      final leg = itinerary.legs[i];
+      busNumbers.add(leg.routeShortName);
+
+      final boardStop = _stopsById[leg.boardStopId] ??
+          Stop(
+            stopId: leg.boardStopId,
+            name: leg.boardStopId,
+            lat: 0,
+            lon: 0,
+          );
+      final alightStop = _stopsById[leg.alightStopId] ??
+          Stop(
+            stopId: leg.alightStopId,
+            name: leg.alightStopId,
+            lat: 0,
+            lon: 0,
+          );
+
+      if (i > 0) {
+        transferPoints.add(boardStop);
+      }
+
+      final clipped = i < displaySegments.length
+          ? displaySegments[i].polyline
+          : <LatLon>[
+              LatLon(boardStop.lat, boardStop.lon),
+              LatLon(alightStop.lat, alightStop.lon),
+            ];
+
+      legs.add(TripLegDetail(
+        routeId: leg.routeId,
+        routeShortName: leg.routeShortName,
+        boardStop: boardStop,
+        alightStop: alightStop,
+        estimatedMinutes: leg.estimatedSeconds / 60.0,
+        clippedPolyline: clipped,
+      ));
+    }
+
+    return TransitRoutingResult(
+      itinerary: itinerary,
+      displaySegments: displaySegments,
+      legs: legs,
+      busNumbers: busNumbers.toList(),
+      transferPoints: transferPoints,
+      totalDurationMinutes: itinerary.estimatedTotalMinutes,
+      requiresTransfer: itinerary.requiresTransfer,
+    );
+  }
+
+  /// Locates a stop by case-insensitive name match or fuzzy contains.
+  Stop? findStopByName(String query) {
+    if (query.trim().isEmpty) return null;
+    final q = query.trim().toLowerCase();
+
+    for (final stop in _stopsById.values) {
+      if (stop.name.toLowerCase() == q) return stop;
+    }
+    for (final stop in _stopsById.values) {
+      if (stop.name.toLowerCase().contains(q) ||
+          q.contains(stop.name.toLowerCase())) {
+        return stop;
+      }
+    }
+    return null;
+  }
+
+  /// Finds the closest stop to a geographic coordinate.
+  Stop? findNearestStop(double lat, double lon, {double maxDistanceKm = 5.0}) {
+    Stop? nearest;
+    double bestDist = double.infinity;
+
+    for (final stop in _stopsById.values) {
+      final d = GeoMath.haversineM(lat, lon, stop.lat, stop.lon);
+      if (d < bestDist && d <= maxDistanceKm * 1000) {
+        bestDist = d;
+        nearest = stop;
+      }
+    }
+    return nearest;
+  }
+
+  // =========================================================================
+  // EMBEDDED HIGH-FIDELITY GTFS DATASET (Bus 9U and Bus 8D)
+  // =========================================================================
+  void _loadEmbeddedDataset() {
+    _stopsById.clear();
+    _shapesByRouteId.clear();
+    _routeSequences.clear();
+
+    for (final s in _embeddedStops) {
+      _stopsById[s.stopId] = s;
+    }
+
+    _shapesByRouteId['ROUTE_9U'] = RouteShape(
+      routeId: 'ROUTE_9U',
+      points: _decodeEmbeddedPoly(_encPoly9U),
+    );
+    _shapesByRouteId['ROUTE_8D'] = RouteShape(
+      routeId: 'ROUTE_8D',
+      points: _decodeEmbeddedPoly(_encPoly8D),
+    );
+
+    _routeSequences.add(RouteStopSequence(
+      routeId: 'ROUTE_9U',
+      routeShortName: '9U',
+      stopIdsInOrder: _seq9U,
+      headwayMins: 15,
+      travelTimeFromPrevMins: {for (final id in _seq9U) id: 2},
+    ));
+
+    _routeSequences.add(RouteStopSequence(
+      routeId: 'ROUTE_8D',
+      routeShortName: '8D',
+      stopIdsInOrder: _seq8D,
+      headwayMins: 15,
+      travelTimeFromPrevMins: {for (final id in _seq8D) id: 2},
+    ));
+  }
+
+  static List<LatLon> _decodeEmbeddedPoly(String enc) {
+    final coords = GoogleDirectionsService.decodePolyline(enc);
+    return coords.map((c) => LatLon(c.latitude, c.longitude)).toList();
+  }
+
+  static const String _encPoly9U =
+      'cb`lC_atyLnr@}g@nmApS~h@`K~x@bW|y@p@b|@jA|mApEhe@|Wj|@|Zz}@z`@fe'
+      '@j`@b}@tb@`r@|r@hn@v_@lqAbkB~`@r_@z}@~k@r`@hnAzi@ffBvj@|lAz|@fnA'
+      'h~@~}@n|@fo@`~@flAh{Bzn@rn@p}@viAh~@reAj`AnwAju@n|@';
+
+  static const String _encPoly8D =
+      'ufzkCyqmzLn_@bh@`m@bh@~RnPjb@`[v[bW`j@fUb`@ff@|y@b_@~h@r\\z`@ha'
+      '@|r@f_@|y@r|@p|@f_@|y@ro@rn@z`@rn@z}@f_@lqAj`@`k@j`@`k@r`@j_@rn'
+      '@~q@z`@|r@ha@`k@x_@p|@ro@z}@rn@`[|k@`[|r@ro@|r@';
+
+  static final List<String> _seq9U = [
+    'STOP_VASANTNAGAR_TOWNSHIP',
+    'STOP_GOTA_CROSS_ROADS',
+    'STOP_SOLA_BHAGWAT',
+    'STOP_GUJARAT_HIGH_COURT',
+    'STOP_SCIENCE_CITY_APPROACH',
+    'STOP_SOLA_BRIDGE',
+    'STOP_SATTADHAR_CHAR_RASTA',
+    'STOP_BHUYANGDEV',
+    'STOP_PARSHWANATH_JAIN_MANDIR',
+    'STOP_PARASNAGAR',
+    'STOP_SOLA_CROSS_ROAD_BRTS',
+    'STOP_SHREE_VALINATH_CHOWK_BRTS',
+    'STOP_MEMNAGAR_BRTS',
+    'STOP_UNIVERSITY_BRTS',
+    'STOP_ANDHJAN_MANDAL_BRTS',
+    'STOP_HIMMAT_LAL_PARK_BRTS',
+    'STOP_SHIVRANJANI_BRTS',
+    'STOP_JHANSI_KI_RANI_BRTS',
+    'STOP_NEHRUNAGAR_BRTS',
+    'STOP_L_COLONY',
+    'STOP_PANJRAPOLE_CHAR_RASTA_BRTS',
+    'STOP_GULBAI_TEKRA_APPROACH_BRTS',
+    'STOP_LD_ENGG_COLLEGE_BRTS',
+    'STOP_VASUNDHARA_BRTS',
+    'STOP_LAW_GARDEN_BRTS',
+    'STOP_MJ_LIBRARY_BRTS',
+    'STOP_LOKAMANYA_TILAK_BRTS',
+    'STOP_RAIKHAD_CHAR_RASTA_BRTS',
+    'STOP_MUNICIPAL_CORPORATION_OFFICE',
+    'STOP_ASTODIA_CHAKLA',
+    'STOP_GEETA_MANDIR_BRTS',
+    'STOP_BHULABHAI_PARK_BRTS',
+    'STOP_MANGAL_PARK_BRTS',
+    'STOP_KANKARIYA_TELEPHONE_EXCHANGE_BRTS',
+    'STOP_MIRA_CINEMA_CHAR_RASTA',
+    'STOP_BHAIRAVNATH_ROAD_BRTS',
+    'STOP_JAWAHAR_CHOWK_BRTS',
+    'STOP_SWAMINAYARAN_BRTS',
+    'STOP_MANINAGAR_BRTS',
+  ];
+
+  static final List<String> _seq8D = [
+    'STOP_NARODA_GAM',
+    'STOP_BETHAK',
+    'STOP_NARODA_S_T_WORKSHOP',
+    'STOP_SAIJPUR_TOWERS',
+    'STOP_MUNICIPAL_NORTH_ZONE_OFFICE',
+    'STOP_MEMCO_CROSS_ROAD',
+    'STOP_NARODA_FRUIT_MARKET',
+    'STOP_ASHOK_MILL',
+    'STOP_JEENING_PRESS',
+    'STOP_ARVIND_MILL',
+    'STOP_G_C_S_HOSPITAL',
+    'STOP_PREM_DARWAJA',
+    'STOP_DELHI_DARWAJA',
+    'STOP_SARKARI_LITHO_PRESS_CABIN',
+    'STOP_SARKARI_LITHO_PRESS',
+    'STOP_HANUMANPURA',
+    'STOP_GURUDWARA',
+    'STOP_JUNA_VADAJ',
+    'STOP_RAMAPIR_NO_TEKARO',
+    'STOP_NR_PATEL_PARK',
+    'STOP_BHAVSAR_HOSTEL',
+    'STOP_AKHBARNAGAR',
+    'STOP_PRAGATINAGAR',
+    'STOP_SHASTRINAGAR',
+    'STOP_JAIMANGAL',
+    'STOP_PARASNAGAR',
+    'STOP_PARSHWANATH_JAIN_MANDIR',
+    'STOP_BHUYANGDEV',
+    'STOP_SATTADHAR_CHAR_RASTA',
+    'STOP_SOLA_BRIDGE',
+    'STOP_SCIENCE_CITY_APPROACH',
+    'STOP_SHUKAN_MALL',
+    'STOP_RK_ROYAL',
+    'STOP_GALAXY_SIGNATURE',
+    'STOP_SCIENCE_CITY',
+    'STOP_BHADAJ_CIRCLE',
+  ];
+
+  static final List<Stop> _embeddedStops = [
+    const Stop(
+        stopId: 'STOP_VASANTNAGAR_TOWNSHIP',
+        name: 'Vasantnagar township',
+        lat: 23.107063,
+        lon: 72.525119),
+    const Stop(
+        stopId: 'STOP_GOTA_CROSS_ROADS',
+        name: 'Gota cross roads',
+        lat: 23.098822,
+        lon: 72.531666),
+    const Stop(
+        stopId: 'STOP_SOLA_BHAGWAT',
+        name: 'Sola Bhagwat',
+        lat: 23.086257,
+        lon: 72.528383),
+    const Stop(
+        stopId: 'STOP_GUJARAT_HIGH_COURT',
+        name: 'Gujarat high court',
+        lat: 23.079541,
+        lon: 72.526451),
+    const Stop(
+        stopId: 'STOP_SCIENCE_CITY_APPROACH',
+        name: 'Science City Approach',
+        lat: 23.069693,
+        lon: 72.522567),
+    const Stop(
+        stopId: 'STOP_SOLA_BRIDGE',
+        name: 'Sola Bridge',
+        lat: 23.064879,
+        lon: 72.529577),
+    const Stop(
+        stopId: 'STOP_SATTADHAR_CHAR_RASTA',
+        name: 'Sattadhar Char Rasta',
+        lat: 23.062892,
+        lon: 72.532704),
+    const Stop(
+        stopId: 'STOP_BHUYANGDEV',
+        name: 'Bhuyangdev',
+        lat: 23.060528,
+        lon: 72.535474),
+    const Stop(
+        stopId: 'STOP_PARSHWANATH_JAIN_MANDIR',
+        name: 'Parshwanath Jain Mandir',
+        lat: 23.057611,
+        lon: 72.539154),
+    const Stop(
+        stopId: 'STOP_PARASNAGAR',
+        name: 'Parasnagar',
+        lat: 23.055501,
+        lon: 72.543178),
+    const Stop(
+        stopId: 'STOP_SOLA_CROSS_ROAD_BRTS',
+        name: 'Sola Cross Road BRTS',
+        lat: 23.052989,
+        lon: 72.546852),
+    const Stop(
+        stopId: 'STOP_SHREE_VALINATH_CHOWK_BRTS',
+        name: 'Shree Valinath Chowk BRTS',
+        lat: 23.049278,
+        lon: 72.545021),
+    const Stop(
+        stopId: 'STOP_MEMNAGAR_BRTS',
+        name: 'memnagar brts',
+        lat: 23.045899,
+        lon: 72.542440),
+    const Stop(
+        stopId: 'STOP_UNIVERSITY_BRTS',
+        name: 'university brts',
+        lat: 23.038881,
+        lon: 72.537988),
+    const Stop(
+        stopId: 'STOP_ANDHJAN_MANDAL_BRTS',
+        name: 'andhjan mandal brts',
+        lat: 23.034817,
+        lon: 72.536033),
+    const Stop(
+        stopId: 'STOP_HIMMAT_LAL_PARK_BRTS',
+        name: 'Himmat Lal park brts',
+        lat: 23.029857,
+        lon: 72.532312),
+    const Stop(
+        stopId: 'STOP_SHIVRANJANI_BRTS',
+        name: 'shivranjani brts',
+        lat: 23.024437,
+        lon: 72.531357),
+    const Stop(
+        stopId: 'STOP_JHANSI_KI_RANI_BRTS',
+        name: 'Jhansi ki rani brts',
+        lat: 23.023355,
+        lon: 72.536283),
+    const Stop(
+        stopId: 'STOP_NEHRUNAGAR_BRTS',
+        name: 'Nehrunagar brts',
+        lat: 23.024105,
+        lon: 72.535553),
+    const Stop(
+        stopId: 'STOP_L_COLONY',
+        name: 'L colony',
+        lat: 23.025195,
+        lon: 72.542784),
+    const Stop(
+        stopId: 'STOP_PANJRAPOLE_CHAR_RASTA_BRTS',
+        name: 'Panjrapole Char Rasta BRTS',
+        lat: 23.026635,
+        lon: 72.544186),
+    const Stop(
+        stopId: 'STOP_GULBAI_TEKRA_APPROACH_BRTS',
+        name: 'Gulbai Tekra Approach BRTS',
+        lat: 23.029607,
+        lon: 72.547297),
+    const Stop(
+        stopId: 'STOP_LD_ENGG_COLLEGE_BRTS',
+        name: 'ld engg. college brts',
+        lat: 23.035185,
+        lon: 72.548973),
+    const Stop(
+        stopId: 'STOP_VASUNDHARA_BRTS',
+        name: 'Vasundhara brts',
+        lat: 23.028252,
+        lon: 72.552109),
+    const Stop(
+        stopId: 'STOP_LAW_GARDEN_BRTS',
+        name: 'law garden brts',
+        lat: 23.024219,
+        lon: 72.558858),
+    const Stop(
+        stopId: 'STOP_MJ_LIBRARY_BRTS',
+        name: 'MJ library brts',
+        lat: 23.024093,
+        lon: 72.570507),
+    const Stop(
+        stopId: 'STOP_LOKAMANYA_TILAK_BRTS',
+        name: 'lokamanya tilak brts',
+        lat: 23.022197,
+        lon: 72.580331),
+    const Stop(
+        stopId: 'STOP_RAIKHAD_CHAR_RASTA_BRTS',
+        name: 'raikhad char rasta brts',
+        lat: 23.021765,
+        lon: 72.582764),
+    const Stop(
+        stopId: 'STOP_MUNICIPAL_CORPORATION_OFFICE',
+        name: 'municipal corporation office',
+        lat: 23.019743,
+        lon: 72.586268),
+    const Stop(
+        stopId: 'STOP_ASTODIA_CHAKLA',
+        name: 'astodia chakla',
+        lat: 23.018744,
+        lon: 72.588650),
+    const Stop(
+        stopId: 'STOP_GEETA_MANDIR_BRTS',
+        name: 'geeta mandir brts',
+        lat: 23.013278,
+        lon: 72.591422),
+    const Stop(
+        stopId: 'STOP_BHULABHAI_PARK_BRTS',
+        name: 'bhulabhai park brts',
+        lat: 23.006906,
+        lon: 72.591250),
+    const Stop(
+        stopId: 'STOP_MANGAL_PARK_BRTS',
+        name: 'mangal park brts',
+        lat: 23.003769,
+        lon: 72.589928),
+    const Stop(
+        stopId: 'STOP_KANKARIYA_TELEPHONE_EXCHANGE_BRTS',
+        name: 'Kankariya Telephone Exchange BRTS',
+        lat: 23.002603,
+        lon: 72.592931),
+    const Stop(
+        stopId: 'STOP_MIRA_CINEMA_CHAR_RASTA',
+        name: 'Mira Cinema, Char Rasta',
+        lat: 22.999298,
+        lon: 72.593290),
+    const Stop(
+        stopId: 'STOP_BHAIRAVNATH_ROAD_BRTS',
+        name: 'bhairavnath road brts',
+        lat: 22.996285,
+        lon: 72.599084),
+    const Stop(
+        stopId: 'STOP_JAWAHAR_CHOWK_BRTS',
+        name: 'Jawahar chowk brts',
+        lat: 22.995312,
+        lon: 72.605215),
+    const Stop(
+        stopId: 'STOP_SWAMINAYARAN_BRTS',
+        name: 'swaminayaran brts',
+        lat: 22.995855,
+        lon: 72.611685),
+    const Stop(
+        stopId: 'STOP_MANINAGAR_BRTS',
+        name: 'Maninagar BRTS',
+        lat: 22.998016,
+        lon: 72.611441),
+    const Stop(
+        stopId: 'STOP_NARODA_GAM',
+        name: 'Naroda Gam',
+        lat: 23.077071,
+        lon: 72.655812),
+    const Stop(
+        stopId: 'STOP_BETHAK',
+        name: 'Bethak',
+        lat: 23.071868,
+        lon: 72.649228),
+    const Stop(
+        stopId: 'STOP_NARODA_S_T_WORKSHOP',
+        name: 'Naroda S. T. Workshop',
+        lat: 23.064505,
+        lon: 72.642646),
+    const Stop(
+        stopId: 'STOP_SAIJPUR_TOWERS',
+        name: 'Saijpur Towers',
+        lat: 23.061302,
+        lon: 72.639847),
+    const Stop(
+        stopId: 'STOP_MUNICIPAL_NORTH_ZONE_OFFICE',
+        name: 'Municipal North Zone Office',
+        lat: 23.055643,
+        lon: 72.633123),
+    const Stop(
+        stopId: 'STOP_MEMCO_CROSS_ROAD',
+        name: 'Memco Cross Road',
+        lat: 23.053350,
+        lon: 72.629608),
+    const Stop(
+        stopId: 'STOP_NARODA_FRUIT_MARKET',
+        name: 'Naroda Fruit Market',
+        lat: 23.050745,
+        lon: 72.625576),
+    const Stop(
+        stopId: 'STOP_ASHOK_MILL',
+        name: 'Ashok Mill',
+        lat: 23.046560,
+        lon: 72.619151),
+    const Stop(
+        stopId: 'STOP_JEENING_PRESS',
+        name: 'Jeening Press',
+        lat: 23.044309,
+        lon: 72.616002),
+    const Stop(
+        stopId: 'STOP_ARVIND_MILL',
+        name: 'Arvind Mill',
+        lat: 23.041798,
+        lon: 72.612551),
+    const Stop(
+        stopId: 'STOP_G_C_S_HOSPITAL',
+        name: 'G.C.S. Hospital',
+        lat: 23.039243,
+        lon: 72.609065),
+    const Stop(
+        stopId: 'STOP_PREM_DARWAJA',
+        name: 'Prem Darwaja',
+        lat: 23.037244,
+        lon: 72.594756),
+    const Stop(
+        stopId: 'STOP_DELHI_DARWAJA',
+        name: 'Delhi Darwaja',
+        lat: 23.037613,
+        lon: 72.589757),
+    const Stop(
+        stopId: 'STOP_SARKARI_LITHO_PRESS_CABIN',
+        name: 'Sarkari Litho Press Cabin',
+        lat: 23.039412,
+        lon: 72.586281),
+    const Stop(
+        stopId: 'STOP_SARKARI_LITHO_PRESS',
+        name: 'Sarkari Litho Press',
+        lat: 23.041740,
+        lon: 72.585138),
+    const Stop(
+        stopId: 'STOP_HANUMANPURA',
+        name: 'Hanumanpura',
+        lat: 23.044965,
+        lon: 72.583686),
+    const Stop(
+        stopId: 'STOP_GURUDWARA',
+        name: 'Gurudwara',
+        lat: 23.048595,
+        lon: 72.582342),
+    const Stop(
+        stopId: 'STOP_JUNA_VADAJ',
+        name: 'Juna Vadaj',
+        lat: 23.056817,
+        lon: 72.571647),
+    const Stop(
+        stopId: 'STOP_RAMAPIR_NO_TEKARO',
+        name: 'Ramapir No Tekaro',
+        lat: 23.061707,
+        lon: 72.571677),
+    const Stop(
+        stopId: 'STOP_NR_PATEL_PARK',
+        name: 'NR Patel Park',
+        lat: 23.066371,
+        lon: 72.571663),
+    const Stop(
+        stopId: 'STOP_BHAVSAR_HOSTEL',
+        name: 'Bhavsar Hostel',
+        lat: 23.067575,
+        lon: 72.568599),
+    const Stop(
+        stopId: 'STOP_AKHBARNAGAR',
+        name: 'Akhbarnagar',
+        lat: 23.067515,
+        lon: 72.563763),
+    const Stop(
+        stopId: 'STOP_PRAGATINAGAR',
+        name: 'Pragatinagar',
+        lat: 23.064584,
+        lon: 72.556035),
+    const Stop(
+        stopId: 'STOP_SHASTRINAGAR',
+        name: 'Shastrinagar',
+        lat: 23.062166,
+        lon: 72.552973),
+    const Stop(
+        stopId: 'STOP_JAIMANGAL',
+        name: 'Jaimangal',
+        lat: 23.057561,
+        lon: 72.549326),
+    const Stop(
+        stopId: 'STOP_SHUKAN_MALL',
+        name: 'Shukan Mall',
+        lat: 23.072279,
+        lon: 72.516118),
+    const Stop(
+        stopId: 'STOP_RK_ROYAL',
+        name: 'Rk Royal',
+        lat: 23.074644,
+        lon: 72.511234),
+    const Stop(
+        stopId: 'STOP_GALAXY_SIGNATURE',
+        name: 'Galaxy Signature',
+        lat: 23.076982,
+        lon: 72.506412),
+    const Stop(
+        stopId: 'STOP_SCIENCE_CITY',
+        name: 'Science City',
+        lat: 23.080317,
+        lon: 72.499527),
+    const Stop(
+        stopId: 'STOP_BHADAJ_CIRCLE',
+        name: 'Bhadaj Circle',
+        lat: 23.082980,
+        lon: 72.495212),
+  ];
+}
