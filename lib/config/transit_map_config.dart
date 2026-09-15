@@ -52,14 +52,14 @@ class TransitMapConfig {
     bool isSatellite = false,
   }) {
     final pathParam = encodedPolyline.isNotEmpty
-        ? '&path=color:0x38bdf8ff|weight:5|enc:$encodedPolyline'
+        ? '&path=color:0x2563ebff|weight:6|enc:$encodedPolyline'
         : '';
     final markersBuffer = StringBuffer();
     if (originLat != null && originLng != null) {
       markersBuffer.write('&markers=color:0x10b981|label:A|$originLat,$originLng');
     }
     if (destLat != null && destLng != null) {
-      markersBuffer.write('&markers=color:0xf43f5e|label:B|$destLat,$destLng');
+      markersBuffer.write('&markers=color:0xea4335|label:B|$destLat,$destLng');
     }
     if (userLat != null && userLng != null) {
       markersBuffer.write('&markers=color:0x00e5ff%7Csize:mid%7C$userLat,$userLng');

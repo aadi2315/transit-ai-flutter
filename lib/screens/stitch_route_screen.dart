@@ -1101,6 +1101,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         scope: _mapScope,
                         gpsLocation: _currentGps,
                         isDarkMode: dark,
+                        transformationController: _corridorMapController,
                       ),
                     )
                   else
@@ -1590,6 +1591,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       scope: _mapScope,
                       gpsLocation: _currentGps,
                       isDarkMode: dark,
+                      transformationController: _exploreMapController,
                     ),
                   )
                 else
@@ -1966,6 +1968,7 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
               scope: _scope,
               gpsLocation: _currentGps,
               isDarkMode: widget.dark,
+              transformationController: _controller,
             ),
           ),
 
