@@ -104,6 +104,44 @@ class TransitRouteResult {
     this.isFromSupabaseCache = false,
   });
 
+  TransitRouteResult copyWith({
+    String? origin,
+    String? destination,
+    double? originLat,
+    double? originLng,
+    double? destLat,
+    double? destLng,
+    String? encodedPolyline,
+    List<MapCoordinate>? polylineCoordinates,
+    double? distanceKm,
+    String? distanceText,
+    int? durationMins,
+    String? durationText,
+    double? fareAmount,
+    List<TransitRouteStep>? steps,
+    List<String>? waypoints,
+    bool? isFromSupabaseCache,
+  }) {
+    return TransitRouteResult(
+      origin: origin ?? this.origin,
+      destination: destination ?? this.destination,
+      originLat: originLat ?? this.originLat,
+      originLng: originLng ?? this.originLng,
+      destLat: destLat ?? this.destLat,
+      destLng: destLng ?? this.destLng,
+      encodedPolyline: encodedPolyline ?? this.encodedPolyline,
+      polylineCoordinates: polylineCoordinates ?? this.polylineCoordinates,
+      distanceKm: distanceKm ?? this.distanceKm,
+      distanceText: distanceText ?? this.distanceText,
+      durationMins: durationMins ?? this.durationMins,
+      durationText: durationText ?? this.durationText,
+      fareAmount: fareAmount ?? this.fareAmount,
+      steps: steps ?? this.steps,
+      waypoints: waypoints ?? this.waypoints,
+      isFromSupabaseCache: isFromSupabaseCache ?? this.isFromSupabaseCache,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'origin': origin,
         'destination': destination,
@@ -284,11 +322,23 @@ class GoogleDirectionsService {
     }
 
     // 2. Query Google Directions REST API (for mobile or web fallback)
+    String formatRestEndpoint(String s) {
+      final t = s.trim();
+      if (RegExp(r'^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$').hasMatch(t)) {
+        return t;
+      }
+      final clean = t.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
+      if (clean.toLowerCase().contains('ahmedabad')) {
+        return clean;
+      }
+      return '$clean, Ahmedabad, Gujarat, India';
+    }
+
     final client = httpClient ?? http.Client();
     final url = TransitMapConfig.buildDirectionsApiUrl(
-      origin: '$origin, Ahmedabad, Gujarat, India',
-      destination: '$destination, Ahmedabad, Gujarat, India',
-      waypoints: waypoints?.map((w) => '$w, Ahmedabad, Gujarat, India').toList(),
+      origin: formatRestEndpoint(origin),
+      destination: formatRestEndpoint(destination),
+      waypoints: waypoints?.map((w) => formatRestEndpoint(w)).toList(),
     );
 
     debugPrint('[GoogleDirectionsService] Querying Google Directions API (mode=driving)...');

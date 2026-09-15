@@ -74,7 +74,7 @@ class _WebInteractiveMapViewState extends State<_WebInteractiveMapView> {
           ..style.height = '100%'
           ..style.border = 'none'
           ..style.outline = 'none'
-          ..style.backgroundColor = '#0b1329';
+          ..style.backgroundColor = '#f8fafc';
         return el;
       });
     }

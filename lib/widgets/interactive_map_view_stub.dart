@@ -62,7 +62,7 @@ class _StubMapView extends StatelessWidget {
       }
 
       return Container(
-        color: const Color(0xFF0B1329),
+        color: const Color(0xFFF8FAFC),
         child: Image.network(
           TransitMapConfig.buildStaticMapUrl(
             encodedPolyline: route!.encodedPolyline,
@@ -77,7 +77,7 @@ class _StubMapView extends StatelessWidget {
             zoomLevel: zoomLevel,
             width: 640,
             height: 480,
-            isDarkMode: isDarkMode,
+            isDarkMode: false, // Clean white map style
             isSatellite: isSatellite,
           ),
           fit: BoxFit.cover,

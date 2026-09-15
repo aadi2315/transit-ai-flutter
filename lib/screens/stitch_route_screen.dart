@@ -245,6 +245,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     }
   }
 
+  bool _isGpsLocation(String s) {
+    final low = s.toLowerCase().trim();
+    return low.contains('current location') ||
+        low.contains('live gps') ||
+        low.contains('gps') ||
+        low == 'my location';
+  }
+
   /// Triggers route search: Checks Supabase cache first; on miss, queries
   /// Google Directions API in DRIVING mode and stores polyline in Supabase.
   Future<void> _fetchRoute() async {
@@ -259,9 +267,32 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     });
 
     try {
+      final isOriginGps = _isGpsLocation(origin);
+      final isDestGps = _isGpsLocation(dest);
+
+      TransitGpsLocation? gps = _currentGps;
+      if (isOriginGps || isDestGps) {
+        if (gps == null || gps.isMock) {
+          try {
+            final liveLoc = await TransitGpsService.instance.getCurrentLocation();
+            gps = liveLoc;
+            if (mounted) setState(() => _currentGps = liveLoc);
+          } catch (_) {}
+        }
+      }
+
+      final queryOrigin = (isOriginGps && gps != null)
+          ? '${gps.latitude},${gps.longitude}'
+          : origin;
+      final queryDest = (isDestGps && gps != null)
+          ? '${gps.latitude},${gps.longitude}'
+          : dest;
+
       final route = await SupabaseService.instance.searchAndCacheRoute(
-        origin: origin,
-        destination: dest,
+        origin: queryOrigin,
+        destination: queryDest,
+        displayOrigin: origin,
+        displayDestination: dest,
       );
 
       if (mounted) {
@@ -950,8 +981,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildMiniScopeOption('Route', 'corridor'),
-                        _buildMiniScopeOption('City', 'city'),
-                        _buildMiniScopeOption('Metro', 'metro'),
+                        _buildMiniScopeOption('City Grid', 'city'),
                       ],
                     ),
                   ),
@@ -1088,28 +1118,6 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       ),
                     ),
 
-                  // Origin Node Label Badge
-                  if (route != null)
-                    Positioned(
-                      top: 12,
-                      left: 10,
-                      child: _buildMapNodeLabel(
-                        '1. ${route.origin}',
-                        const Color(0xFF10B981),
-                      ),
-                    ),
-
-                  // Destination Node Label Badge
-                  if (route != null)
-                    Positioned(
-                      bottom: 30,
-                      right: 10,
-                      child: _buildMapNodeLabel(
-                        '2. ${route.destination}',
-                        const Color(0xFFF43F5E),
-                      ),
-                    ),
-
                   // Map Controls (Fullscreen, Zoom In, Zoom Out, Locate Me, Recenter)
                   Positioned(
                     top: 10,
@@ -1195,37 +1203,6 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-
-                  // Pan & Zoom Indicator
-                  Positioned(
-                    bottom: 6,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xCC060E20),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0x22FFFFFF), width: 0.5),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.touch_app_outlined, size: 10, color: Color(0xFF38BDF8)),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Pan freely • Pinch or +/- to zoom',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 8,
-                                color: const Color(0xFF94A3B8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -1631,30 +1608,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     ),
                   ),
 
-                // Origin Node
-                Positioned(
-                  left: 14,
-                  top: 14,
-                  child: _buildMapNodeLabel(
-                    route?.origin ?? 'Origin',
-                    const Color(0xFF10B981),
-                  ),
-                ),
-
-                // Destination Node
-                Positioned(
-                  right: 14,
-                  bottom: 40,
-                  child: _buildMapNodeLabel(
-                    route?.destination ?? 'Destination',
-                    const Color(0xFFF43F5E),
-                  ),
-                ),
-
                 // Top Scope Switcher
                 Positioned(
                   top: 14,
-                  left: 140,
+                  left: 14,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     decoration: BoxDecoration(
@@ -1670,7 +1627,6 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       children: [
                         _buildMiniScopeOption('Route', 'corridor'),
                         _buildMiniScopeOption('City Grid', 'city'),
-                        _buildMiniScopeOption('Metro Wide', 'metro'),
                       ],
                     ),
                   ),
@@ -1810,128 +1766,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     ],
                   ),
                 ),
-
-                // Bottom Left GPS telemetry chip
-                Positioned(
-                  left: 14,
-                  bottom: 12,
-                  child: GestureDetector(
-                    onTap: _locateUser,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xEE0F172A),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0x4400E5FF), width: 0.8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF00E5FF),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(color: Color(0xFF00E5FF), blurRadius: 4, spreadRadius: 1),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            _currentGps != null
-                                ? 'Live GPS: ${_currentGps!.formattedCoords}'
-                                : 'Acquiring GPS Location...',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF00E5FF),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // GPS Telemetry Strip
-                Positioned(
-                  left: 10,
-                  right: 10,
-                  bottom: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xEE060E20),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0x2EFFFFFF), width: 0.8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.touch_app_outlined, size: 12, color: Color(0xFF38BDF8)),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Pan freely in 2D • Pinch or +/- to zoom',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9.5,
-                                color: const Color(0xFFCBD5E1),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Container(
-                              width: 5,
-                              height: 5,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF10B981),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'GTFS Driving Trace',
-                              style: GoogleFonts.jetBrainsMono(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF10B981),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildMapNodeLabel(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xB30F172A),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.6), width: 0.8),
-      ),
-      child: Text(
-        text,
-        style: GoogleFonts.jetBrainsMono(
-          fontSize: 8,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
-      ),
     );
   }
 
@@ -2177,7 +2016,6 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
                     children: [
                       _buildScopeOption('Route', 'corridor', Icons.alt_route_rounded),
                       _buildScopeOption('City Grid', 'city', Icons.location_city_rounded),
-                      _buildScopeOption('Metro Wide', 'metro', Icons.hub_rounded),
                     ],
                   ),
                 ),

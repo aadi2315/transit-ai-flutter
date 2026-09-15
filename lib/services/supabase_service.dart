@@ -512,34 +512,61 @@ class SupabaseService {
   // ROUTE POLYLINE CACHE (Fetch-Once-and-Store)
   // ==========================================
 
+  static bool isDynamicLocation(String s) {
+    final low = s.toLowerCase().trim();
+    return low.contains('current location') ||
+        low.contains('live gps') ||
+        low.contains('gps') ||
+        low == 'my location' ||
+        RegExp(r'^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$').hasMatch(low);
+  }
+
+  static String normalizeStop(String s) {
+    return s
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s*\([^)]*\)'), '') // strip (BRTS Hub), etc.
+        .replaceAll(RegExp(r'[^a-z0-9]'), '')
+        .trim();
+  }
+
   /// Check if a driving route polyline is already cached in Supabase gtfs_routes
   Future<TransitRouteResult?> getCachedRoute(String origin, String destination) async {
     final cl = client;
     if (cl == null) return null;
 
-    final cleanOrig = origin.trim().toLowerCase();
-    final cleanDest = destination.trim().toLowerCase();
+    // Never use static cache for dynamic GPS / Current Location searches
+    if (isDynamicLocation(origin) || isDynamicLocation(destination)) {
+      return null;
+    }
+
+    final normOrig = normalizeStop(origin);
+    final normDest = normalizeStop(destination);
+    if (normOrig.isEmpty || normDest.isEmpty) return null;
 
     try {
-      // Query routes where origin and destination names are similar or match
+      // Query routes where origin and destination match normalized names
       final records = await cl
           .from('gtfs_routes')
           .select()
           .not('encoded_polyline', 'is', null)
-          .limit(20);
+          .limit(40);
 
       for (final r in (records as List)) {
-        final o = (r['origin_name'] ?? '').toString().toLowerCase();
-        final d = (r['destination_name'] ?? '').toString().toLowerCase();
+        final o = (r['origin_name'] ?? '').toString();
+        final d = (r['destination_name'] ?? '').toString();
+        if (isDynamicLocation(o) || isDynamicLocation(d)) continue;
+
         final poly = (r['encoded_polyline'] ?? '').toString();
+        final normO = normalizeStop(o);
+        final normD = normalizeStop(d);
 
         if (poly.isNotEmpty &&
             !poly.startsWith('m}re') &&
             !poly.startsWith('a`se') &&
             poly.length >= 20 &&
-            (o.contains(cleanOrig) || cleanOrig.contains(o)) &&
-            (d.contains(cleanDest) || cleanDest.contains(d))) {
-          debugPrint('[SupabaseService] Cache HIT for route: $origin -> $destination');
+            normO == normOrig &&
+            normD == normDest) {
+          debugPrint('[SupabaseService] Exact Cache HIT for route: $origin -> $destination');
           return TransitRouteResult.fromSupabase(r as Map<String, dynamic>);
         }
       }
@@ -553,6 +580,11 @@ class SupabaseService {
   Future<void> cacheRoute(TransitRouteResult route) async {
     final cl = client;
     if (cl == null) return;
+
+    // Never cache dynamic user GPS searches into static table
+    if (isDynamicLocation(route.origin) || isDynamicLocation(route.destination)) {
+      return;
+    }
 
     final cleanOrig = route.origin.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toUpperCase();
     final cleanDest = route.destination.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toUpperCase();
@@ -586,23 +618,41 @@ class SupabaseService {
   Future<TransitRouteResult> searchAndCacheRoute({
     required String origin,
     required String destination,
+    String? displayOrigin,
+    String? displayDestination,
     List<String>? waypoints,
   }) async {
-    // 1. Check Supabase cache
-    final cached = await getCachedRoute(origin, destination);
-    if (cached != null) {
-      return cached;
+    final isDynamic = isDynamicLocation(origin) ||
+        isDynamicLocation(destination) ||
+        isDynamicLocation(displayOrigin ?? '') ||
+        isDynamicLocation(displayDestination ?? '');
+
+    // 1. Check Supabase cache (only for static stops, never dynamic GPS)
+    if (!isDynamic) {
+      final cached = await getCachedRoute(origin, destination);
+      if (cached != null) {
+        return cached;
+      }
     }
 
     // 2. Fetch fresh from Google Directions API (Driving Mode)
-    final fresh = await GoogleDirectionsService.instance.fetchDrivingRoute(
+    var fresh = await GoogleDirectionsService.instance.fetchDrivingRoute(
       origin: origin,
       destination: destination,
       waypoints: waypoints,
     );
 
-    // 3. Save to Supabase for all future commuters
-    await cacheRoute(fresh);
+    if (displayOrigin != null && displayOrigin.isNotEmpty) {
+      fresh = fresh.copyWith(origin: displayOrigin);
+    }
+    if (displayDestination != null && displayDestination.isNotEmpty) {
+      fresh = fresh.copyWith(destination: displayDestination);
+    }
+
+    // 3. Save to Supabase for all future commuters (only if static corridor)
+    if (!isDynamic) {
+      await cacheRoute(fresh);
+    }
 
     return fresh;
   }
