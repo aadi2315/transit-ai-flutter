@@ -79,12 +79,30 @@ CREATE TABLE IF NOT EXISTS public.gtfs_routes (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Safely add caching columns if table exists
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS origin_name TEXT;
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS destination_name TEXT;
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS waypoints TEXT[];
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS encoded_polyline TEXT;
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS distance_km NUMERIC(6, 2);
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS duration_mins INT;
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS fare_amount NUMERIC(10, 2);
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS route_steps JSONB;
+ALTER TABLE public.gtfs_routes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 ALTER TABLE public.gtfs_routes ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Public read for gtfs_routes" ON public.gtfs_routes;
+DROP POLICY IF EXISTS "Allow public insert and update on gtfs_routes" ON public.gtfs_routes;
+
 CREATE POLICY "Public read for gtfs_routes"
     ON public.gtfs_routes FOR SELECT
     USING (true);
+
+CREATE POLICY "Allow public insert and update on gtfs_routes"
+    ON public.gtfs_routes FOR ALL
+    USING (true)
+    WITH CHECK (true);
 
 -- ====================================================================
 -- TABLE 4: FARE_MATRIX (Stage-based fares & transfer discounts)

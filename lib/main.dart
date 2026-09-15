@@ -53,6 +53,8 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
   int _previousScreenIndex = 0;
   String? _focusedLocation;
   String? _focusedIncident;
+  String? _searchedOrigin;
+  String? _searchedDestination;
 
   void _toggleTheme() {
     setState(() {
@@ -67,6 +69,17 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
         _previousScreenIndex = _currentScreenIndex;
       }
       _currentScreenIndex = index;
+    });
+  }
+
+  void _navigateToRouteWithSearch(String origin, String destination) {
+    setState(() {
+      _searchedOrigin = origin;
+      _searchedDestination = destination;
+      if (_currentScreenIndex != 5) {
+        _previousScreenIndex = _currentScreenIndex;
+      }
+      _currentScreenIndex = 1;
     });
   }
 
@@ -106,6 +119,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
       case 0:
         currentScreen = StitchHomeScreen(
           onNavigateToRouteDetails: () => _setScreen(1),
+          onSearchRoute: _navigateToRouteWithSearch,
           onNavigateToAskRoute: () => _setScreen(2),
           onNavigateToPasses: () => _setScreen(3),
           onNavigateToWallet: () => _setScreen(4),
@@ -127,6 +141,8 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
           focusLocation: _focusedLocation,
           focusIncident: _focusedIncident,
           onClearFocus: _clearRouteFocus,
+          initialOrigin: _searchedOrigin,
+          initialDestination: _searchedDestination,
         );
         break;
       case 2:

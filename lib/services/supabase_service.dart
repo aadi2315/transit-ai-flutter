@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/storage/local_transit_vault.dart';
+import 'google_directions_service.dart';
 
 /// Singleton Service for Supabase Cloud Backend in Transit AI.
 /// Provides real-time synchronization, community Q&A feed persistence,
@@ -505,5 +506,101 @@ class SupabaseService {
     } catch (e) {
       debugPrint('[SupabaseService] syncReportUpvote notice: $e');
     }
+  }
+
+  // ==========================================
+  // ROUTE POLYLINE CACHE (Fetch-Once-and-Store)
+  // ==========================================
+
+  /// Check if a driving route polyline is already cached in Supabase gtfs_routes
+  Future<TransitRouteResult?> getCachedRoute(String origin, String destination) async {
+    final cl = client;
+    if (cl == null) return null;
+
+    final cleanOrig = origin.trim().toLowerCase();
+    final cleanDest = destination.trim().toLowerCase();
+
+    try {
+      // Query routes where origin and destination names are similar or match
+      final records = await cl
+          .from('gtfs_routes')
+          .select()
+          .not('encoded_polyline', 'is', null)
+          .limit(20);
+
+      for (final r in (records as List)) {
+        final o = (r['origin_name'] ?? '').toString().toLowerCase();
+        final d = (r['destination_name'] ?? '').toString().toLowerCase();
+        final poly = (r['encoded_polyline'] ?? '').toString();
+
+        if (poly.isNotEmpty &&
+            (o.contains(cleanOrig) || cleanOrig.contains(o)) &&
+            (d.contains(cleanDest) || cleanDest.contains(d))) {
+          debugPrint('[SupabaseService] Cache HIT for route: $origin -> $destination');
+          return TransitRouteResult.fromSupabase(r as Map<String, dynamic>);
+        }
+      }
+    } catch (e) {
+      debugPrint('[SupabaseService] getCachedRoute notice: $e');
+    }
+    return null;
+  }
+
+  /// Store a fetched Google Directions API polyline into Supabase gtfs_routes
+  Future<void> cacheRoute(TransitRouteResult route) async {
+    final cl = client;
+    if (cl == null) return;
+
+    final cleanOrig = route.origin.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toUpperCase();
+    final cleanDest = route.destination.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toUpperCase();
+    final routeId = 'ROUTE_${cleanOrig.substring(0, cleanOrig.length > 15 ? 15 : cleanOrig.length)}_${cleanDest.substring(0, cleanDest.length > 15 ? 15 : cleanDest.length)}';
+
+    final payload = {
+      'route_id': routeId,
+      'route_short_name': '${route.origin.split(' ').first} ➔ ${route.destination.split(' ').first}',
+      'operator': 'MULTIMODAL',
+      'origin_name': route.origin,
+      'destination_name': route.destination,
+      'waypoints': route.waypoints,
+      'distance_km': route.distanceKm,
+      'duration_mins': route.durationMins,
+      'fare_amount': route.fareAmount,
+      'encoded_polyline': route.encodedPolyline,
+      'route_steps': route.steps.map((s) => s.toJson()).toList(),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    try {
+      await cl.from('gtfs_routes').upsert(payload, onConflict: 'route_id');
+      debugPrint('[SupabaseService] Cached route polyline in Supabase: $routeId');
+    } catch (e) {
+      debugPrint('[SupabaseService] cacheRoute notice: $e');
+    }
+  }
+
+  /// High-level orchestrator: Checks Supabase cache first; on miss, queries
+  /// Google Directions API in DRIVING mode and saves to Supabase (Fetch-Once-and-Store pattern).
+  Future<TransitRouteResult> searchAndCacheRoute({
+    required String origin,
+    required String destination,
+    List<String>? waypoints,
+  }) async {
+    // 1. Check Supabase cache
+    final cached = await getCachedRoute(origin, destination);
+    if (cached != null) {
+      return cached;
+    }
+
+    // 2. Fetch fresh from Google Directions API (Driving Mode)
+    final fresh = await GoogleDirectionsService.instance.fetchDrivingRoute(
+      origin: origin,
+      destination: destination,
+      waypoints: waypoints,
+    );
+
+    // 3. Save to Supabase for all future commuters
+    await cacheRoute(fresh);
+
+    return fresh;
   }
 }

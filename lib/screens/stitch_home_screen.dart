@@ -8,6 +8,7 @@ import '../widgets/stitch_profile_button.dart';
 
 class StitchHomeScreen extends StatefulWidget {
   final VoidCallback onNavigateToRouteDetails;
+  final void Function(String origin, String destination)? onSearchRoute;
   final VoidCallback onNavigateToAskRoute;
   final VoidCallback onNavigateToPasses;
   final VoidCallback onNavigateToWallet;
@@ -19,6 +20,7 @@ class StitchHomeScreen extends StatefulWidget {
   const StitchHomeScreen({
     super.key,
     required this.onNavigateToRouteDetails,
+    this.onSearchRoute,
     required this.onNavigateToAskRoute,
     required this.onNavigateToPasses,
     required this.onNavigateToWallet,
@@ -544,7 +546,16 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
 
                             // Search Routes CTA Button
                             GestureDetector(
-                              onTap: widget.onNavigateToRouteDetails,
+                              onTap: () {
+                                if (widget.onSearchRoute != null) {
+                                  widget.onSearchRoute!(
+                                    _originController.text.trim(),
+                                    _destController.text.trim(),
+                                  );
+                                } else {
+                                  widget.onNavigateToRouteDetails();
+                                }
+                              },
                               child: Container(
                                 height: 44,
                                 decoration: BoxDecoration(

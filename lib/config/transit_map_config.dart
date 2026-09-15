@@ -1,8 +1,7 @@
 /// Configuration and setup for Google Maps integration in Transit AI
 class TransitMapConfig {
-  /// Paste your Google Maps API Key here when ready:
-  /// Example: 'AIzaSyYourActualGoogleMapsApiKeyHere'
-  static String googleMapsApiKey = '';
+  /// Google Maps API Key provided for Transit AI:
+  static String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
 
   /// Returns true if a valid Google Maps API Key is configured
   static bool get hasGoogleMapsApiKey =>
@@ -13,6 +12,54 @@ class TransitMapConfig {
   /// Update the API key dynamically from UI or at runtime
   static void setApiKey(String key) {
     googleMapsApiKey = key.trim();
+  }
+
+  /// Builds a Google Directions API URL in DRIVING mode with intermediate transit waypoints
+  static String buildDirectionsApiUrl({
+    required String origin,
+    required String destination,
+    List<String>? waypoints,
+  }) {
+    final buffer = StringBuffer(
+      'https://maps.googleapis.com/maps/api/directions/json?'
+      'origin=${Uri.encodeComponent(origin)}'
+      '&destination=${Uri.encodeComponent(destination)}'
+      '&mode=driving'
+      '&key=$googleMapsApiKey',
+    );
+    if (waypoints != null && waypoints.isNotEmpty) {
+      buffer.write('&waypoints=');
+      buffer.write(waypoints.map((w) => Uri.encodeComponent(w)).join('|'));
+    }
+    return buffer.toString();
+  }
+
+  /// Builds a Google Static Maps image URL rendering the polyline path and endpoint markers
+  static String buildStaticMapUrl({
+    required String encodedPolyline,
+    double? originLat,
+    double? originLng,
+    double? destLat,
+    double? destLng,
+    int width = 640,
+    int height = 360,
+    bool isDarkMode = true,
+  }) {
+    final pathParam = 'color:0x38bdf8ff|weight:5|enc:$encodedPolyline';
+    final markersParam = (originLat != null && originLng != null && destLat != null && destLng != null)
+        ? '&markers=color:0x10b981|label:A|$originLat,$originLng&markers=color:0xf43f5e|label:B|$destLat,$destLng'
+        : '';
+    final styleParam = isDarkMode
+        ? '&style=element:geometry%7Ccolor:0x1d2c4d&style=element:labels.text.fill%7Ccolor:0x8ec3b9&style=element:labels.text.stroke%7Ccolor:0x1a3646&style=feature:administrative.country%7Celement:geometry.stroke%7Ccolor:0x4b6878&style=feature:road%7Celement:geometry%7Ccolor:0x304a7d&style=feature:road%7Celement:labels.text.fill%7Ccolor:0x98a5be&style=feature:water%7Celement:geometry%7Ccolor:0x0e1626'
+        : '';
+
+    return 'https://maps.googleapis.com/maps/api/staticmap?'
+        'size=${width}x$height'
+        '&scale=2'
+        '&path=$pathParam'
+        '$markersParam'
+        '$styleParam'
+        '&key=$googleMapsApiKey';
   }
 
   /// Default Ahmedabad / GIFT City Corridor Coordinates
