@@ -7,11 +7,13 @@ import '../widgets/stitch_background.dart';
 import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../widgets/stitch_place_autocomplete_dropdown.dart';
+import '../widgets/interactive_google_map_view.dart';
 import '../config/transit_map_config.dart';
 import '../services/google_directions_service.dart';
 import '../services/supabase_service.dart';
 import '../services/transit_place_service.dart';
 import '../services/transit_gps_service.dart';
+import '../services/web_maps_bridge.dart';
 
 class StitchRouteScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
@@ -71,20 +73,23 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   TransitRouteResult? _currentRoute;
   bool _isLoadingRoute = false;
 
-  void _zoomIn(TransformationController controller) {
+  void _zoomIn(String divId, TransformationController controller) {
     final matrix = controller.value.clone();
     matrix.scaleByDouble(1.25, 1.25, 1.0, 1.0);
     controller.value = matrix;
+    zoomInteractiveMap(divId, 1);
   }
 
-  void _zoomOut(TransformationController controller) {
+  void _zoomOut(String divId, TransformationController controller) {
     final matrix = controller.value.clone();
     matrix.scaleByDouble(0.8, 0.8, 1.0, 1.0);
     controller.value = matrix;
+    zoomInteractiveMap(divId, -1);
   }
 
-  void _resetZoom(TransformationController controller) {
+  void _resetZoom(String divId, TransformationController controller) {
     controller.value = Matrix4.identity();
+    resetInteractiveMap(divId);
   }
 
   Future<void> _locateUser() async {
@@ -96,6 +101,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     });
     _corridorMapController.value = Matrix4.identity();
     _exploreMapController.value = Matrix4.identity();
+    centerInteractiveGps('transit_map_corridor', loc.latitude, loc.longitude);
+    centerInteractiveGps('transit_map_explore', loc.latitude, loc.longitude);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -1045,75 +1052,18 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               borderRadius: BorderRadius.circular(16),
               child: Stack(
                 children: [
-                  // Google Static Maps tile layer with InteractiveViewer for free panning & pinch/scroll zoom
+                  // Real Interactive Google Maps Engine Vector Canvas
                   if (route != null &&
                       route.encodedPolyline.isNotEmpty &&
                       TransitMapConfig.hasGoogleMapsApiKey)
                     Positioned.fill(
-                      child: LayoutBuilder(
-                        builder: (ctx, constraints) {
-                          double? centerLat;
-                          double? centerLng;
-                          int? zoomLevel;
-                          if (_mapScope == 'city') {
-                            centerLat = TransitMapConfig.ahmedabadCenterLat;
-                            centerLng = TransitMapConfig.ahmedabadCenterLng;
-                            zoomLevel = TransitMapConfig.cityScopeZoom;
-                          } else if (_mapScope == 'metro') {
-                            centerLat = TransitMapConfig.metroRegionCenterLat;
-                            centerLng = TransitMapConfig.metroRegionCenterLng;
-                            zoomLevel = TransitMapConfig.metroScopeZoom;
-                          }
-
-                          return InteractiveViewer(
-                            transformationController: _corridorMapController,
-                            minScale: 0.6,
-                            maxScale: 5.0,
-                            boundaryMargin: const EdgeInsets.all(300),
-                            panEnabled: true,
-                            scaleEnabled: true,
-                            child: SizedBox(
-                              width: constraints.maxWidth,
-                              height: constraints.maxHeight,
-                              child: Image.network(
-                                TransitMapConfig.buildStaticMapUrl(
-                                  encodedPolyline: route.encodedPolyline,
-                                  originLat: route.originLat,
-                                  originLng: route.originLng,
-                                  destLat: route.destLat,
-                                  destLng: route.destLng,
-                                  userLat: _currentGps?.latitude,
-                                  userLng: _currentGps?.longitude,
-                                  centerLat: centerLat,
-                                  centerLng: centerLng,
-                                  zoomLevel: zoomLevel,
-                                  width: 640,
-                                  height: 480,
-                                  isDarkMode: dark,
-                                  isSatellite: _satelliteMode,
-                                ),
-                                fit: BoxFit.cover,
-                                width: constraints.maxWidth,
-                                height: constraints.maxHeight,
-                                errorBuilder: (ctx, err, stack) {
-                                  return Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.map_rounded, size: 30, color: Color(0xFF38BDF8)),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'Corridor Map: ${route.origin} → ${route.destination}',
-                                          style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
+                      child: InteractiveGoogleMapView(
+                        divId: 'transit_map_corridor',
+                        route: route,
+                        isSatellite: _satelliteMode,
+                        scope: _mapScope,
+                        gpsLocation: _currentGps,
+                        isDarkMode: dark,
                       ),
                     )
                   else
@@ -1183,7 +1133,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         ),
                         // Zoom In (+)
                         GestureDetector(
-                          onTap: () => _zoomIn(_corridorMapController),
+                          onTap: () => _zoomIn('transit_map_corridor', _corridorMapController),
                           child: Container(
                             width: 28,
                             height: 28,
@@ -1197,7 +1147,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         const SizedBox(height: 6),
                         // Zoom Out (-)
                         GestureDetector(
-                          onTap: () => _zoomOut(_corridorMapController),
+                          onTap: () => _zoomOut('transit_map_corridor', _corridorMapController),
                           child: Container(
                             width: 28,
                             height: 28,
@@ -1233,7 +1183,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         const SizedBox(height: 6),
                         // Recenter
                         GestureDetector(
-                          onTap: () => _resetZoom(_corridorMapController),
+                          onTap: () => _resetZoom('transit_map_corridor', _corridorMapController),
                           child: Container(
                             width: 28,
                             height: 28,
@@ -1296,6 +1246,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         });
         _corridorMapController.value = Matrix4.identity();
         _exploreMapController.value = Matrix4.identity();
+        setInteractiveMapScope('transit_map_corridor', scopeValue);
+        setInteractiveMapScope('transit_map_explore', scopeValue);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -1642,60 +1594,18 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             borderRadius: BorderRadius.circular(22),
             child: Stack(
               children: [
+                // Real Interactive Google Maps Engine Vector Canvas
                 if (route != null &&
                     route.encodedPolyline.isNotEmpty &&
                     TransitMapConfig.hasGoogleMapsApiKey)
                   Positioned.fill(
-                    child: LayoutBuilder(
-                      builder: (ctx, constraints) {
-                        double? centerLat;
-                        double? centerLng;
-                        int? zoomLevel;
-                        if (_mapScope == 'city') {
-                          centerLat = TransitMapConfig.ahmedabadCenterLat;
-                          centerLng = TransitMapConfig.ahmedabadCenterLng;
-                          zoomLevel = TransitMapConfig.cityScopeZoom;
-                        } else if (_mapScope == 'metro') {
-                          centerLat = TransitMapConfig.metroRegionCenterLat;
-                          centerLng = TransitMapConfig.metroRegionCenterLng;
-                          zoomLevel = TransitMapConfig.metroScopeZoom;
-                        }
-
-                        return InteractiveViewer(
-                          transformationController: _exploreMapController,
-                          minScale: 0.5,
-                          maxScale: 6.0,
-                          boundaryMargin: const EdgeInsets.all(400),
-                          panEnabled: true,
-                          scaleEnabled: true,
-                          child: SizedBox(
-                            width: constraints.maxWidth,
-                            height: constraints.maxHeight,
-                            child: Image.network(
-                              TransitMapConfig.buildStaticMapUrl(
-                                encodedPolyline: route.encodedPolyline,
-                                originLat: route.originLat,
-                                originLng: route.originLng,
-                                destLat: route.destLat,
-                                destLng: route.destLng,
-                                userLat: _currentGps?.latitude,
-                                userLng: _currentGps?.longitude,
-                                centerLat: centerLat,
-                                centerLng: centerLng,
-                                zoomLevel: zoomLevel,
-                                width: 640,
-                                height: 640,
-                                isDarkMode: dark,
-                                isSatellite: _satelliteMode,
-                              ),
-                              fit: BoxFit.cover,
-                              width: constraints.maxWidth,
-                              height: constraints.maxHeight,
-                              errorBuilder: (ctx, err, stack) => const SizedBox.shrink(),
-                            ),
-                          ),
-                        );
-                      },
+                    child: InteractiveGoogleMapView(
+                      divId: 'transit_map_explore',
+                      route: route,
+                      isSatellite: _satelliteMode,
+                      scope: _mapScope,
+                      gpsLocation: _currentGps,
+                      isDarkMode: dark,
                     ),
                   )
                 else
@@ -1805,7 +1715,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       const SizedBox(height: 8),
                       // Zoom In (+)
                       GestureDetector(
-                        onTap: () => _zoomIn(_exploreMapController),
+                        onTap: () => _zoomIn('transit_map_explore', _exploreMapController),
                         child: Container(
                           width: 32,
                           height: 32,
@@ -1820,7 +1730,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       const SizedBox(height: 6),
                       // Zoom Out (-)
                       GestureDetector(
-                        onTap: () => _zoomOut(_exploreMapController),
+                        onTap: () => _zoomOut('transit_map_explore', _exploreMapController),
                         child: Container(
                           width: 32,
                           height: 32,
@@ -1857,7 +1767,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       const SizedBox(height: 6),
                       // Recenter
                       GestureDetector(
-                        onTap: () => _resetZoom(_exploreMapController),
+                        onTap: () => _resetZoom('transit_map_explore', _exploreMapController),
                         child: Container(
                           width: 32,
                           height: 32,
@@ -1876,6 +1786,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                           setState(() {
                             _satelliteMode = !_satelliteMode;
                           });
+                          setInteractiveMapType('transit_map_corridor', _satelliteMode);
+                          setInteractiveMapType('transit_map_explore', _satelliteMode);
                         },
                         child: Container(
                           width: 32,
@@ -2108,16 +2020,19 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
     final matrix = _controller.value.clone();
     matrix.scaleByDouble(1.25, 1.25, 1.0, 1.0);
     _controller.value = matrix;
+    zoomInteractiveMap('transit_map_fullscreen', 1);
   }
 
   void _zoomOut() {
     final matrix = _controller.value.clone();
     matrix.scaleByDouble(0.8, 0.8, 1.0, 1.0);
     _controller.value = matrix;
+    zoomInteractiveMap('transit_map_fullscreen', -1);
   }
 
   void _reset() {
     _controller.value = Matrix4.identity();
+    resetInteractiveMap('transit_map_fullscreen');
   }
 
   Future<void> _locateMe() async {
@@ -2128,6 +2043,7 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
       _scope = 'corridor';
     });
     _controller.value = Matrix4.identity();
+    centerInteractiveGps('transit_map_fullscreen', loc.latitude, loc.longitude);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -2156,6 +2072,7 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
           _scope = value;
         });
         _controller.value = Matrix4.identity();
+        setInteractiveMapScope('transit_map_fullscreen', value);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -2190,74 +2107,19 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
   Widget build(BuildContext context) {
     final route = widget.route;
 
-    double? centerLat;
-    double? centerLng;
-    int? zoomLevel;
-    if (_scope == 'city') {
-      centerLat = TransitMapConfig.ahmedabadCenterLat;
-      centerLng = TransitMapConfig.ahmedabadCenterLng;
-      zoomLevel = TransitMapConfig.cityScopeZoom;
-    } else if (_scope == 'metro') {
-      centerLat = TransitMapConfig.metroRegionCenterLat;
-      centerLng = TransitMapConfig.metroRegionCenterLng;
-      zoomLevel = TransitMapConfig.metroScopeZoom;
-    }
-
     return Scaffold(
       backgroundColor: const Color(0xFF060E20),
       body: Stack(
         children: [
-          // 1. Full Screen Edge-to-Edge Interactive Map Canvas
+          // 1. Full Screen Edge-to-Edge Real Interactive Google Maps Engine Canvas
           Positioned.fill(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return InteractiveViewer(
-                  transformationController: _controller,
-                  minScale: 0.5,
-                  maxScale: 6.0,
-                  boundaryMargin: const EdgeInsets.all(500),
-                  panEnabled: true,
-                  scaleEnabled: true,
-                  child: SizedBox(
-                    width: constraints.maxWidth,
-                    height: constraints.maxHeight,
-                    child: route != null && route.encodedPolyline.isNotEmpty
-                        ? Image.network(
-                            TransitMapConfig.buildStaticMapUrl(
-                              encodedPolyline: route.encodedPolyline,
-                              originLat: route.originLat,
-                              originLng: route.originLng,
-                              destLat: route.destLat,
-                              destLng: route.destLng,
-                              userLat: _currentGps?.latitude,
-                              userLng: _currentGps?.longitude,
-                              centerLat: centerLat,
-                              centerLng: centerLng,
-                              zoomLevel: zoomLevel,
-                              width: 640,
-                              height: 640,
-                              isDarkMode: widget.dark,
-                              isSatellite: _satellite,
-                            ),
-                            fit: BoxFit.cover,
-                            width: constraints.maxWidth,
-                            height: constraints.maxHeight,
-                            errorBuilder: (ctx, err, stack) => const Center(
-                              child: Text(
-                                'Failed to load map tile',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          )
-                        : const Center(
-                            child: Text(
-                              'No route active',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                  ),
-                );
-              },
+            child: InteractiveGoogleMapView(
+              divId: 'transit_map_fullscreen',
+              route: route,
+              isSatellite: _satellite,
+              scope: _scope,
+              gpsLocation: _currentGps,
+              isDarkMode: widget.dark,
             ),
           ),
 
@@ -2383,7 +2245,10 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
                 _buildFloatingButton(
                   icon: _satellite ? Icons.map_rounded : Icons.satellite_alt_rounded,
                   tooltip: _satellite ? 'Roadmap Mode' : 'Satellite Mode',
-                  onTap: () => setState(() => _satellite = !_satellite),
+                  onTap: () {
+                    setState(() => _satellite = !_satellite);
+                    setInteractiveMapType('transit_map_fullscreen', _satellite);
+                  },
                   iconColor: const Color(0xFF38BDF8),
                 ),
               ],

@@ -190,6 +190,228 @@
         callback(JSON.stringify({ status: 'EXCEPTION', message: err.toString() }));
       }
     };
+
+    // =========================================================================
+    // REAL INTERACTIVE GOOGLE MAPS ENGINE MANAGER
+    // =========================================================================
+    window.transitMaps = {};
+
+    var transitDarkStyles = [
+      { elementType: 'geometry', stylers: [{ color: '#0b1329' }] },
+      { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
+      { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+      { featureType: 'administrative.country', elementType: 'geometry.stroke', stylers: [{ color: '#334155' }] },
+      { featureType: 'administrative.land_parcel', stylers: [{ visibility: 'off' }] },
+      { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#38bdf8' }] },
+      { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#64748b' }] },
+      { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0d2238' }] },
+      { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#10b981' }] },
+      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0f172a' }] },
+      { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#cbd5e1' }] },
+      { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2563eb' }] },
+      { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1e3a8a' }] },
+      { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#93c5fd' }] },
+      { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+      { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#00e5ff' }] },
+      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#061325' }] },
+      { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#38bdf8' }] }
+    ];
+
+    window.transitInitMap = function(divId, isSatellite) {
+      try {
+        var el = document.getElementById(divId);
+        if (!el || typeof google === 'undefined' || !google.maps) {
+          return false;
+        }
+
+        var mapOptions = {
+          center: { lat: 23.0827, lng: 72.5284 },
+          zoom: 14,
+          disableDefaultUI: true,
+          zoomControl: false,
+          gestureHandling: 'greedy',
+          mapTypeId: isSatellite ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP,
+          styles: isSatellite ? null : transitDarkStyles
+        };
+
+        var map = new google.maps.Map(el, mapOptions);
+        window.transitMaps[divId] = {
+          map: map,
+          polyline: null,
+          originMarker: null,
+          destMarker: null,
+          gpsMarker: null,
+          routeBounds: null,
+          isSatellite: !!isSatellite
+        };
+        return true;
+      } catch (e) {
+        console.error('[transitInitMap error]', e);
+        return false;
+      }
+    };
+
+    window.transitUpdateRoute = function(divId, polylineEnc, originLat, originLng, destLat, destLng) {
+      try {
+        var instance = window.transitMaps[divId];
+        if (!instance || !instance.map) return false;
+        var map = instance.map;
+
+        // Clean up previous polyline & markers
+        if (instance.polyline) {
+          instance.polyline.setMap(null);
+          instance.polyline = null;
+        }
+        if (instance.originMarker) {
+          instance.originMarker.setMap(null);
+          instance.originMarker = null;
+        }
+        if (instance.destMarker) {
+          instance.destMarker.setMap(null);
+          instance.destMarker = null;
+        }
+
+        if (!polylineEnc) return false;
+
+        var decodedPath = google.maps.geometry.encoding.decodePath(polylineEnc);
+        var polyline = new google.maps.Polyline({
+          path: decodedPath,
+          geodesic: true,
+          strokeColor: '#38BDF8',
+          strokeOpacity: 0.95,
+          strokeWeight: 6,
+          map: map
+        });
+        instance.polyline = polyline;
+
+        var bounds = new google.maps.LatLngBounds();
+        for (var i = 0; i < decodedPath.length; i++) {
+          bounds.extend(decodedPath[i]);
+        }
+        instance.routeBounds = bounds;
+
+        // Add Origin Marker (A)
+        if (originLat && originLng) {
+          instance.originMarker = new google.maps.Marker({
+            position: { lat: originLat, lng: originLng },
+            map: map,
+            label: { text: 'A', color: '#ffffff', fontWeight: 'bold', fontSize: '13px' },
+            icon: {
+              path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+              scale: 6,
+              fillColor: '#10B981',
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 2
+            }
+          });
+        }
+
+        // Add Destination Marker (B)
+        if (destLat && destLng) {
+          instance.destMarker = new google.maps.Marker({
+            position: { lat: destLat, lng: destLng },
+            map: map,
+            label: { text: 'B', color: '#ffffff', fontWeight: 'bold', fontSize: '13px' },
+            icon: {
+              path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+              scale: 6,
+              fillColor: '#F43F5E',
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 2
+            }
+          });
+        }
+
+        map.fitBounds(bounds, { top: 40, bottom: 40, left: 40, right: 40 });
+        return true;
+      } catch (e) {
+        console.error('[transitUpdateRoute error]', e);
+        return false;
+      }
+    };
+
+    window.transitSetMapScope = function(divId, scope) {
+      var instance = window.transitMaps[divId];
+      if (!instance || !instance.map) return;
+      var map = instance.map;
+
+      if (scope === 'corridor') {
+        if (instance.routeBounds) {
+          map.fitBounds(instance.routeBounds, { top: 40, bottom: 40, left: 40, right: 40 });
+        }
+      } else if (scope === 'city') {
+        map.setCenter({ lat: 23.0338, lng: 72.5850 });
+        map.setZoom(12);
+      } else if (scope === 'metro') {
+        map.setCenter({ lat: 23.1000, lng: 72.6000 });
+        map.setZoom(11);
+      }
+    };
+
+    window.transitSetMapType = function(divId, isSatellite) {
+      var instance = window.transitMaps[divId];
+      if (!instance || !instance.map) return;
+      instance.isSatellite = !!isSatellite;
+      instance.map.setMapTypeId(isSatellite ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP);
+      instance.map.setOptions({
+        styles: isSatellite ? null : transitDarkStyles
+      });
+    };
+
+    window.transitZoomMap = function(divId, delta) {
+      var instance = window.transitMaps[divId];
+      if (!instance || !instance.map) return;
+      var currentZoom = instance.map.getZoom() || 14;
+      instance.map.setZoom(currentZoom + delta);
+    };
+
+    window.transitResetMap = function(divId) {
+      var instance = window.transitMaps[divId];
+      if (!instance || !instance.map) return;
+      if (instance.routeBounds) {
+        instance.map.fitBounds(instance.routeBounds, { top: 40, bottom: 40, left: 40, right: 40 });
+      } else {
+        instance.map.setCenter({ lat: 23.0827, lng: 72.5284 });
+        instance.map.setZoom(14);
+      }
+    };
+
+    window.transitUpdateGps = function(divId, lat, lng) {
+      try {
+        var instance = window.transitMaps[divId];
+        if (!instance || !instance.map) return;
+        var map = instance.map;
+
+        if (instance.gpsMarker) {
+          instance.gpsMarker.setPosition({ lat: lat, lng: lng });
+        } else {
+          instance.gpsMarker = new google.maps.Marker({
+            position: { lat: lat, lng: lng },
+            map: map,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: '#00E5FF',
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 2.5
+            },
+            title: 'Your Live GPS Location'
+          });
+        }
+      } catch (e) {}
+    };
+
+    window.transitCenterOnGps = function(divId, lat, lng) {
+      var instance = window.transitMaps[divId];
+      if (!instance || !instance.map) return;
+      instance.map.panTo({ lat: lat, lng: lng });
+      instance.map.setZoom(16);
+    };
   </script>
 </head>
 <body>

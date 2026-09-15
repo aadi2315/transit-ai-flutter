@@ -117,3 +117,98 @@ Future<Map<String, dynamic>?> queryJsCurrentLocation() async {
     return null;
   }
 }
+
+/// Initializes interactive Google Map instance in the specified div element
+bool initInteractiveMap(String divId, {bool isSatellite = false}) {
+  try {
+    if (js.context.hasProperty('transitInitMap')) {
+      final res = js.context.callMethod('transitInitMap', [divId, isSatellite]);
+      return res == true;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return false;
+}
+
+/// Renders or updates polyline and A/B markers on the interactive map
+bool updateInteractiveRoute(
+  String divId,
+  String polylineEnc,
+  double? originLat,
+  double? originLng,
+  double? destLat,
+  double? destLng,
+) {
+  try {
+    if (js.context.hasProperty('transitUpdateRoute')) {
+      final res = js.context.callMethod('transitUpdateRoute', [
+        divId,
+        polylineEnc,
+        originLat,
+        originLng,
+        destLat,
+        destLng,
+      ]);
+      return res == true;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return false;
+}
+
+/// Changes map scope bounds ('corridor', 'city', 'metro')
+void setInteractiveMapScope(String divId, String scope) {
+  try {
+    if (js.context.hasProperty('transitSetMapScope')) {
+      js.context.callMethod('transitSetMapScope', [divId, scope]);
+    }
+  } catch (_) {}
+}
+
+/// Toggles between dark roadmap and satellite view
+void setInteractiveMapType(String divId, bool isSatellite) {
+  try {
+    if (js.context.hasProperty('transitSetMapType')) {
+      js.context.callMethod('transitSetMapType', [divId, isSatellite]);
+    }
+  } catch (_) {}
+}
+
+/// Increments or decrements zoom level
+void zoomInteractiveMap(String divId, int delta) {
+  try {
+    if (js.context.hasProperty('transitZoomMap')) {
+      js.context.callMethod('transitZoomMap', [divId, delta]);
+    }
+  } catch (_) {}
+}
+
+/// Resets view back to fit route bounds
+void resetInteractiveMap(String divId) {
+  try {
+    if (js.context.hasProperty('transitResetMap')) {
+      js.context.callMethod('transitResetMap', [divId]);
+    }
+  } catch (_) {}
+}
+
+/// Places or updates the live user GPS marker on the interactive map
+void updateInteractiveGps(String divId, double lat, double lng) {
+  try {
+    if (js.context.hasProperty('transitUpdateGps')) {
+      js.context.callMethod('transitUpdateGps', [divId, lat, lng]);
+    }
+  } catch (_) {}
+}
+
+/// Pans to and zooms in on user live GPS location
+void centerInteractiveGps(String divId, double lat, double lng) {
+  try {
+    if (js.context.hasProperty('transitCenterOnGps')) {
+      js.context.callMethod('transitCenterOnGps', [divId, lat, lng]);
+    }
+  } catch (_) {}
+}
+

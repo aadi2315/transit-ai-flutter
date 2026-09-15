@@ -1,0 +1,177 @@
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
+import 'dart:html' as html;
+import 'dart:ui_web' as ui_web;
+import 'package:flutter/material.dart';
+import '../services/google_directions_service.dart';
+import '../services/transit_gps_service.dart';
+import '../services/web_maps_bridge.dart';
+
+final Set<String> _registeredViews = <String>{};
+
+Widget buildPlatformMapView({
+  required Key? key,
+  required String divId,
+  required TransitRouteResult? route,
+  required bool isSatellite,
+  required String? scope,
+  required TransitGpsLocation? gpsLocation,
+  required bool isDarkMode,
+  VoidCallback? onMapReady,
+}) {
+  return _WebInteractiveMapView(
+    key: key,
+    divId: divId,
+    route: route,
+    isSatellite: isSatellite,
+    scope: scope,
+    gpsLocation: gpsLocation,
+    isDarkMode: isDarkMode,
+    onMapReady: onMapReady,
+  );
+}
+
+class _WebInteractiveMapView extends StatefulWidget {
+  final String divId;
+  final TransitRouteResult? route;
+  final bool isSatellite;
+  final String? scope;
+  final TransitGpsLocation? gpsLocation;
+  final bool isDarkMode;
+  final VoidCallback? onMapReady;
+
+  const _WebInteractiveMapView({
+    super.key,
+    required this.divId,
+    required this.route,
+    required this.isSatellite,
+    required this.scope,
+    required this.gpsLocation,
+    required this.isDarkMode,
+    this.onMapReady,
+  });
+
+  @override
+  State<_WebInteractiveMapView> createState() => _WebInteractiveMapViewState();
+}
+
+class _WebInteractiveMapViewState extends State<_WebInteractiveMapView> {
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureViewRegistered(widget.divId);
+    _initializeJsMap();
+  }
+
+  void _ensureViewRegistered(String id) {
+    if (!_registeredViews.contains(id)) {
+      _registeredViews.add(id);
+      ui_web.platformViewRegistry.registerViewFactory(id, (int viewId) {
+        final el = html.DivElement()
+          ..id = id
+          ..style.width = '100%'
+          ..style.height = '100%'
+          ..style.border = 'none'
+          ..style.outline = 'none'
+          ..style.backgroundColor = '#0b1329';
+        return el;
+      });
+    }
+  }
+
+  void _initializeJsMap() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 120), () {
+        if (!mounted) return;
+        final ok = initInteractiveMap(widget.divId, isSatellite: widget.isSatellite);
+        if (ok) {
+          _initialized = true;
+          _syncAll();
+          widget.onMapReady?.call();
+        } else {
+          // Retry once if Google SDK script was still initializing
+          Future.delayed(const Duration(milliseconds: 350), () {
+            if (!mounted) return;
+            if (initInteractiveMap(widget.divId, isSatellite: widget.isSatellite)) {
+              _initialized = true;
+              _syncAll();
+              widget.onMapReady?.call();
+            }
+          });
+        }
+      });
+    });
+  }
+
+  void _syncAll() {
+    final r = widget.route;
+    if (r != null && r.encodedPolyline.isNotEmpty) {
+      updateInteractiveRoute(
+        widget.divId,
+        r.encodedPolyline,
+        r.originLat,
+        r.originLng,
+        r.destLat,
+        r.destLng,
+      );
+    }
+    if (widget.scope != null) {
+      setInteractiveMapScope(widget.divId, widget.scope!);
+    }
+    if (widget.gpsLocation != null) {
+      updateInteractiveGps(
+        widget.divId,
+        widget.gpsLocation!.latitude,
+        widget.gpsLocation!.longitude,
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _WebInteractiveMapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!_initialized) {
+      _initializeJsMap();
+      return;
+    }
+
+    if (widget.isSatellite != oldWidget.isSatellite) {
+      setInteractiveMapType(widget.divId, widget.isSatellite);
+    }
+
+    if (widget.route != oldWidget.route) {
+      final r = widget.route;
+      if (r != null && r.encodedPolyline.isNotEmpty) {
+        updateInteractiveRoute(
+          widget.divId,
+          r.encodedPolyline,
+          r.originLat,
+          r.originLng,
+          r.destLat,
+          r.destLng,
+        );
+      }
+    }
+
+    if (widget.scope != oldWidget.scope && widget.scope != null) {
+      setInteractiveMapScope(widget.divId, widget.scope!);
+    }
+
+    if (widget.gpsLocation != oldWidget.gpsLocation && widget.gpsLocation != null) {
+      updateInteractiveGps(
+        widget.divId,
+        widget.gpsLocation!.latitude,
+        widget.gpsLocation!.longitude,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return HtmlElementView(
+      viewType: widget.divId,
+    );
+  }
+}
