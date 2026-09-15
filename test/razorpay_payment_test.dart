@@ -9,7 +9,7 @@ void main() {
     test('RazorpayConfig has the user test credentials', () {
       expect(RazorpayConfig.keyId, equals('YOUR_RAZORPAY_KEY_ID'));
       expect(RazorpayConfig.keySecret, equals('YOUR_RAZORPAY_KEY_SECRET'));
-      expect(RazorpayConfig.merchantName, equals('Transit AI'));
+      expect(RazorpayConfig.merchantName, equals('PRAVHA'));
       expect(RazorpayConfig.currency, equals('INR'));
     });
 
@@ -97,7 +97,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       // Should transition to Dynamic QR Ticket pass upon payment
-      expect(find.text('Dynamic QR Pass'), findsOneWidget);
+      expect(find.text('PRAVHA Dynamic Pass'), findsOneWidget);
       expect(find.text('CONFIRMED'), findsOneWidget);
       expect(find.text('Ahmedabad BRTS'), findsOneWidget);
       expect(find.text('₹9.00 Paid'), findsOneWidget);
