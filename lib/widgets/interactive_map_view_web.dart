@@ -16,6 +16,7 @@ Widget buildPlatformMapView({
   required String? scope,
   required TransitGpsLocation? gpsLocation,
   required bool isDarkMode,
+  String? transitResultJson,
   VoidCallback? onMapReady,
 }) {
   return _WebInteractiveMapView(
@@ -26,6 +27,7 @@ Widget buildPlatformMapView({
     scope: scope,
     gpsLocation: gpsLocation,
     isDarkMode: isDarkMode,
+    transitResultJson: transitResultJson,
     onMapReady: onMapReady,
   );
 }
@@ -37,6 +39,7 @@ class _WebInteractiveMapView extends StatefulWidget {
   final String? scope;
   final TransitGpsLocation? gpsLocation;
   final bool isDarkMode;
+  final String? transitResultJson;
   final VoidCallback? onMapReady;
 
   const _WebInteractiveMapView({
@@ -47,6 +50,7 @@ class _WebInteractiveMapView extends StatefulWidget {
     required this.scope,
     required this.gpsLocation,
     required this.isDarkMode,
+    this.transitResultJson,
     this.onMapReady,
   });
 
@@ -82,39 +86,46 @@ class _WebInteractiveMapViewState extends State<_WebInteractiveMapView> {
 
   void _initializeJsMap() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 120), () {
-        if (!mounted) return;
-        final ok = initInteractiveMap(widget.divId, isSatellite: widget.isSatellite);
-        if (ok) {
-          _initialized = true;
-          _syncAll();
-          widget.onMapReady?.call();
-        } else {
-          // Retry once if Google SDK script was still initializing
-          Future.delayed(const Duration(milliseconds: 350), () {
-            if (!mounted) return;
-            if (initInteractiveMap(widget.divId, isSatellite: widget.isSatellite)) {
-              _initialized = true;
-              _syncAll();
-              widget.onMapReady?.call();
-            }
-          });
-        }
-      });
+      _tryInitMap(attempts: 0);
     });
   }
 
+  void _tryInitMap({int attempts = 0}) {
+    if (!mounted) return;
+    final ok = initInteractiveMap(widget.divId, isSatellite: widget.isSatellite);
+    if (ok) {
+      _initialized = true;
+      _syncAll();
+      widget.onMapReady?.call();
+    } else if (attempts < 8) {
+      Future.delayed(const Duration(milliseconds: 150), () {
+        _tryInitMap(attempts: attempts + 1);
+      });
+    }
+  }
+
   void _syncAll() {
-    final r = widget.route;
-    if (r != null && r.encodedPolyline.isNotEmpty) {
-      updateInteractiveRoute(
+    if (widget.transitResultJson != null && widget.transitResultJson!.isNotEmpty) {
+      updateTransitRoute(
         widget.divId,
-        r.encodedPolyline,
-        r.originLat,
-        r.originLng,
-        r.destLat,
-        r.destLng,
+        widget.transitResultJson!,
+        originLat: widget.route?.originLat,
+        originLng: widget.route?.originLng,
+        destLat: widget.route?.destLat,
+        destLng: widget.route?.destLng,
       );
+    } else {
+      final r = widget.route;
+      if (r != null) {
+        updateInteractiveRoute(
+          widget.divId,
+          r.encodedPolyline,
+          r.originLat,
+          r.originLng,
+          r.destLat,
+          r.destLng,
+        );
+      }
     }
     if (widget.scope != null) {
       setInteractiveMapScope(widget.divId, widget.scope!);
@@ -141,18 +152,27 @@ class _WebInteractiveMapViewState extends State<_WebInteractiveMapView> {
       setInteractiveMapType(widget.divId, widget.isSatellite);
     }
 
-    if (widget.route != oldWidget.route) {
-      final r = widget.route;
-      if (r != null && r.encodedPolyline.isNotEmpty) {
-        updateInteractiveRoute(
-          widget.divId,
-          r.encodedPolyline,
-          r.originLat,
-          r.originLng,
-          r.destLat,
-          r.destLng,
-        );
-      }
+    if (widget.transitResultJson != oldWidget.transitResultJson &&
+        widget.transitResultJson != null &&
+        widget.transitResultJson!.isNotEmpty) {
+      updateTransitRoute(
+        widget.divId,
+        widget.transitResultJson!,
+        originLat: widget.route?.originLat,
+        originLng: widget.route?.originLng,
+        destLat: widget.route?.destLat,
+        destLng: widget.route?.destLng,
+      );
+    } else if (widget.route != oldWidget.route && widget.route != null) {
+      final r = widget.route!;
+      updateInteractiveRoute(
+        widget.divId,
+        r.encodedPolyline,
+        r.originLat,
+        r.originLng,
+        r.destLat,
+        r.destLng,
+      );
     }
 
     if (widget.scope != oldWidget.scope && widget.scope != null) {

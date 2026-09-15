@@ -23,6 +23,7 @@ class InteractiveGoogleMapView extends StatefulWidget {
   final String? scope;
   final TransitGpsLocation? gpsLocation;
   final bool isDarkMode;
+  final String? transitResultJson;
   // Kept for API compatibility — no longer used (real map handles pan natively)
   final TransformationController? transformationController;
   final VoidCallback? onMapReady;
@@ -35,6 +36,7 @@ class InteractiveGoogleMapView extends StatefulWidget {
     this.scope = 'corridor',
     this.gpsLocation,
     this.isDarkMode = false,
+    this.transitResultJson,
     this.transformationController, // kept for API compat, not used
     this.onMapReady,
   });
@@ -58,6 +60,7 @@ class _InteractiveGoogleMapViewState extends State<InteractiveGoogleMapView> {
       scope: widget.scope,
       gpsLocation: widget.gpsLocation,
       isDarkMode: widget.isDarkMode,
+      transitResultJson: widget.transitResultJson,
       onMapReady: widget.onMapReady,
     );
   }

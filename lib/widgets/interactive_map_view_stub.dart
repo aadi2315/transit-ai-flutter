@@ -12,6 +12,7 @@ Widget buildPlatformMapView({
   required String? scope,
   required TransitGpsLocation? gpsLocation,
   required bool isDarkMode,
+  String? transitResultJson,
   VoidCallback? onMapReady,
 }) {
   return _StubMapView(
@@ -22,6 +23,7 @@ Widget buildPlatformMapView({
     scope: scope,
     gpsLocation: gpsLocation,
     isDarkMode: isDarkMode,
+    transitResultJson: transitResultJson,
   );
 }
 
@@ -32,6 +34,7 @@ class _StubMapView extends StatelessWidget {
   final String? scope;
   final TransitGpsLocation? gpsLocation;
   final bool isDarkMode;
+  final String? transitResultJson;
 
   const _StubMapView({
     super.key,
@@ -41,6 +44,7 @@ class _StubMapView extends StatelessWidget {
     required this.scope,
     required this.gpsLocation,
     required this.isDarkMode,
+    this.transitResultJson,
   });
 
   @override

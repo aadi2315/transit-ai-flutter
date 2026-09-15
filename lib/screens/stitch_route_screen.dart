@@ -16,6 +16,7 @@ import '../services/transit_place_service.dart';
 import '../services/transit_gps_service.dart';
 import '../services/transit_routing_service.dart';
 import '../services/web_maps_bridge.dart';
+import '../domain/models/transit_graph_models.dart';
 
 class StitchRouteScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
@@ -62,6 +63,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
   // Dijkstra transit result (bus legs)
   TransitRoutingResult? _transitResult;
+  String? _transitLegsJson;
 
   // No longer using TransformationController — real Google Maps handles its own pan
   final TransformationController _corridorMapController = TransformationController();
@@ -128,6 +130,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       MaterialPageRoute(
         builder: (ctx) => _FullScreenMapViewer(
           route: _currentRoute,
+          transitResultJson: _transitLegsJson,
           dark: dark,
           initialSatelliteMode: _satelliteMode,
           initialGps: _currentGps,
@@ -208,13 +211,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     });
   }
 
-  /// Haversine distance in metres (lightweight, no external deps).
+  /// Haversine distance in metres.
   static double _haversineM(double lat1, double lon1, double lat2, double lon2) {
-    const r = 6371000.0;
-    final dLat = (lat2 - lat1) * 3.14159265 / 180;
-    final dLon = (lon2 - lon1) * 3.14159265 / 180;
-    final a = dLat * dLat / 4 + dLon * dLon / 4;
-    return 2 * r * (a < 1 ? a : 1);
+    return GeoMath.haversineM(lat1, lon1, lat2, lon2);
   }
 
   @override
@@ -306,8 +305,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         }
       }
 
-      // --- 1. TRANSIT-FIRST: Try Dijkstra bus-route engine ---
-      if (!isOriginGps && !isDestGps) {
+      // --- 1. TRANSIT-FIRST: Check manual corridor routes first, then Dijkstra ---
+      TransitRoutingResult? result = TransitRoutingService.instance
+          .getManualCorridorRoute(origin: origin, destination: dest);
+
+      if (result == null && !isOriginGps && !isDestGps) {
         try {
           final svc = TransitRoutingService.instance;
           await svc.init();
@@ -315,17 +317,63 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           final destStop = svc.findStopByName(dest);
           debugPrint('[Route] Stop match: origin=$originStop, dest=$destStop');
           if (originStop != null && destStop != null) {
-            final result = await svc.findRoute(
+            result = await svc.findRoute(
               originStopId: originStop.stopId,
               destinationStopId: destStop.stopId,
             );
-            if (result != null && result.legs.isNotEmpty) {
-              debugPrint('[Route] Dijkstra found ${result.legs.length} leg(s): '
-                '${result.busNumbers.join(' → ')}');
+          }
+        } catch (e) {
+          debugPrint('[Route] Dijkstra error: $e');
+        }
+      }
+
+      if (result != null && result.legs.isNotEmpty) {
+        debugPrint('[Route] Found transit route with ${result.legs.length} leg(s): '
+            '${result.busNumbers.join(' → ')}');
               // Build a synthetic TransitRouteResult for the map from the
               // first leg's board stop and last leg's alight stop
               final firstLeg = result.legs.first;
               final lastLeg = result.legs.last;
+
+              // Build combined coordinate list for polyline
+              final allCoords = <MapCoordinate>[];
+              for (final leg in result.legs) {
+                for (final pt in leg.clippedPolyline) {
+                  allCoords.add(MapCoordinate(pt.lat, pt.lon));
+                }
+              }
+              if (allCoords.isEmpty) {
+                allCoords.add(MapCoordinate(firstLeg.boardStop.lat, firstLeg.boardStop.lon));
+                allCoords.add(MapCoordinate(lastLeg.alightStop.lat, lastLeg.alightStop.lon));
+              }
+              final combinedPolyline = GoogleDirectionsService.encodePolyline(allCoords);
+
+              // Pre-encode legs payload JSON
+              const legColors = ['#1A73E8', '#EA4335', '#34A853', '#FBBC05', '#9B59B6'];
+              final legsPayload = <Map<String, dynamic>>[];
+              for (int i = 0; i < result.legs.length; i++) {
+                final leg = result.legs[i];
+                final color = legColors[i % legColors.length];
+                String polylineEnc = '';
+                if (leg.clippedPolyline.isNotEmpty) {
+                  polylineEnc = _encodePolylinePoints(leg.clippedPolyline);
+                }
+                legsPayload.add({
+                  'polylineEnc': polylineEnc,
+                  'color': color,
+                  'busNumber': leg.routeShortName,
+                  'boardLat': leg.boardStop.lat,
+                  'boardLng': leg.boardStop.lon,
+                  'boardName': leg.boardStop.name,
+                  'alightLat': leg.alightStop.lat,
+                  'alightLng': leg.alightStop.lon,
+                  'alightName': leg.alightStop.name,
+                  'isTransfer': i > 0,
+                });
+              }
+              final legsJson = jsonEncode(legsPayload);
+              final distKm = _estimateDistanceKm(result);
+
               final mapRoute = TransitRouteResult(
                 origin: firstLeg.boardStop.name,
                 destination: lastLeg.alightStop.name,
@@ -333,10 +381,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                 originLng: firstLeg.boardStop.lon,
                 destLat: lastLeg.alightStop.lat,
                 destLng: lastLeg.alightStop.lon,
-                encodedPolyline: '', // map uses transit segments directly
-                polylineCoordinates: const [],
-                distanceKm: _estimateDistanceKm(result),
-                distanceText: '${_estimateDistanceKm(result).toStringAsFixed(1)} km',
+                encodedPolyline: combinedPolyline,
+                polylineCoordinates: allCoords,
+                distanceKm: distKm,
+                distanceText: '${distKm.toStringAsFixed(1)} km',
                 durationMins: result.totalDurationMinutes.round(),
                 durationText: '${result.totalDurationMinutes.round()} mins',
                 fareAmount: 5.0 * result.legs.length,
@@ -346,19 +394,15 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               if (mounted) {
                 setState(() {
                   _transitResult = result;
+                  _transitLegsJson = legsJson;
                   _currentRoute = mapRoute;
                   _isLoadingRoute = false;
                 });
-                // Push multi-leg transit route to both maps
-                _pushTransitRouteToMaps(result);
+                // Push multi-leg transit route to all map canvases
+                _pushTransitRouteToMaps(result, legsJson);
               }
               return;
             }
-          }
-        } catch (e) {
-          debugPrint('[Route] Dijkstra error: $e');
-        }
-      }
 
       // --- 2. FALLBACK: Supabase cache / Google Directions driving ---
       final queryOrigin = (isOriginGps && gps != null)
@@ -378,8 +422,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       if (mounted) {
         setState(() {
           _currentRoute = route;
+          _transitResult = null;
+          _transitLegsJson = null;
           _isLoadingRoute = false;
         });
+        _pushDrivingRouteToMaps(route);
       }
     } catch (e) {
       debugPrint('[StitchRouteScreen] Error fetching route: $e');
@@ -391,35 +438,41 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     }
   }
 
-  /// Pushes multi-leg transit segments to both map canvases via JS bridge.
-  void _pushTransitRouteToMaps(TransitRoutingResult result) {
-    const legColors = ['#1A73E8', '#EA4335', '#34A853', '#FBBC05', '#9B59B6'];
-    final legsPayload = <Map<String, dynamic>>[];
-    for (int i = 0; i < result.legs.length; i++) {
-      final leg = result.legs[i];
-      final color = legColors[i % legColors.length];
-      // Build encoded polyline from clipped points if available
-      String polylineEnc = '';
-      if (leg.clippedPolyline.isNotEmpty) {
-        polylineEnc = _encodePolylinePoints(leg.clippedPolyline);
+  /// Pushes multi-leg transit segments to all map canvases via JS bridge.
+  void _pushTransitRouteToMaps(TransitRoutingResult result, [String? precomputedJson]) {
+    final legsJson = precomputedJson ?? () {
+      const legColors = ['#1A73E8', '#EA4335', '#34A853', '#FBBC05', '#9B59B6'];
+      final legsPayload = <Map<String, dynamic>>[];
+      for (int i = 0; i < result.legs.length; i++) {
+        final leg = result.legs[i];
+        final color = legColors[i % legColors.length];
+        String polylineEnc = '';
+        if (leg.clippedPolyline.isNotEmpty) {
+          polylineEnc = _encodePolylinePoints(leg.clippedPolyline);
+        }
+        legsPayload.add({
+          'polylineEnc': polylineEnc,
+          'color': color,
+          'busNumber': leg.routeShortName,
+          'boardLat': leg.boardStop.lat,
+          'boardLng': leg.boardStop.lon,
+          'boardName': leg.boardStop.name,
+          'alightLat': leg.alightStop.lat,
+          'alightLng': leg.alightStop.lon,
+          'alightName': leg.alightStop.name,
+          'isTransfer': i > 0,
+        });
       }
-      legsPayload.add({
-        'polylineEnc': polylineEnc,
-        'color': color,
-        'busNumber': leg.routeShortName,
-        'boardLat': leg.boardStop.lat,
-        'boardLng': leg.boardStop.lon,
-        'boardName': leg.boardStop.name,
-        'alightLat': leg.alightStop.lat,
-        'alightLng': leg.alightStop.lon,
-        'alightName': leg.alightStop.name,
-        'isTransfer': i > 0,
-      });
-    }
-    final legsJson = jsonEncode(legsPayload);
+      return jsonEncode(legsPayload);
+    }();
+
     final firstLeg = result.legs.first;
     final lastLeg = result.legs.last;
-    for (final divId in ['transit_map_corridor', 'transit_map_explore']) {
+    for (final divId in [
+      'transit_map_corridor',
+      'transit_map_explore',
+      'transit_map_fullscreen'
+    ]) {
       updateTransitRoute(
         divId,
         legsJson,
@@ -431,19 +484,37 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     }
   }
 
-  /// Rough distance estimate from all transit leg polylines.
+  /// Pushes driving or cached corridor route to all map canvases via JS bridge.
+  void _pushDrivingRouteToMaps(TransitRouteResult route) {
+    for (final divId in [
+      'transit_map_corridor',
+      'transit_map_explore',
+      'transit_map_fullscreen'
+    ]) {
+      updateInteractiveRoute(
+        divId,
+        route.encodedPolyline,
+        route.originLat,
+        route.originLng,
+        route.destLat,
+        route.destLng,
+      );
+    }
+  }
+
+  /// Accurate distance estimate from all transit leg polylines in km.
   double _estimateDistanceKm(TransitRoutingResult result) {
     double totalM = 0;
     for (final leg in result.legs) {
       final pts = leg.clippedPolyline;
       for (int i = 1; i < pts.length; i++) {
-        totalM += _haversineM(
+        totalM += GeoMath.haversineM(
           pts[i - 1].lat, pts[i - 1].lon,
           pts[i].lat, pts[i].lon,
         );
       }
-      if (pts.isEmpty) {
-        totalM += _haversineM(
+      if (pts.length < 2) {
+        totalM += GeoMath.haversineM(
           leg.boardStop.lat, leg.boardStop.lon,
           leg.alightStop.lat, leg.alightStop.lon,
         );
@@ -1035,7 +1106,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _isRouteLegs = true),
+              onTap: () {
+                setState(() => _isRouteLegs = true);
+                if (_transitResult != null) {
+                  _pushTransitRouteToMaps(_transitResult!, _transitLegsJson);
+                } else if (_currentRoute != null) {
+                  _pushDrivingRouteToMaps(_currentRoute!);
+                }
+              },
               child: Container(
                 decoration: BoxDecoration(
                   color: _isRouteLegs ? const Color(0x4D38BDF8) : Colors.transparent,
@@ -1072,7 +1150,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           ),
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _isRouteLegs = false),
+              onTap: () {
+                setState(() => _isRouteLegs = false);
+                if (_transitResult != null) {
+                  _pushTransitRouteToMaps(_transitResult!, _transitLegsJson);
+                } else if (_currentRoute != null) {
+                  _pushDrivingRouteToMaps(_currentRoute!);
+                }
+              },
               child: Container(
                 alignment: Alignment.center,
                 child: Row(
@@ -1268,6 +1353,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         scope: _mapScope,
                         gpsLocation: _currentGps,
                         isDarkMode: dark,
+                        transitResultJson: _transitLegsJson,
                         transformationController: _corridorMapController,
                       ),
                     )
@@ -2253,6 +2339,7 @@ class _FullScreenMapViewer extends StatefulWidget {
   final bool initialSatelliteMode;
   final TransitGpsLocation? initialGps;
   final String? initialScope;
+  final String? transitResultJson;
 
   const _FullScreenMapViewer({
     required this.route,
@@ -2260,6 +2347,7 @@ class _FullScreenMapViewer extends StatefulWidget {
     required this.initialSatelliteMode,
     this.initialGps,
     this.initialScope,
+    this.transitResultJson,
   });
 
   @override
@@ -2397,6 +2485,7 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
               scope: _scope,
               gpsLocation: _currentGps,
               isDarkMode: widget.dark,
+              transitResultJson: widget.transitResultJson,
               transformationController: _controller,
             ),
           ),

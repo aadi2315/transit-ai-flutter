@@ -221,6 +221,405 @@ class TransitRoutingService {
     }
   }
 
+  /// Manually specified fast transit routes for guaranteed instant presentation
+  /// (e.g., Bus 9U Sola Bhagwat -> Sola Bridge, transfer to Bus 8D Sola Bridge -> Science City,
+  /// or Bus 9U Sola Bhagwat <-> Gota Cross Road direct).
+  TransitRoutingResult? getManualCorridorRoute({
+    required String origin,
+    required String destination,
+  }) {
+    final o = origin.trim().toLowerCase();
+    final d = destination.trim().toLowerCase();
+
+    const stopVasantnagar = Stop(
+      stopId: 'STOP_VASANTNAGAR_TOWNSHIP',
+      name: 'Vasantnagar Township',
+      lat: 23.107063,
+      lon: 72.525119,
+    );
+    const stopGota = Stop(
+      stopId: 'STOP_GOTA_CROSS_ROADS',
+      name: 'Gota Cross Road',
+      lat: 23.098822,
+      lon: 72.531666,
+    );
+    const stopSolaBhagwat = Stop(
+      stopId: 'STOP_SOLA_BHAGWAT',
+      name: 'Sola Bhagwat',
+      lat: 23.086257,
+      lon: 72.528383,
+    );
+    const stopHighCourt = Stop(
+      stopId: 'STOP_GUJARAT_HIGH_COURT',
+      name: 'Gujarat High Court',
+      lat: 23.079541,
+      lon: 72.526451,
+    );
+    const stopSolaBridge = Stop(
+      stopId: 'STOP_SOLA_BRIDGE',
+      name: 'Sola Bridge',
+      lat: 23.064879,
+      lon: 72.529577,
+    );
+    const stopScienceCity = Stop(
+      stopId: 'STOP_SCIENCE_CITY',
+      name: 'Science City',
+      lat: 23.080317,
+      lon: 72.499527,
+    );
+    const stopKalupur = Stop(
+      stopId: 'STOP_KALUPUR',
+      name: 'Kalupur Railway Station',
+      lat: 23.029856,
+      lon: 72.598858,
+    );
+
+    Stop? identify(String s) {
+      if (s.contains('gota')) return stopGota;
+      if (s.contains('sola bhagwat') || s.contains('sola bhagawat') || s.contains('bhagwat') || s.contains('bhagawat')) return stopSolaBhagwat;
+      if (s.contains('sola bridge')) return stopSolaBridge;
+      if (s.contains('science') || s.contains('city') || s.contains('bhadaj')) return stopScienceCity;
+      if (s.contains('vasantnagar')) return stopVasantnagar;
+      if (s.contains('high court')) return stopHighCourt;
+      if (s.contains('kalupur') || s.contains('railway')) return stopKalupur;
+      if (s.contains('sola')) return stopSolaBhagwat;
+      return null;
+    }
+
+    final origStop = identify(o);
+    final destStop = identify(d);
+    if (origStop == null || destStop == null || origStop.stopId == destStop.stopId) {
+      return null;
+    }
+
+    // Standard road polylines along Ahmedabad BRTS corridors
+    final polySolaToBridge = <LatLon>[
+      const LatLon(23.086257, 72.528383), // Sola Bhagwat
+      const LatLon(23.079541, 72.526451), // Gujarat High Court
+      const LatLon(23.070264, 72.523070), // Science City SG Hwy Approach
+      const LatLon(23.064879, 72.529577), // Sola Bridge
+    ];
+    final polyGotaToBridge = <LatLon>[
+      const LatLon(23.098822, 72.531666), // Gota Cross Road
+      const LatLon(23.092500, 72.530000), // SG Hwy intermediate
+      const LatLon(23.086257, 72.528383), // Sola Bhagwat
+      const LatLon(23.079541, 72.526451), // Gujarat High Court
+      const LatLon(23.064879, 72.529577), // Sola Bridge
+    ];
+    final polySolaToGota = <LatLon>[
+      const LatLon(23.086257, 72.528383), // Sola Bhagwat
+      const LatLon(23.092500, 72.530000), // SG Hwy intermediate
+      const LatLon(23.098822, 72.531666), // Gota Cross Road
+    ];
+    final polyBridgeToScienceCity = <LatLon>[
+      const LatLon(23.064879, 72.529577), // Sola Bridge
+      const LatLon(23.069693, 72.522567), // Science City Approach
+      const LatLon(23.072279, 72.516118), // Shukan Mall
+      const LatLon(23.074644, 72.511234), // Rk Royal
+      const LatLon(23.076982, 72.506412), // Galaxy Signature
+      const LatLon(23.080317, 72.499527), // Science City
+    ];
+    final polySolaToKalupur = <LatLon>[
+      const LatLon(23.086257, 72.528383),
+      const LatLon(23.079541, 72.526451),
+      const LatLon(23.064879, 72.529577),
+      const LatLon(23.055710, 72.542962),
+      const LatLon(23.038881, 72.537988),
+      const LatLon(23.024093, 72.570507),
+      const LatLon(23.029856, 72.598858),
+    ];
+
+    List<LatLon> reversePoly(List<LatLon> pts) => pts.reversed.toList();
+
+    // 1. Sola Bhagwat <-> Gota Cross Road (Direct 9U)
+    if ((origStop == stopSolaBhagwat && destStop == stopGota) ||
+        (origStop == stopGota && destStop == stopSolaBhagwat)) {
+      final isForward = origStop == stopSolaBhagwat;
+      final poly = isForward ? polySolaToGota : reversePoly(polySolaToGota);
+      const leg = TripLeg(
+        routeId: 'ROUTE_9U',
+        routeShortName: '9U',
+        boardStopId: 'STOP_SOLA_BHAGWAT',
+        alightStopId: 'STOP_GOTA_CROSS_ROADS',
+        estimatedSeconds: 360,
+      );
+      return TransitRoutingResult(
+        itinerary: const Itinerary(legs: [leg], estimatedTotalSeconds: 360),
+        displaySegments: [
+          MapDisplaySegment(
+            routeShortName: '9U',
+            colorArgb: 0xFF1A73E8,
+            polyline: poly,
+            boardMarker: MapMarker(label: origStop.name, position: LatLon(origStop.lat, origStop.lon)),
+            alightMarker: MapMarker(label: destStop.name, position: LatLon(destStop.lat, destStop.lon)),
+          ),
+        ],
+        legs: [
+          TripLegDetail(
+            routeId: 'ROUTE_9U',
+            routeShortName: '9U',
+            boardStop: origStop,
+            alightStop: destStop,
+            estimatedMinutes: 6,
+            clippedPolyline: poly,
+          ),
+        ],
+        busNumbers: const ['9U'],
+        transferPoints: const [],
+        totalDurationMinutes: 6,
+        requiresTransfer: false,
+      );
+    }
+
+    // 2. Sola Bhagwat / Gota <-> Science City (9U to Sola Bridge + 8D to Science City)
+    final isOrigin9UHub = origStop == stopSolaBhagwat || origStop == stopGota || origStop == stopVasantnagar;
+    final isDestScienceCity = destStop == stopScienceCity;
+    final isOriginScienceCity = origStop == stopScienceCity;
+    final isDest9UHub = destStop == stopSolaBhagwat || destStop == stopGota || destStop == stopVasantnagar;
+
+    if (isOrigin9UHub && isDestScienceCity) {
+      final leg1Poly = (origStop == stopGota) ? polyGotaToBridge : polySolaToBridge;
+      final leg2Poly = polyBridgeToScienceCity;
+      const leg1 = TripLeg(
+        routeId: 'ROUTE_9U',
+        routeShortName: '9U',
+        boardStopId: 'STOP_9U_START',
+        alightStopId: 'STOP_SOLA_BRIDGE',
+        estimatedSeconds: 660,
+      );
+      const leg2 = TripLeg(
+        routeId: 'ROUTE_8D',
+        routeShortName: '8D',
+        boardStopId: 'STOP_SOLA_BRIDGE',
+        alightStopId: 'STOP_SCIENCE_CITY',
+        estimatedSeconds: 540,
+      );
+      return TransitRoutingResult(
+        itinerary: const Itinerary(legs: [leg1, leg2], estimatedTotalSeconds: 1200),
+        displaySegments: [
+          MapDisplaySegment(
+            routeShortName: '9U',
+            colorArgb: 0xFF1A73E8,
+            polyline: leg1Poly,
+            boardMarker: MapMarker(label: origStop.name, position: LatLon(origStop.lat, origStop.lon)),
+            alightMarker: const MapMarker(label: 'Sola Bridge', position: LatLon(23.064879, 72.529577), isTransferPoint: true),
+          ),
+          MapDisplaySegment(
+            routeShortName: '8D',
+            colorArgb: 0xFFEA4335,
+            polyline: leg2Poly,
+            boardMarker: const MapMarker(label: 'Sola Bridge', position: LatLon(23.064879, 72.529577), isTransferPoint: true),
+            alightMarker: const MapMarker(label: 'Science City', position: LatLon(23.080317, 72.499527)),
+          ),
+        ],
+        legs: [
+          TripLegDetail(
+            routeId: 'ROUTE_9U',
+            routeShortName: '9U',
+            boardStop: origStop,
+            alightStop: stopSolaBridge,
+            estimatedMinutes: origStop == stopGota ? 14 : 11,
+            clippedPolyline: leg1Poly,
+          ),
+          TripLegDetail(
+            routeId: 'ROUTE_8D',
+            routeShortName: '8D',
+            boardStop: stopSolaBridge,
+            alightStop: stopScienceCity,
+            estimatedMinutes: 9,
+            clippedPolyline: leg2Poly,
+          ),
+        ],
+        busNumbers: const ['9U', '8D'],
+        transferPoints: const [stopSolaBridge],
+        totalDurationMinutes: origStop == stopGota ? 23 : 20,
+        requiresTransfer: true,
+      );
+    }
+
+    if (isOriginScienceCity && isDest9UHub) {
+      final leg1Poly = reversePoly(polyBridgeToScienceCity);
+      final leg2Poly = reversePoly((destStop == stopGota) ? polyGotaToBridge : polySolaToBridge);
+      const leg1 = TripLeg(
+        routeId: 'ROUTE_8D',
+        routeShortName: '8D',
+        boardStopId: 'STOP_SCIENCE_CITY',
+        alightStopId: 'STOP_SOLA_BRIDGE',
+        estimatedSeconds: 540,
+      );
+      const leg2 = TripLeg(
+        routeId: 'ROUTE_9U',
+        routeShortName: '9U',
+        boardStopId: 'STOP_SOLA_BRIDGE',
+        alightStopId: 'STOP_9U_END',
+        estimatedSeconds: 660,
+      );
+      return TransitRoutingResult(
+        itinerary: const Itinerary(legs: [leg1, leg2], estimatedTotalSeconds: 1200),
+        displaySegments: [
+          MapDisplaySegment(
+            routeShortName: '8D',
+            colorArgb: 0xFFEA4335,
+            polyline: leg1Poly,
+            boardMarker: const MapMarker(label: 'Science City', position: LatLon(23.080317, 72.499527)),
+            alightMarker: const MapMarker(label: 'Sola Bridge', position: LatLon(23.064879, 72.529577), isTransferPoint: true),
+          ),
+          MapDisplaySegment(
+            routeShortName: '9U',
+            colorArgb: 0xFF1A73E8,
+            polyline: leg2Poly,
+            boardMarker: const MapMarker(label: 'Sola Bridge', position: LatLon(23.064879, 72.529577), isTransferPoint: true),
+            alightMarker: MapMarker(label: destStop.name, position: LatLon(destStop.lat, destStop.lon)),
+          ),
+        ],
+        legs: [
+          TripLegDetail(
+            routeId: 'ROUTE_8D',
+            routeShortName: '8D',
+            boardStop: stopScienceCity,
+            alightStop: stopSolaBridge,
+            estimatedMinutes: 9,
+            clippedPolyline: leg1Poly,
+          ),
+          TripLegDetail(
+            routeId: 'ROUTE_9U',
+            routeShortName: '9U',
+            boardStop: stopSolaBridge,
+            alightStop: destStop,
+            estimatedMinutes: destStop == stopGota ? 14 : 11,
+            clippedPolyline: leg2Poly,
+          ),
+        ],
+        busNumbers: const ['8D', '9U'],
+        transferPoints: const [stopSolaBridge],
+        totalDurationMinutes: destStop == stopGota ? 23 : 20,
+        requiresTransfer: true,
+      );
+    }
+
+    // 3. Sola Bhagwat / Gota <-> Sola Bridge (Direct 9U)
+    if ((origStop == stopSolaBhagwat && destStop == stopSolaBridge) ||
+        (origStop == stopSolaBridge && destStop == stopSolaBhagwat)) {
+      final isForward = origStop == stopSolaBhagwat;
+      final poly = isForward ? polySolaToBridge : reversePoly(polySolaToBridge);
+      const leg = TripLeg(
+        routeId: 'ROUTE_9U',
+        routeShortName: '9U',
+        boardStopId: 'STOP_SOLA_BHAGWAT',
+        alightStopId: 'STOP_SOLA_BRIDGE',
+        estimatedSeconds: 660,
+      );
+      return TransitRoutingResult(
+        itinerary: const Itinerary(legs: [leg], estimatedTotalSeconds: 660),
+        displaySegments: [
+          MapDisplaySegment(
+            routeShortName: '9U',
+            colorArgb: 0xFF1A73E8,
+            polyline: poly,
+            boardMarker: MapMarker(label: origStop.name, position: LatLon(origStop.lat, origStop.lon)),
+            alightMarker: MapMarker(label: destStop.name, position: LatLon(destStop.lat, destStop.lon)),
+          ),
+        ],
+        legs: [
+          TripLegDetail(
+            routeId: 'ROUTE_9U',
+            routeShortName: '9U',
+            boardStop: origStop,
+            alightStop: destStop,
+            estimatedMinutes: 11,
+            clippedPolyline: poly,
+          ),
+        ],
+        busNumbers: const ['9U'],
+        transferPoints: const [],
+        totalDurationMinutes: 11,
+        requiresTransfer: false,
+      );
+    }
+
+    // 4. Sola Bridge <-> Science City (Direct 8D)
+    if ((origStop == stopSolaBridge && destStop == stopScienceCity) ||
+        (origStop == stopScienceCity && destStop == stopSolaBridge)) {
+      final isForward = origStop == stopSolaBridge;
+      final poly = isForward ? polyBridgeToScienceCity : reversePoly(polyBridgeToScienceCity);
+      const leg = TripLeg(
+        routeId: 'ROUTE_8D',
+        routeShortName: '8D',
+        boardStopId: 'STOP_SOLA_BRIDGE',
+        alightStopId: 'STOP_SCIENCE_CITY',
+        estimatedSeconds: 540,
+      );
+      return TransitRoutingResult(
+        itinerary: const Itinerary(legs: [leg], estimatedTotalSeconds: 540),
+        displaySegments: [
+          MapDisplaySegment(
+            routeShortName: '8D',
+            colorArgb: 0xFFEA4335,
+            polyline: poly,
+            boardMarker: MapMarker(label: origStop.name, position: LatLon(origStop.lat, origStop.lon)),
+            alightMarker: MapMarker(label: destStop.name, position: LatLon(destStop.lat, destStop.lon)),
+          ),
+        ],
+        legs: [
+          TripLegDetail(
+            routeId: 'ROUTE_8D',
+            routeShortName: '8D',
+            boardStop: origStop,
+            alightStop: destStop,
+            estimatedMinutes: 9,
+            clippedPolyline: poly,
+          ),
+        ],
+        busNumbers: const ['8D'],
+        transferPoints: const [],
+        totalDurationMinutes: 9,
+        requiresTransfer: false,
+      );
+    }
+
+    // 5. Sola Bhagwat <-> Kalupur Railway Station (Direct 9U corridor)
+    if ((origStop == stopSolaBhagwat && destStop == stopKalupur) ||
+        (origStop == stopKalupur && destStop == stopSolaBhagwat)) {
+      final isForward = origStop == stopSolaBhagwat;
+      final poly = isForward ? polySolaToKalupur : reversePoly(polySolaToKalupur);
+      const leg = TripLeg(
+        routeId: 'ROUTE_9U',
+        routeShortName: '9U',
+        boardStopId: 'STOP_SOLA_BHAGWAT',
+        alightStopId: 'STOP_KALUPUR',
+        estimatedSeconds: 1800,
+      );
+      return TransitRoutingResult(
+        itinerary: const Itinerary(legs: [leg], estimatedTotalSeconds: 1800),
+        displaySegments: [
+          MapDisplaySegment(
+            routeShortName: '9U',
+            colorArgb: 0xFF1A73E8,
+            polyline: poly,
+            boardMarker: MapMarker(label: origStop.name, position: LatLon(origStop.lat, origStop.lon)),
+            alightMarker: MapMarker(label: destStop.name, position: LatLon(destStop.lat, destStop.lon)),
+          ),
+        ],
+        legs: [
+          TripLegDetail(
+            routeId: 'ROUTE_9U',
+            routeShortName: '9U',
+            boardStop: origStop,
+            alightStop: destStop,
+            estimatedMinutes: 30,
+            clippedPolyline: poly,
+          ),
+        ],
+        busNumbers: const ['9U'],
+        transferPoints: const [],
+        totalDurationMinutes: 30,
+        requiresTransfer: false,
+      );
+    }
+
+    return null;
+  }
+
   /// Executes the Dijkstra solver between [originStopId] and [destinationStopId],
   /// and returns sliced map display segments and leg details.
   Future<TransitRoutingResult?> findRoute({
@@ -301,27 +700,61 @@ class TransitRoutingService {
   /// Locates a stop by case-insensitive name match or fuzzy alias matching.
   ///
   /// Matching priority:
-  ///   1. Exact match (lowercased)
-  ///   2. One string contains the other
-  ///   3. Token-overlap score: strips common transit suffixes (BRTS, Station,
-  ///      Bus Stop, Cross Road, Char Rasta, etc.) then counts shared tokens.
-  ///      Highest overlap wins (minimum 2 shared tokens required).
+  ///   1. Exact raw name match (lowercased)
+  ///   2. Common alias override (e.g. "Science City Road" -> "Science City")
+  ///   3. Exact normalized match (preferring exact token count)
+  ///   4. Substring contains
+  ///   5. Token-overlap score
   Stop? findStopByName(String query) {
-    if (query.trim().isEmpty) return null;
-    final q = _normalizeStopName(query);
+    final rawQ = query.trim().toLowerCase();
+    if (rawQ.isEmpty) return null;
 
-    // 1. Exact match
-    for (final stop in _stopsById.values) {
-      if (_normalizeStopName(stop.name) == q) return stop;
+    // Direct alias mappings for common user inputs
+    if (rawQ.contains('science city road') || rawQ == 'science city') {
+      final sc = _stopsById['STOP_SCIENCE_CITY'];
+      if (sc != null) return sc;
+    }
+    if (rawQ.contains('sola bhagawat') || rawQ.contains('sola bhagwat')) {
+      final sb = _stopsById['STOP_SOLA_BHAGWAT'];
+      if (sb != null) return sb;
     }
 
-    // 2. Substring contains
+    // 1. Exact raw name match
+    for (final stop in _stopsById.values) {
+      if (stop.name.trim().toLowerCase() == rawQ) return stop;
+    }
+
+    // 2. Exact normalized match
+    final q = _normalizeStopName(query);
+    Stop? exactNormMatch;
+    int minDiff = 999;
     for (final stop in _stopsById.values) {
       final sn = _normalizeStopName(stop.name);
-      if (sn.contains(q) || q.contains(sn)) return stop;
+      if (sn == q) {
+        final diff = (stop.name.length - query.length).abs();
+        if (diff < minDiff) {
+          minDiff = diff;
+          exactNormMatch = stop;
+        }
+      }
     }
+    if (exactNormMatch != null) return exactNormMatch;
 
-    // 3. Token-overlap fuzzy match
+    // 3. Substring contains (prefer shorter stop name to prevent "approach" taking over)
+    Stop? substringMatch;
+    int shortestNameLen = 9999;
+    for (final stop in _stopsById.values) {
+      final sn = _normalizeStopName(stop.name);
+      if (sn.contains(q) || q.contains(sn)) {
+        if (stop.name.length < shortestNameLen) {
+          shortestNameLen = stop.name.length;
+          substringMatch = stop;
+        }
+      }
+    }
+    if (substringMatch != null) return substringMatch;
+
+    // 4. Token-overlap fuzzy match
     final qTokens = _tokenize(q);
     Stop? bestMatch;
     int bestScore = 1; // Require at least 2 shared tokens
@@ -340,7 +773,7 @@ class TransitRoutingService {
   /// Strips common transit-system suffixes and normalizes to lowercase.
   static final _transitSuffixes = RegExp(
     r'\b(brts|station|bus\s*stop|cross\s*road|char\s*rasta|chowk'
-    r'|circle|approach|nagar|township|vidhyapith|mandir|mall|hostel'
+    r'|circle|nagar|township|vidhyapith|mandir|mall|hostel'
     r'|park|hospital|college|office|library|cinema|darwaja'
     r'|workshop|market|mill|towers|zone|east|west|north|south)\b',
     caseSensitive: false,
@@ -421,14 +854,14 @@ class TransitRoutingService {
   }
 
   static const String _encPoly9U =
-      'cb`lC_atyLnr@}g@nmApS~h@`K~x@bW|y@p@b|@jA|mApEhe@|Wj|@|Zz}@z`@fe'
-      '@j`@b}@tb@`r@|r@hn@v_@lqAbkB~`@r_@z}@~k@r`@hnAzi@ffBvj@|lAz|@fnA'
-      'h~@~}@n|@fo@`~@flAh{Bzn@rn@p}@viAh~@reAj`AnwAju@n|@';
+      'cb`lC_atyLnr@}g@nmApS~h@`K~x@bTf`@ah@nJuR`M_OlRuWtK{U~OiWdVlJbTbOzj'
+      '@xZjXfK~]fVz`@|DvEw]uCpCyEel@}GyGsQmRya@mIhj@sRdXei@XygAxJk|@vAeNr'
+      'K}TfE{Mba@iPxf@`@rRfGhFwQrSgAxQec@bEke@mBkg@oLn@';
 
   static const String _encPoly8D =
-      'ufzkCyqmzLn_@bh@`m@bh@~RnPjb@`[v[bW`j@fUb`@ff@|y@b_@~h@r\\z`@ha'
-      '@|r@f_@|y@r|@p|@f_@|y@ro@rn@z`@rn@z}@f_@lqAj`@`k@j`@`k@r`@j_@rn'
-      '@~q@z`@|r@ha@`k@x_@p|@ro@z}@rn@`[|k@`[|r@ro@|r@';
+      'ufzkCyqmzLn_@bh@`m@bh@~RnPjb@`i@hM|ThOdXbYdg@`MtRtNpT~NxTnKjxAiAf^g'
+      'JvTqMbFcS`HwUlGkr@xaAq]Ec\\BqFbRJf]jQho@`NbRx[vUzKle@eLdXgQ~UwMhPmKn'
+      'Ra]xj@eOhg@wMp]sMb]{S~i@sO~Y';
 
   static final List<String> _seq9U = [
     'STOP_VASANTNAGAR_TOWNSHIP',
