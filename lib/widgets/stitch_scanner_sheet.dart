@@ -884,7 +884,7 @@ class _StitchScannerSheetState extends State<StitchScannerSheet>
 
   Widget _buildDynamicQrView(bool dark) {
     final upiPayload =
-        'upi://pay?pa=transitai.rzp@icici&pn=TransitAI&am=${widget.fareAmount}.00&cu=INR&tn=Ticket-$_detectedTerminal';
+        'upi://pay?pa=pravha.rzp@icici&pn=PRAVHA&am=${widget.fareAmount}.00&cu=INR&tn=Ticket-$_detectedTerminal';
 
     final minutes = (_qrCountdown ~/ 60).toString().padLeft(2, '0');
     final seconds = (_qrCountdown % 60).toString().padLeft(2, '0');

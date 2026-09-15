@@ -81,7 +81,7 @@ class HmacTokenSigner {
       return ConductorValidationResult(
         isValid: false,
         status: ValidationStatus.invalidFormat,
-        message: 'Invalid Transit AI Ticket Format',
+        message: 'Invalid PRAVHA Ticket Format',
       );
     }
 

@@ -125,7 +125,7 @@ class GeminiService {
     // If Gemini Key is present, call Google Gemini REST API
     if (GeminiConfig.hasKey) {
       final systemPrompt = '''
-You are the official Transit AI Smart Assistant for Ahmedabad & Gujarat public transit (Ahmedabad Metro Line 1 & Line 2, Janmarg BRTS Corridors, AMTS buses, and regional GSRTC EV routes).
+You are the official PRAVHA Smart Assistant for Ahmedabad & Gujarat public transit (Ahmedabad Metro Line 1 & Line 2, Janmarg BRTS Corridors, AMTS buses, and regional GSRTC EV routes).
 You have real-time access to user-posted transit reports and community updates below:
 
 $contextBuffer

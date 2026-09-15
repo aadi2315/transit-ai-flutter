@@ -286,18 +286,47 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 8),
-                              child: Text(
-                                _isTicketView
-                                    ? 'Dynamic QR Pass'
-                                    : 'Unified Fare Checkout',
-                                textAlign: TextAlign.center,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: dark ? Colors.white : const Color(0xFF0F172A),
-                                ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Image.asset(
+                                      'assets/images/pravha_logo.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      _isTicketView
+                                          ? 'PRAVHA Dynamic Pass'
+                                          : 'PRAVHA Fare Checkout',
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.3,
+                                        color: dark ? Colors.white : const Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -529,14 +558,20 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         Container(
                           width: 26,
                           height: 26,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF38BDF8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
                             shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
-                          child: const Icon(
-                            Icons.alt_route_rounded,
-                            color: Color(0xFF00354A),
-                            size: 15,
+                          clipBehavior: Clip.antiAlias,
+                          child: Image.asset(
+                            'assets/images/pravha_logo.png',
+                            fit: BoxFit.contain,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1165,7 +1200,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         ),
                         child: QrImageView(
                           data:
-                              'upi://pay?pa=transitai.rzp@icici&pn=TransitAI&am=9.00&cu=INR&tn=Ticket-Sola-Iskcon',
+                              'upi://pay?pa=pravha.rzp@icici&pn=PRAVHA&am=9.00&cu=INR&tn=Ticket-Sola-Iskcon',
                           version: QrVersions.auto,
                           size: 140.0,
                           backgroundColor: Colors.white,
@@ -1183,7 +1218,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     const SizedBox(height: 8),
                     Center(
                       child: Text(
-                        'UPI ID: transitai.rzp@icici • Fare: ₹9.00',
+                        'UPI ID: pravha.rzp@icici • Fare: ₹9.00',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
@@ -2008,7 +2043,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         _buildReceiptRow('SGST / CGST (0%)', '₹0.00'),
                         _buildReceiptRow('Razorpay Ref ID', _paymentId),
                         _buildReceiptRow('Payment Method', _paymentMethodUsed),
-                        _buildReceiptRow('Gateway Account', 'Transit AI (${RazorpayConfig.keyId.substring(0, 8)}...)'),
+                        _buildReceiptRow('Gateway Account', 'PRAVHA (${RazorpayConfig.keyId.substring(0, 8)}...)'),
                         _buildReceiptRow('AFC Turnstile Gate', _terminalId),
                         const SizedBox(height: 6),
                         Text(

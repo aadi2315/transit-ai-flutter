@@ -268,27 +268,31 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
-                                  width: 22,
-                                  height: 22,
+                                  width: 24,
+                                  height: 24,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF38BDF8)
-                                        .withValues(alpha: dark ? 0.25 : 0.90),
+                                    color: Colors.white,
                                     shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
                                   ),
-                                  child: Icon(
-                                    Icons.directions_bus_rounded,
-                                    color: dark
-                                        ? const Color(0xFF38BDF8)
-                                        : Colors.white,
-                                    size: 12,
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Image.asset(
+                                    'assets/images/pravha_logo.png',
+                                    fit: BoxFit.contain,
                                   ),
                                 ),
-                                const SizedBox(width: 7),
+                                const SizedBox(width: 8),
                                 Text(
-                                  'Transit AI',
+                                  'PRAVHA',
                                   style: GoogleFonts.spaceGrotesk(
                                     fontSize: 13,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.6,
                                     color: primaryTextColor,
                                   ),
                                 ),
@@ -777,7 +781,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                     child: Text(
                                       _isSubmitting
                                           ? 'Signing in...'
-                                          : 'Sign In to Transit AI',
+                                          : 'Sign In to PRAVHA',
                                       style: GoogleFonts.spaceGrotesk(
                                         color: Colors.white,
                                         fontSize: 13.5,

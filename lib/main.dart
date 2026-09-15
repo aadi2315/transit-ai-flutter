@@ -196,7 +196,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
     }
 
     return MaterialApp(
-      title: 'Transit AI',
+      title: 'PRAVHA',
       debugShowCheckedModeBanner: false,
       theme: StitchTheme.lightTheme,
       darkTheme: StitchTheme.darkTheme,

@@ -508,7 +508,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
             author: 'Karan',
             time: '14m ago',
             content:
-                'Transit AI student concession QR scanned instantly on reader 2 today without long ticket queues.',
+                'PRAVHA student concession QR scanned instantly on reader 2 today without long ticket queues.',
             avatarLetter: 'K',
             avatarColor: const Color(0xFF38BDF8),
             likes: 7,
@@ -868,7 +868,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Left: Back button + Transit AI Brand Pill
+                          // Left: Back button + PRAVHA Brand Pill
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -923,21 +923,27 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Container(
-                                      width: 20,
-                                      height: 20,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF00E5FF),
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
                                         shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
                                       ),
-                                      child: const Icon(
-                                        Icons.directions_bus_rounded,
-                                        color: Color(0xFF00354A),
-                                        size: 12,
+                                      clipBehavior: Clip.antiAlias,
+                                      child: Image.asset(
+                                        'assets/images/pravha_logo.png',
+                                        fit: BoxFit.contain,
                                       ),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      'Transit AI',
+                                      'PRAVHA',
                                       style: GoogleFonts.spaceGrotesk(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
@@ -4321,10 +4327,11 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                               Row(
                                 children: [
                                   Text(
-                                    'Transit AI Assistant',
+                                    'PRAVHA Assistant',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.2,
                                       color: primaryTextColor,
                                     ),
                                   ),
@@ -4472,16 +4479,50 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(
-                                        isUser ? '👤 You' : '✨ AI Assistant',
-                                        style: GoogleFonts.jetBrainsMono(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                          color: isUser
-                                              ? const Color(0xFF00354A)
-                                              : const Color(0xFF00E5FF),
+                                      if (isUser)
+                                        Text(
+                                          '👤 You',
+                                          style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF00354A),
+                                          ),
+                                        )
+                                      else
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 22,
+                                              height: 22,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                                    blurRadius: 6,
+                                                  ),
+                                                ],
+                                              ),
+                                              clipBehavior: Clip.antiAlias,
+                                              child: Image.asset(
+                                                'assets/images/pravha_logo.png',
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'PRAVHA',
+                                              style: GoogleFonts.spaceGrotesk(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.5,
+                                                color: primaryTextColor,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
@@ -4780,7 +4821,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
       if (aiReply != null && aiReply.trim().isNotEmpty && mounted) {
         final aiAnswer = AnswerItem(
           id: 'ans_gemini_${DateTime.now().millisecondsSinceEpoch}',
-          author: '✨ Gemini Transit AI',
+          author: '✨ Gemini PRAVHA',
           roleBadge: 'Verified AI Advice',
           time: 'Just now',
           content: aiReply.trim(),
@@ -4799,7 +4840,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
         // Sync AI answer to Supabase backend
         SupabaseService.instance.postAnswer(
           questionId: item.id,
-          author: '✨ Gemini Transit AI',
+          author: '✨ Gemini PRAVHA',
           roleBadge: 'Verified AI Advice',
           content: aiReply.trim(),
           avatarLetter: '✦',
@@ -4848,7 +4889,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
       if (aiReply.isNotEmpty && mounted) {
         final aiComment = ReportCommentItem(
           id: 'rc_gemini_${DateTime.now().millisecondsSinceEpoch}',
-          author: '✨ Gemini Transit AI',
+          author: '✨ Gemini PRAVHA',
           comment: aiReply.replaceAll('**', '').trim(),
           userLocality: 'AI Transit Dispatch',
           time: 'Just now',
@@ -4860,7 +4901,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
 
         SupabaseService.instance.submitReportComment(
           reportId: report.id,
-          author: '✨ Gemini Transit AI',
+          author: '✨ Gemini PRAVHA',
           comment: aiReply.replaceAll('**', '').trim(),
           userLocality: 'AI Transit Dispatch',
         );

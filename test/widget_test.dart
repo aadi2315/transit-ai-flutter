@@ -16,7 +16,7 @@ void main() {
     await tester.pump();
 
     // Home screen verification
-    expect(find.text('Transit AI'), findsOneWidget);
+    expect(find.text('PRAVHA'), findsOneWidget);
     expect(find.text('Search your Route'), findsOneWidget);
     expect(find.text('Book Instant QR Ticket'), findsOneWidget);
 
@@ -28,7 +28,7 @@ void main() {
 
     // Auth screen verification
     expect(find.text('Welcome Back'), findsOneWidget);
-    expect(find.text('Sign In to Transit AI'), findsOneWidget);
+    expect(find.text('Sign In to PRAVHA'), findsOneWidget);
 
     // Switch to Sign Up tab
     final signupTab = find.text('Sign Up');

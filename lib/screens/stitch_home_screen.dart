@@ -215,22 +215,29 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                   Container(
                                     width: 24,
                                     height: 24,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF38BDF8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
                                       shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                          blurRadius: 6,
+                                        ),
+                                      ],
                                     ),
-                                    child: const Icon(
-                                      Icons.directions_bus_rounded,
-                                      color: Color(0xFF00354A),
-                                      size: 14,
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Image.asset(
+                                      'assets/images/pravha_logo.png',
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Transit AI',
+                                    'PRAVHA',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 13,
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.6,
                                       color: primaryTextColor,
                                     ),
                                   ),
