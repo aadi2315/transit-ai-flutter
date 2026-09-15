@@ -121,6 +121,7 @@ class TransitRoutingService {
       // 1. Fetch Stops
       final stopsRes = await client.from('gtfs_stops').select();
       final stopsList = stopsRes as List<dynamic>;
+      debugPrint('[TransitRoutingService] Fetched ${stopsList.length} stops from gtfs_stops');
       if (stopsList.isEmpty) return false;
 
       _stopsById.clear();
@@ -134,6 +135,7 @@ class TransitRoutingService {
       // 2. Fetch Routes
       final routesRes = await client.from('gtfs_routes').select();
       final routesList = routesRes as List<dynamic>;
+      debugPrint('[TransitRoutingService] Fetched ${routesList.length} routes from gtfs_routes');
       final Map<String, String> shortNameByRouteId = {};
       _shapesByRouteId.clear();
 
@@ -166,13 +168,10 @@ class TransitRoutingService {
       }
 
       // 3. Fetch Ordered Route Stops
-      final routeStopsRes = await client
-          .from('gtfs_route_stops')
-          .select()
-          .order('route_id')
-          .order('stop_sequence', ascending: true);
-
+      final routeStopsRes =
+          await client.from('gtfs_route_stops').select();
       final routeStopsList = routeStopsRes as List<dynamic>;
+      debugPrint('[TransitRoutingService] Fetched ${routeStopsList.length} route-stops from gtfs_route_stops');
       if (routeStopsList.isEmpty) return false;
 
       // Group by routeId
@@ -212,8 +211,12 @@ class TransitRoutingService {
       }
 
       return _routeSequences.isNotEmpty && _stopsById.isNotEmpty;
-    } catch (e) {
-      debugPrint('[TransitRoutingService] Supabase query fallback: $e');
+    } catch (e, st) {
+      if (e is PostgrestException) {
+        debugPrint('[TransitRoutingService] Supabase PostgrestException: msg="${e.message}", code=${e.code}, details=${e.details}, hint=${e.hint}');
+      } else {
+        debugPrint('[TransitRoutingService] Supabase query fallback: $e\n$st');
+      }
       return false;
     }
   }
