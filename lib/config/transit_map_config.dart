@@ -41,23 +41,48 @@ class TransitMapConfig {
     double? originLng,
     double? destLat,
     double? destLng,
+    double? userLat,
+    double? userLng,
+    double? centerLat,
+    double? centerLng,
+    int? zoomLevel,
     int width = 640,
-    int height = 360,
+    int height = 640,
     bool isDarkMode = true,
+    bool isSatellite = false,
   }) {
-    final pathParam = 'color:0x38bdf8ff|weight:5|enc:$encodedPolyline';
-    final markersParam = (originLat != null && originLng != null && destLat != null && destLng != null)
-        ? '&markers=color:0x10b981|label:A|$originLat,$originLng&markers=color:0xf43f5e|label:B|$destLat,$destLng'
+    final pathParam = encodedPolyline.isNotEmpty
+        ? '&path=color:0x38bdf8ff|weight:5|enc:$encodedPolyline'
         : '';
-    final styleParam = isDarkMode
+    final markersBuffer = StringBuffer();
+    if (originLat != null && originLng != null) {
+      markersBuffer.write('&markers=color:0x10b981|label:A|$originLat,$originLng');
+    }
+    if (destLat != null && destLng != null) {
+      markersBuffer.write('&markers=color:0xf43f5e|label:B|$destLat,$destLng');
+    }
+    if (userLat != null && userLng != null) {
+      markersBuffer.write('&markers=color:0x00e5ff%7Csize:mid%7C$userLat,$userLng');
+    }
+
+    final centerParam = (centerLat != null && centerLng != null)
+        ? '&center=$centerLat,$centerLng'
+        : '';
+    final zoomParam = zoomLevel != null ? '&zoom=$zoomLevel' : '';
+
+    final mapTypeParam = isSatellite ? '&maptype=satellite' : '';
+    final styleParam = (isDarkMode && !isSatellite)
         ? '&style=element:geometry%7Ccolor:0x1d2c4d&style=element:labels.text.fill%7Ccolor:0x8ec3b9&style=element:labels.text.stroke%7Ccolor:0x1a3646&style=feature:administrative.country%7Celement:geometry.stroke%7Ccolor:0x4b6878&style=feature:road%7Celement:geometry%7Ccolor:0x304a7d&style=feature:road%7Celement:labels.text.fill%7Ccolor:0x98a5be&style=feature:water%7Celement:geometry%7Ccolor:0x0e1626'
         : '';
 
     return 'https://maps.googleapis.com/maps/api/staticmap?'
         'size=${width}x$height'
         '&scale=2'
-        '&path=$pathParam'
-        '$markersParam'
+        '$centerParam'
+        '$zoomParam'
+        '$mapTypeParam'
+        '$pathParam'
+        '${markersBuffer.toString()}'
         '$styleParam'
         '&key=$googleMapsApiKey';
   }
@@ -74,6 +99,15 @@ class TransitMapConfig {
 
   static const double giftCityLat = 23.1610; // GIFT City Center
   static const double giftCityLng = 72.6841;
+
+  /// Geographic City & Metro Center Points
+  static const double ahmedabadCenterLat = 23.0338;
+  static const double ahmedabadCenterLng = 72.5850;
+  static const int cityScopeZoom = 12;
+
+  static const double metroRegionCenterLat = 23.1000;
+  static const double metroRegionCenterLng = 72.6000;
+  static const int metroScopeZoom = 11;
 
   /// Instructions for activating Google Maps in Flutter:
   /// 1. Put your API key in [googleMapsApiKey] above or in the Route screen settings dialog.

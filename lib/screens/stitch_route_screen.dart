@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
@@ -11,6 +11,7 @@ import '../config/transit_map_config.dart';
 import '../services/google_directions_service.dart';
 import '../services/supabase_service.dart';
 import '../services/transit_place_service.dart';
+import '../services/transit_gps_service.dart';
 
 class StitchRouteScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
@@ -49,7 +50,13 @@ class StitchRouteScreen extends StatefulWidget {
 class _StitchRouteScreenState extends State<StitchRouteScreen> {
   bool _isRouteLegs = true;
   bool _satelliteMode = false;
-  double _zoomLevel = 1.0;
+  String _mapScope = 'corridor'; // 'corridor' (tight on route), 'city' (Ahmedabad City), 'metro' (Regional Metro)
+
+  TransitGpsLocation? _currentGps;
+  StreamSubscription<TransitGpsLocation>? _gpsSubscription;
+
+  late final TransformationController _corridorMapController;
+  late final TransformationController _exploreMapController;
 
   late TextEditingController _originController;
   late TextEditingController _destController;
@@ -64,9 +71,70 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   TransitRouteResult? _currentRoute;
   bool _isLoadingRoute = false;
 
+  void _zoomIn(TransformationController controller) {
+    final matrix = controller.value.clone();
+    matrix.scaleByDouble(1.25, 1.25, 1.0, 1.0);
+    controller.value = matrix;
+  }
+
+  void _zoomOut(TransformationController controller) {
+    final matrix = controller.value.clone();
+    matrix.scaleByDouble(0.8, 0.8, 1.0, 1.0);
+    controller.value = matrix;
+  }
+
+  void _resetZoom(TransformationController controller) {
+    controller.value = Matrix4.identity();
+  }
+
+  Future<void> _locateUser() async {
+    final loc = await TransitGpsService.instance.getCurrentLocation();
+    if (!mounted) return;
+    setState(() {
+      _currentGps = loc;
+      _mapScope = 'corridor';
+    });
+    _corridorMapController.value = Matrix4.identity();
+    _exploreMapController.value = Matrix4.identity();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.my_location_rounded, color: Color(0xFF00E5FF), size: 16),
+            const SizedBox(width: 8),
+            Text(
+              'Live GPS: ${loc.formattedCoords} (${loc.accuracyLabel})',
+              style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xEE0F172A),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _openFullScreenMap(BuildContext context, bool dark) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => _FullScreenMapViewer(
+          route: _currentRoute,
+          dark: dark,
+          initialSatelliteMode: _satelliteMode,
+          initialGps: _currentGps,
+          initialScope: _mapScope,
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _corridorMapController = TransformationController();
+    _exploreMapController = TransformationController();
 
     final defaultOrigin = widget.initialOrigin?.trim() ?? '';
     final defaultDest = widget.initialDestination?.trim() ?? '';
@@ -111,6 +179,26 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         _fetchRoute();
       });
     }
+
+    // Initialize live GPS tracking
+    TransitGpsService.instance.getCurrentLocation().then((loc) {
+      if (mounted) setState(() => _currentGps = loc);
+    });
+    _gpsSubscription = TransitGpsService.instance.streamLocation().listen((loc) {
+      if (mounted) setState(() => _currentGps = loc);
+    });
+  }
+
+  @override
+  void dispose() {
+    _gpsSubscription?.cancel();
+    _corridorMapController.dispose();
+    _exploreMapController.dispose();
+    _originController.dispose();
+    _destController.dispose();
+    _originFocusNode.dispose();
+    _destFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -128,15 +216,6 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         _fetchRoute();
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _originController.dispose();
-    _destController.dispose();
-    _originFocusNode.dispose();
-    _destFocusNode.dispose();
-    super.dispose();
   }
 
   Future<void> _fetchOriginSuggestions(String query) async {
@@ -852,10 +931,28 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Scope Selector: Route | City | Metro
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0x2238BDF8),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0x3338BDF8), width: 0.8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildMiniScopeOption('Route', 'corridor'),
+                        _buildMiniScopeOption('City', 'city'),
+                        _buildMiniScopeOption('Metro', 'metro'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   GestureDetector(
                     onTap: () => setState(() => _satelliteMode = !_satelliteMode),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
                         color: _satelliteMode
                             ? const Color(0xFF38BDF8).withValues(alpha: 0.3)
@@ -874,7 +971,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             size: 11,
                             color: const Color(0xFF38BDF8),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 3),
                           Text(
                             _satelliteMode ? 'Satellite' : 'Roadmap',
                             style: GoogleFonts.jetBrainsMono(
@@ -888,18 +985,40 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0x2638BDF8),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      'Live GPS',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF38BDF8),
+                  // Live GPS interactive chip
+                  GestureDetector(
+                    onTap: _locateUser,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0x2600E5FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0x5500E5FF), width: 0.8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 5,
+                            height: 5,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF00E5FF),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(color: Color(0xFF00E5FF), blurRadius: 4, spreadRadius: 1),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _currentGps != null ? 'GPS Live (${_currentGps!.accuracyLabel})' : 'Live GPS',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF00E5FF),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -926,33 +1045,72 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               borderRadius: BorderRadius.circular(16),
               child: Stack(
                 children: [
-                  // Google Static Maps tile layer when polyline is available
+                  // Google Static Maps tile layer with InteractiveViewer for free panning & pinch/scroll zoom
                   if (route != null &&
                       route.encodedPolyline.isNotEmpty &&
                       TransitMapConfig.hasGoogleMapsApiKey)
                     Positioned.fill(
-                      child: Image.network(
-                        TransitMapConfig.buildStaticMapUrl(
-                          encodedPolyline: route.encodedPolyline,
-                          originLat: route.originLat,
-                          originLng: route.originLng,
-                          destLat: route.destLat,
-                          destLng: route.destLng,
-                          isDarkMode: dark && !_satelliteMode,
-                        ),
-                        fit: BoxFit.cover,
-                        errorBuilder: (ctx, err, stack) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.map_rounded, size: 30, color: Color(0xFF38BDF8)),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Corridor Map: ${route.origin} → ${route.destination}',
-                                  style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white),
+                      child: LayoutBuilder(
+                        builder: (ctx, constraints) {
+                          double? centerLat;
+                          double? centerLng;
+                          int? zoomLevel;
+                          if (_mapScope == 'city') {
+                            centerLat = TransitMapConfig.ahmedabadCenterLat;
+                            centerLng = TransitMapConfig.ahmedabadCenterLng;
+                            zoomLevel = TransitMapConfig.cityScopeZoom;
+                          } else if (_mapScope == 'metro') {
+                            centerLat = TransitMapConfig.metroRegionCenterLat;
+                            centerLng = TransitMapConfig.metroRegionCenterLng;
+                            zoomLevel = TransitMapConfig.metroScopeZoom;
+                          }
+
+                          return InteractiveViewer(
+                            transformationController: _corridorMapController,
+                            minScale: 0.6,
+                            maxScale: 5.0,
+                            boundaryMargin: const EdgeInsets.all(300),
+                            panEnabled: true,
+                            scaleEnabled: true,
+                            child: SizedBox(
+                              width: constraints.maxWidth,
+                              height: constraints.maxHeight,
+                              child: Image.network(
+                                TransitMapConfig.buildStaticMapUrl(
+                                  encodedPolyline: route.encodedPolyline,
+                                  originLat: route.originLat,
+                                  originLng: route.originLng,
+                                  destLat: route.destLat,
+                                  destLng: route.destLng,
+                                  userLat: _currentGps?.latitude,
+                                  userLng: _currentGps?.longitude,
+                                  centerLat: centerLat,
+                                  centerLng: centerLng,
+                                  zoomLevel: zoomLevel,
+                                  width: 640,
+                                  height: 480,
+                                  isDarkMode: dark,
+                                  isSatellite: _satelliteMode,
                                 ),
-                              ],
+                                fit: BoxFit.cover,
+                                width: constraints.maxWidth,
+                                height: constraints.maxHeight,
+                                errorBuilder: (ctx, err, stack) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.map_rounded, size: 30, color: Color(0xFF38BDF8)),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Corridor Map: ${route.origin} → ${route.destination}',
+                                          style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           );
                         },
@@ -994,7 +1152,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   // Destination Node Label Badge
                   if (route != null)
                     Positioned(
-                      bottom: 12,
+                      bottom: 30,
                       right: 10,
                       child: _buildMapNodeLabel(
                         '2. ${route.destination}',
@@ -1002,46 +1160,122 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       ),
                     ),
 
-                  // Map Controls (Zoom In/Out)
+                  // Map Controls (Fullscreen, Zoom In, Zoom Out, Locate Me, Recenter)
                   Positioned(
                     top: 10,
                     right: 10,
                     child: Column(
                       children: [
+                        // Full Screen Map CTA
                         GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _zoomLevel = math.min(_zoomLevel + 0.2, 2.0);
-                            });
-                          },
+                          onTap: () => _openFullScreenMap(context, dark),
                           child: Container(
-                            width: 26,
-                            height: 26,
+                            width: 28,
+                            height: 28,
+                            margin: const EdgeInsets.only(bottom: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xCC0F172A),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0x4438BDF8), width: 1),
+                            ),
+                            child: const Icon(Icons.fullscreen_rounded, size: 18, color: Color(0xFF38BDF8)),
+                          ),
+                        ),
+                        // Zoom In (+)
+                        GestureDetector(
+                          onTap: () => _zoomIn(_corridorMapController),
+                          child: Container(
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
                               color: const Color(0xB30F172A),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.add, size: 15, color: Colors.white),
+                            child: const Icon(Icons.add, size: 16, color: Colors.white),
                           ),
                         ),
                         const SizedBox(height: 6),
+                        // Zoom Out (-)
                         GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _zoomLevel = math.max(_zoomLevel - 0.2, 0.8);
-                            });
-                          },
+                          onTap: () => _zoomOut(_corridorMapController),
                           child: Container(
-                            width: 26,
-                            height: 26,
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
                               color: const Color(0xB30F172A),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.remove, size: 15, color: Colors.white),
+                            child: const Icon(Icons.remove, size: 16, color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Locate Me / GPS Button
+                        GestureDetector(
+                          onTap: _locateUser,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xB30F172A),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _currentGps != null ? const Color(0xFF00E5FF) : Colors.transparent,
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.my_location_rounded,
+                              size: 15,
+                              color: _currentGps != null ? const Color(0xFF00E5FF) : Colors.white70,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Recenter
+                        GestureDetector(
+                          onTap: () => _resetZoom(_corridorMapController),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xB30F172A),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.center_focus_strong_rounded, size: 14, color: Color(0xFF94A3B8)),
                           ),
                         ),
                       ],
+                    ),
+                  ),
+
+                  // Pan & Zoom Indicator
+                  Positioned(
+                    bottom: 6,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC060E20),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0x22FFFFFF), width: 0.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.touch_app_outlined, size: 10, color: Color(0xFF38BDF8)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Pan freely • Pinch or +/- to zoom',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 8,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -1049,6 +1283,34 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMiniScopeOption(String label, String scopeValue) {
+    final isSelected = _mapScope == scopeValue;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _mapScope = scopeValue;
+        });
+        _corridorMapController.value = Matrix4.identity();
+        _exploreMapController.value = Matrix4.identity();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF38BDF8) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 7.5,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? const Color(0xFF060E20) : const Color(0xFF94A3B8),
+          ),
+        ),
       ),
     );
   }
@@ -1317,7 +1579,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   }
 
   Widget _buildBookTicketCta() {
-    final fare = _currentRoute?.fareAmount ?? 9.00;
+    final fare = _currentRoute?.fareAmount;
+    final fareLabel = fare != null
+        ? 'Book Instant Ticket (₹${fare.toStringAsFixed(2)})'
+        : 'Book Instant QR Ticket';
 
     return GestureDetector(
       onTap: widget.onNavigateToWallet,
@@ -1346,7 +1611,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              'Book Instant Ticket (₹${fare.toStringAsFixed(2)})',
+              fareLabel,
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
@@ -1365,9 +1630,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
     return Column(
       children: [
-        // Interactive Full-View Map Canvas
+        // Interactive Full-View Map Canvas with InteractiveViewer for 2D pan & zoom
         Container(
-          height: 360,
+          height: 420,
           decoration: BoxDecoration(
             color: const Color(0xFF060E20),
             borderRadius: BorderRadius.circular(22),
@@ -1381,19 +1646,56 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     route.encodedPolyline.isNotEmpty &&
                     TransitMapConfig.hasGoogleMapsApiKey)
                   Positioned.fill(
-                    child: Image.network(
-                      TransitMapConfig.buildStaticMapUrl(
-                        encodedPolyline: route.encodedPolyline,
-                        originLat: route.originLat,
-                        originLng: route.originLng,
-                        destLat: route.destLat,
-                        destLng: route.destLng,
-                        width: 640,
-                        height: 480,
-                        isDarkMode: dark && !_satelliteMode,
-                      ),
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, stack) => const SizedBox.shrink(),
+                    child: LayoutBuilder(
+                      builder: (ctx, constraints) {
+                        double? centerLat;
+                        double? centerLng;
+                        int? zoomLevel;
+                        if (_mapScope == 'city') {
+                          centerLat = TransitMapConfig.ahmedabadCenterLat;
+                          centerLng = TransitMapConfig.ahmedabadCenterLng;
+                          zoomLevel = TransitMapConfig.cityScopeZoom;
+                        } else if (_mapScope == 'metro') {
+                          centerLat = TransitMapConfig.metroRegionCenterLat;
+                          centerLng = TransitMapConfig.metroRegionCenterLng;
+                          zoomLevel = TransitMapConfig.metroScopeZoom;
+                        }
+
+                        return InteractiveViewer(
+                          transformationController: _exploreMapController,
+                          minScale: 0.5,
+                          maxScale: 6.0,
+                          boundaryMargin: const EdgeInsets.all(400),
+                          panEnabled: true,
+                          scaleEnabled: true,
+                          child: SizedBox(
+                            width: constraints.maxWidth,
+                            height: constraints.maxHeight,
+                            child: Image.network(
+                              TransitMapConfig.buildStaticMapUrl(
+                                encodedPolyline: route.encodedPolyline,
+                                originLat: route.originLat,
+                                originLng: route.originLng,
+                                destLat: route.destLat,
+                                destLng: route.destLng,
+                                userLat: _currentGps?.latitude,
+                                userLng: _currentGps?.longitude,
+                                centerLat: centerLat,
+                                centerLng: centerLng,
+                                zoomLevel: zoomLevel,
+                                width: 640,
+                                height: 640,
+                                isDarkMode: dark,
+                                isSatellite: _satelliteMode,
+                              ),
+                              fit: BoxFit.cover,
+                              width: constraints.maxWidth,
+                              height: constraints.maxHeight,
+                              errorBuilder: (ctx, err, stack) => const SizedBox.shrink(),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   )
                 else
@@ -1419,6 +1721,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     ),
                   ),
 
+                // Origin Node
                 Positioned(
                   left: 14,
                   top: 14,
@@ -1428,12 +1731,215 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   ),
                 ),
 
+                // Destination Node
                 Positioned(
                   right: 14,
                   bottom: 40,
                   child: _buildMapNodeLabel(
                     route?.destination ?? 'Destination',
                     const Color(0xFFF43F5E),
+                  ),
+                ),
+
+                // Top Scope Switcher
+                Positioned(
+                  top: 14,
+                  left: 140,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xEE0F172A),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0x4438BDF8), width: 0.8),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildMiniScopeOption('Route', 'corridor'),
+                        _buildMiniScopeOption('City Grid', 'city'),
+                        _buildMiniScopeOption('Metro Wide', 'metro'),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Floating Action Controls (Fullscreen, Zoom In/Out, Locate Me, Recenter, Satellite)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Column(
+                    children: [
+                      // Full Screen Button
+                      GestureDetector(
+                        onTap: () => _openFullScreenMap(context, dark),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xEE0F172A),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFF38BDF8), width: 1),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black45, blurRadius: 8, offset: Offset(0, 2)),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.fullscreen_rounded, size: 16, color: Color(0xFF38BDF8)),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Full Screen',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Zoom In (+)
+                      GestureDetector(
+                        onTap: () => _zoomIn(_exploreMapController),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xCC0F172A),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0x26FFFFFF), width: 0.8),
+                          ),
+                          child: const Icon(Icons.add, size: 18, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Zoom Out (-)
+                      GestureDetector(
+                        onTap: () => _zoomOut(_exploreMapController),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xCC0F172A),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0x26FFFFFF), width: 0.8),
+                          ),
+                          child: const Icon(Icons.remove, size: 18, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Locate Me / GPS Button
+                      GestureDetector(
+                        onTap: _locateUser,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xCC0F172A),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _currentGps != null ? const Color(0xFF00E5FF) : const Color(0x26FFFFFF),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.my_location_rounded,
+                            size: 16,
+                            color: _currentGps != null ? const Color(0xFF00E5FF) : Colors.white70,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Recenter
+                      GestureDetector(
+                        onTap: () => _resetZoom(_exploreMapController),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xCC0F172A),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0x26FFFFFF), width: 0.8),
+                          ),
+                          child: const Icon(Icons.center_focus_strong_rounded, size: 15, color: Color(0xFF94A3B8)),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Satellite toggle
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _satelliteMode = !_satelliteMode;
+                          });
+                        },
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xCC0F172A),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _satelliteMode ? const Color(0xFF38BDF8) : const Color(0x26FFFFFF),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Icon(
+                            _satelliteMode ? Icons.map_rounded : Icons.satellite_alt_rounded,
+                            size: 16,
+                            color: const Color(0xFF38BDF8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom Left GPS telemetry chip
+                Positioned(
+                  left: 14,
+                  bottom: 12,
+                  child: GestureDetector(
+                    onTap: _locateUser,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xEE0F172A),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0x4400E5FF), width: 0.8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF00E5FF),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(color: Color(0xFF00E5FF), blurRadius: 4, spreadRadius: 1),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _currentGps != null
+                                ? 'Live GPS: ${_currentGps!.formattedCoords}'
+                                : 'Acquiring GPS Location...',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF00E5FF),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 
@@ -1452,12 +1958,18 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${route?.originLat.toStringAsFixed(4) ?? "23.0827"}° N, ${route?.originLng.toStringAsFixed(4) ?? "72.5284"}° E',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 9,
-                            color: const Color(0xFFCBD5E1),
-                          ),
+                        Row(
+                          children: [
+                            const Icon(Icons.touch_app_outlined, size: 12, color: Color(0xFF38BDF8)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Pan freely in 2D • Pinch or +/- to zoom',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9.5,
+                                color: const Color(0xFFCBD5E1),
+                              ),
+                            ),
+                          ],
                         ),
                         Row(
                           children: [
@@ -1543,4 +2055,475 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     );
   }
 }
+
+/// Full-Screen Interactive Transit Map Viewer
+/// Allows commuters to freely pan, drag, pinch-to-zoom, and explore the entire Ahmedabad transit corridor
+class _FullScreenMapViewer extends StatefulWidget {
+  final TransitRouteResult? route;
+  final bool dark;
+  final bool initialSatelliteMode;
+  final TransitGpsLocation? initialGps;
+  final String? initialScope;
+
+  const _FullScreenMapViewer({
+    required this.route,
+    required this.dark,
+    required this.initialSatelliteMode,
+    this.initialGps,
+    this.initialScope,
+  });
+
+  @override
+  State<_FullScreenMapViewer> createState() => _FullScreenMapViewerState();
+}
+
+class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
+  late final TransformationController _controller;
+  late bool _satellite;
+  late String _scope; // 'corridor', 'city', 'metro'
+  TransitGpsLocation? _currentGps;
+  StreamSubscription<TransitGpsLocation>? _gpsSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TransformationController();
+    _satellite = widget.initialSatelliteMode;
+    _scope = widget.initialScope ?? 'corridor';
+    _currentGps = widget.initialGps;
+
+    _gpsSub = TransitGpsService.instance.streamLocation().listen((loc) {
+      if (mounted) setState(() => _currentGps = loc);
+    });
+  }
+
+  @override
+  void dispose() {
+    _gpsSub?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _zoomIn() {
+    final matrix = _controller.value.clone();
+    matrix.scaleByDouble(1.25, 1.25, 1.0, 1.0);
+    _controller.value = matrix;
+  }
+
+  void _zoomOut() {
+    final matrix = _controller.value.clone();
+    matrix.scaleByDouble(0.8, 0.8, 1.0, 1.0);
+    _controller.value = matrix;
+  }
+
+  void _reset() {
+    _controller.value = Matrix4.identity();
+  }
+
+  Future<void> _locateMe() async {
+    final loc = await TransitGpsService.instance.getCurrentLocation();
+    if (!mounted) return;
+    setState(() {
+      _currentGps = loc;
+      _scope = 'corridor';
+    });
+    _controller.value = Matrix4.identity();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.my_location_rounded, color: Color(0xFF00E5FF), size: 16),
+            const SizedBox(width: 8),
+            Text(
+              'Live GPS: ${loc.formattedCoords} (${loc.accuracyLabel})',
+              style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xEE0F172A),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildScopeOption(String label, String value, IconData icon) {
+    final isSelected = _scope == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _scope = value;
+        });
+        _controller.value = Matrix4.identity();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF38BDF8) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: isSelected ? const Color(0xFF060E20) : Colors.white70,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                color: isSelected ? const Color(0xFF060E20) : Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final route = widget.route;
+
+    double? centerLat;
+    double? centerLng;
+    int? zoomLevel;
+    if (_scope == 'city') {
+      centerLat = TransitMapConfig.ahmedabadCenterLat;
+      centerLng = TransitMapConfig.ahmedabadCenterLng;
+      zoomLevel = TransitMapConfig.cityScopeZoom;
+    } else if (_scope == 'metro') {
+      centerLat = TransitMapConfig.metroRegionCenterLat;
+      centerLng = TransitMapConfig.metroRegionCenterLng;
+      zoomLevel = TransitMapConfig.metroScopeZoom;
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF060E20),
+      body: Stack(
+        children: [
+          // 1. Full Screen Edge-to-Edge Interactive Map Canvas
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return InteractiveViewer(
+                  transformationController: _controller,
+                  minScale: 0.5,
+                  maxScale: 6.0,
+                  boundaryMargin: const EdgeInsets.all(500),
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: route != null && route.encodedPolyline.isNotEmpty
+                        ? Image.network(
+                            TransitMapConfig.buildStaticMapUrl(
+                              encodedPolyline: route.encodedPolyline,
+                              originLat: route.originLat,
+                              originLng: route.originLng,
+                              destLat: route.destLat,
+                              destLng: route.destLng,
+                              userLat: _currentGps?.latitude,
+                              userLng: _currentGps?.longitude,
+                              centerLat: centerLat,
+                              centerLng: centerLng,
+                              zoomLevel: zoomLevel,
+                              width: 640,
+                              height: 640,
+                              isDarkMode: widget.dark,
+                              isSatellite: _satellite,
+                            ),
+                            fit: BoxFit.cover,
+                            width: constraints.maxWidth,
+                            height: constraints.maxHeight,
+                            errorBuilder: (ctx, err, stack) => const Center(
+                              child: Text(
+                                'Failed to load map tile',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          )
+                        : const Center(
+                            child: Text(
+                              'No route active',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // 2. Floating Top Header with Back, Scope Switcher & Route Title
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 14,
+            right: 14,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xEE0F172A),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0x40FFFFFF), width: 1),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black45, blurRadius: 8, offset: Offset(0, 3)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Exit Full Screen',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Map Scope Switcher (Route | City Grid | Metro Wide)
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xEE0F172A),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0x38FFFFFF), width: 1),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black45, blurRadius: 8, offset: Offset(0, 3)),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildScopeOption('Route', 'corridor', Icons.alt_route_rounded),
+                      _buildScopeOption('City Grid', 'city', Icons.location_city_rounded),
+                      _buildScopeOption('Metro Wide', 'metro', Icons.hub_rounded),
+                    ],
+                  ),
+                ),
+
+                // Active Corridor Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xEE0F172A),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.5), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.alt_route_rounded, size: 14, color: Color(0xFF38BDF8)),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${route?.origin ?? "Origin"} ➔ ${route?.destination ?? "Destination"}',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 3. Floating Right Control Panel (Zoom In/Out, Locate Me, Recenter, Satellite)
+          Positioned(
+            right: 16,
+            top: MediaQuery.of(context).padding.top + 70,
+            child: Column(
+              children: [
+                _buildFloatingButton(
+                  icon: Icons.add_rounded,
+                  tooltip: 'Zoom In',
+                  onTap: _zoomIn,
+                ),
+                const SizedBox(height: 8),
+                _buildFloatingButton(
+                  icon: Icons.remove_rounded,
+                  tooltip: 'Zoom Out',
+                  onTap: _zoomOut,
+                ),
+                const SizedBox(height: 8),
+                // Locate Me / GPS Button
+                _buildFloatingButton(
+                  icon: Icons.my_location_rounded,
+                  tooltip: 'Center on Live GPS',
+                  onTap: _locateMe,
+                  iconColor: _currentGps != null ? const Color(0xFF00E5FF) : Colors.white,
+                ),
+                const SizedBox(height: 8),
+                _buildFloatingButton(
+                  icon: Icons.center_focus_strong_rounded,
+                  tooltip: 'Recenter',
+                  onTap: _reset,
+                ),
+                const SizedBox(height: 8),
+                _buildFloatingButton(
+                  icon: _satellite ? Icons.map_rounded : Icons.satellite_alt_rounded,
+                  tooltip: _satellite ? 'Roadmap Mode' : 'Satellite Mode',
+                  onTap: () => setState(() => _satellite = !_satellite),
+                  iconColor: const Color(0xFF38BDF8),
+                ),
+              ],
+            ),
+          ),
+
+          // 4. Floating Bottom Telemetry & Navigation Bar with Live GPS
+          Positioned(
+            bottom: 20,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xEE0F172A),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0x38FFFFFF), width: 1),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black54, blurRadius: 14, offset: Offset(0, 4)),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      _buildMetricChip('DISTANCE', route?.distanceText ?? '--', Icons.straighten_rounded),
+                      const SizedBox(width: 14),
+                      _buildMetricChip('DURATION', route?.durationText ?? '--', Icons.timer_outlined),
+                      const SizedBox(width: 14),
+                      _buildMetricChip('FARE', '₹${(route?.fareAmount ?? 9.0).toStringAsFixed(2)}', Icons.confirmation_number_outlined),
+                    ],
+                  ),
+                  // Live GPS Coordinates indicator
+                  GestureDetector(
+                    onTap: _locateMe,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0x2200E5FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0x5500E5FF), width: 0.8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF00E5FF),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(color: Color(0xFF00E5FF), blurRadius: 4, spreadRadius: 1),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _currentGps != null
+                                ? 'GPS: ${_currentGps!.formattedCoords} (${_currentGps!.accuracyLabel})'
+                                : 'Acquiring GPS...',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF00E5FF),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    Color iconColor = Colors.white,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xEE0F172A),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0x38FFFFFF), width: 1),
+            boxShadow: const [
+              BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Icon(icon, size: 20, color: iconColor),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricChip(String label, String value, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: const Color(0xFF38BDF8)),
+        const SizedBox(width: 4),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF94A3B8),
+                letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              value,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 

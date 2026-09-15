@@ -12,3 +12,7 @@ Future<Map<String, dynamic>?> queryJsDirections({
 Future<List<Map<String, String>>> queryJsPlaces(String input) async {
   return [];
 }
+
+Future<Map<String, dynamic>?> queryJsCurrentLocation() async {
+  return null;
+}

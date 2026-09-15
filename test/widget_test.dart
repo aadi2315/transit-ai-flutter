@@ -18,7 +18,7 @@ void main() {
     // Home screen verification
     expect(find.text('Transit AI'), findsOneWidget);
     expect(find.text('Search your Route'), findsOneWidget);
-    expect(find.text('Book Instant Ticket (₹9.00)'), findsOneWidget);
+    expect(find.text('Book Instant QR Ticket'), findsOneWidget);
 
     // Profile button tap (links to login)
     final profileBtn = find.byTooltip('Sign In / Profile');

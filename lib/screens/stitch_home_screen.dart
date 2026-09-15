@@ -755,7 +755,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
-                                    'Book Instant Ticket (₹9.00)',
+                                    'Book Instant QR Ticket',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,

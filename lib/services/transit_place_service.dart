@@ -19,6 +19,8 @@ class TransitPlaceSuggestion {
 
   IconData get icon {
     switch (type) {
+      case 'gps':
+        return Icons.my_location_rounded;
       case 'metro':
         return Icons.subway_rounded;
       case 'amts':
@@ -35,6 +37,8 @@ class TransitPlaceSuggestion {
 
   Color get iconColor {
     switch (type) {
+      case 'gps':
+        return const Color(0xFF00E5FF);
       case 'metro':
         return const Color(0xFF10B981);
       case 'amts':
@@ -259,13 +263,26 @@ class TransitPlaceService {
   Future<List<TransitPlaceSuggestion>> getSuggestions(String query) async {
     final clean = query.trim().toLowerCase();
 
-    // If query is empty or 1 character, return top hubs
+    // If query is empty or matches location keywords, include Current Location
+    const gpsSuggestion = TransitPlaceSuggestion(
+      name: 'Current Location (Live GPS)',
+      subtitle: 'Live GPS Coordinates • Sola Bhagwat Hub',
+      type: 'gps',
+      latitude: 23.0827,
+      longitude: 72.5284,
+    );
+
     if (clean.isEmpty) {
-      return ahmedabadStops.take(6).toList();
+      return [gpsSuggestion, ...ahmedabadStops.take(5)];
     }
 
     final List<TransitPlaceSuggestion> matches = [];
     final Set<String> seenNames = {};
+
+    if (clean.contains('curr') || clean.contains('loc') || clean.contains('my') || clean.contains('gps')) {
+      matches.add(gpsSuggestion);
+      seenNames.add(gpsSuggestion.name.toLowerCase());
+    }
 
     // 1. Match local curated transit stations first (instant response)
     for (final stop in ahmedabadStops) {

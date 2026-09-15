@@ -84,3 +84,36 @@ Future<List<Map<String, String>>> queryJsPlaces(String input) async {
     return [];
   }
 }
+
+Future<Map<String, dynamic>?> queryJsCurrentLocation() async {
+  try {
+    if (!js.context.hasProperty('transitGetCurrentLocation')) {
+      return null;
+    }
+
+    final completer = Completer<Map<String, dynamic>?>();
+
+    js.context.callMethod('transitGetCurrentLocation', [
+      (dynamic rawResult) {
+        try {
+          final str = rawResult.toString();
+          final map = jsonDecode(str) as Map<String, dynamic>;
+          if (map['status'] == 'OK') {
+            completer.complete(map);
+          } else {
+            completer.complete(null);
+          }
+        } catch (_) {
+          completer.complete(null);
+        }
+      }
+    ]);
+
+    return await completer.future.timeout(
+      const Duration(seconds: 8),
+      onTimeout: () => null,
+    );
+  } catch (_) {
+    return null;
+  }
+}

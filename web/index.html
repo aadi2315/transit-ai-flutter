@@ -157,6 +157,39 @@
         callback(JSON.stringify([]));
       }
     };
+
+    // Live Geolocation Bridge for Transit AI
+    window.transitGetCurrentLocation = function(callback) {
+      try {
+        if (!navigator.geolocation) {
+          callback(JSON.stringify({ status: 'UNSUPPORTED' }));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            callback(JSON.stringify({
+              status: 'OK',
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy || 10,
+              heading: position.coords.heading || 0,
+              speed: position.coords.speed || 0,
+              timestamp: position.timestamp || Date.now()
+            }));
+          },
+          function(error) {
+            callback(JSON.stringify({
+              status: 'ERROR',
+              code: error.code,
+              message: error.message
+            }));
+          },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+        );
+      } catch (err) {
+        callback(JSON.stringify({ status: 'EXCEPTION', message: err.toString() }));
+      }
+    };
   </script>
 </head>
 <body>
