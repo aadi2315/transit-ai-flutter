@@ -6,9 +6,11 @@ import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
 import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
+import '../widgets/stitch_place_autocomplete_dropdown.dart';
 import '../config/transit_map_config.dart';
 import '../services/google_directions_service.dart';
 import '../services/supabase_service.dart';
+import '../services/transit_place_service.dart';
 
 class StitchRouteScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
@@ -44,42 +46,71 @@ class StitchRouteScreen extends StatefulWidget {
   State<StitchRouteScreen> createState() => _StitchRouteScreenState();
 }
 
-class _StitchRouteScreenState extends State<StitchRouteScreen>
-    with SingleTickerProviderStateMixin {
+class _StitchRouteScreenState extends State<StitchRouteScreen> {
   bool _isRouteLegs = true;
   bool _satelliteMode = false;
   double _zoomLevel = 1.0;
 
   late TextEditingController _originController;
   late TextEditingController _destController;
+  final FocusNode _originFocusNode = FocusNode();
+  final FocusNode _destFocusNode = FocusNode();
+
+  List<TransitPlaceSuggestion> _originSuggestions = [];
+  List<TransitPlaceSuggestion> _destSuggestions = [];
+  bool _showOriginDropdown = false;
+  bool _showDestDropdown = false;
+
   TransitRouteResult? _currentRoute;
   bool _isLoadingRoute = false;
-
-  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
 
-    final defaultOrigin = widget.initialOrigin?.trim().isNotEmpty == true
-        ? widget.initialOrigin!.trim()
-        : 'Sola Bhagwat (BRTS Hub)';
-    final defaultDest = widget.initialDestination?.trim().isNotEmpty == true
-        ? widget.initialDestination!.trim()
-        : 'Iskcon Cross Road';
+    final defaultOrigin = widget.initialOrigin?.trim() ?? '';
+    final defaultDest = widget.initialDestination?.trim() ?? '';
 
     _originController = TextEditingController(text: defaultOrigin);
     _destController = TextEditingController(text: defaultDest);
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2500),
-    )..repeat();
-
-    // Trigger immediate route resolution using Supabase cache + Google Directions API
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchRoute();
+    _originFocusNode.addListener(() {
+      if (_originFocusNode.hasFocus) {
+        _fetchOriginSuggestions(_originController.text);
+        setState(() {
+          _showOriginDropdown = true;
+          _showDestDropdown = false;
+        });
+      } else {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && !_originFocusNode.hasFocus) {
+            setState(() => _showOriginDropdown = false);
+          }
+        });
+      }
     });
+
+    _destFocusNode.addListener(() {
+      if (_destFocusNode.hasFocus) {
+        _fetchDestSuggestions(_destController.text);
+        setState(() {
+          _showDestDropdown = true;
+          _showOriginDropdown = false;
+        });
+      } else {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && !_destFocusNode.hasFocus) {
+            setState(() => _showDestDropdown = false);
+          }
+        });
+      }
+    });
+
+    if (defaultOrigin.isNotEmpty && defaultDest.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchRoute();
+      });
+    }
   }
 
   @override
@@ -93,16 +124,39 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
       if (widget.initialDestination?.isNotEmpty == true) {
         _destController.text = widget.initialDestination!;
       }
-      _fetchRoute();
+      if (_originController.text.isNotEmpty && _destController.text.isNotEmpty) {
+        _fetchRoute();
+      }
     }
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _originController.dispose();
     _destController.dispose();
+    _originFocusNode.dispose();
+    _destFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchOriginSuggestions(String query) async {
+    final list = await TransitPlaceService.instance.getSuggestions(query);
+    if (mounted) {
+      setState(() {
+        _originSuggestions = list;
+        _showOriginDropdown = true;
+      });
+    }
+  }
+
+  Future<void> _fetchDestSuggestions(String query) async {
+    final list = await TransitPlaceService.instance.getSuggestions(query);
+    if (mounted) {
+      setState(() {
+        _destSuggestions = list;
+        _showDestDropdown = true;
+      });
+    }
   }
 
   /// Triggers route search: Checks Supabase cache first; on miss, queries
@@ -114,6 +168,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
 
     setState(() {
       _isLoadingRoute = true;
+      _showOriginDropdown = false;
+      _showDestDropdown = false;
     });
 
     try {
@@ -144,191 +200,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
       _originController.text = _destController.text;
       _destController.text = temp;
     });
-    _fetchRoute();
-  }
-
-  void _showGoogleMapsConfigModal(BuildContext context) {
-    final dark = widget.isDarkMode;
-    final controller = TextEditingController(text: TransitMapConfig.googleMapsApiKey);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          decoration: BoxDecoration(
-            color: dark ? const Color(0xFF0F172A) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(
-              color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.map_rounded,
-                      color: Color(0xFF38BDF8),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Google Maps API Setup',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: dark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                      ),
-                      Text(
-                        'Driving Mode Directions & Polyline Caching Active',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: const Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'GOOGLE MAPS API KEY',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF38BDF8),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                decoration: BoxDecoration(
-                  color: dark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: dark
-                        ? const Color(0x38FFFFFF)
-                        : const Color(0xFFCBD5E1),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TextField(
-                  controller: controller,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 12.5,
-                    color: dark ? Colors.white : const Color(0xFF0F172A),
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'AIzaSy...',
-                    hintStyle: GoogleFonts.jetBrainsMono(
-                      color: const Color(0xFF94A3B8),
-                      fontSize: 12,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      size: 16,
-                      color: Color(0xFF10B981),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Directions API queried in DRIVING mode with intermediate transit waypoints.',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: dark
-                              ? const Color(0xFFE2E8F0)
-                              : const Color(0xFF334155),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      TransitMapConfig.setApiKey(controller.text);
-                    });
-                    Navigator.pop(ctx);
-                    _fetchRoute();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF38BDF8),
-                    foregroundColor: const Color(0xFF00354A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    'Save & Re-query Route',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    if (_originController.text.isNotEmpty && _destController.text.isNotEmpty) {
+      _fetchRoute();
+    }
   }
 
   @override
@@ -633,6 +507,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                           Expanded(
                             child: TextField(
                               controller: _originController,
+                              focusNode: _originFocusNode,
+                              onChanged: (v) => _fetchOriginSuggestions(v),
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -641,15 +517,42 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: InputBorder.none,
-                                hintText: 'Enter Origin',
+                                hintText: 'Enter Origin (e.g. Sola, Gota)',
                               ),
                               onSubmitted: (_) => _fetchRoute(),
                             ),
                           ),
+                          if (_originController.text.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _originController.clear();
+                                  _showOriginDropdown = false;
+                                });
+                              },
+                              child: const Icon(Icons.close_rounded, size: 14, color: Colors.white60),
+                            ),
                         ],
                       ),
                     ),
+
+                    // Origin Autocomplete Dropdown
+                    if (_showOriginDropdown && _originSuggestions.isNotEmpty)
+                      StitchPlaceAutocompleteDropdown(
+                        suggestions: _originSuggestions,
+                        isDarkMode: dark,
+                        onSelect: (s) {
+                          setState(() {
+                            _originController.text = s.name;
+                            _showOriginDropdown = false;
+                          });
+                          _destFocusNode.requestFocus();
+                          _fetchDestSuggestions(_destController.text);
+                        },
+                      ),
+
                     const SizedBox(height: 6),
+
                     // Destination Input
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -667,6 +570,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                           Expanded(
                             child: TextField(
                               controller: _destController,
+                              focusNode: _destFocusNode,
+                              onChanged: (v) => _fetchDestSuggestions(v),
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -675,14 +580,41 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: InputBorder.none,
-                                hintText: 'Enter Destination',
+                                hintText: 'Enter Destination (e.g. Iskcon)',
                               ),
                               onSubmitted: (_) => _fetchRoute(),
                             ),
                           ),
+                          if (_destController.text.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _destController.clear();
+                                  _showDestDropdown = false;
+                                });
+                              },
+                              child: const Icon(Icons.close_rounded, size: 14, color: Colors.white60),
+                            ),
                         ],
                       ),
                     ),
+
+                    // Destination Autocomplete Dropdown
+                    if (_showDestDropdown && _destSuggestions.isNotEmpty)
+                      StitchPlaceAutocompleteDropdown(
+                        suggestions: _destSuggestions,
+                        isDarkMode: dark,
+                        onSelect: (s) {
+                          setState(() {
+                            _destController.text = s.name;
+                            _showDestDropdown = false;
+                          });
+                          _destFocusNode.unfocus();
+                          if (_originController.text.isNotEmpty) {
+                            _fetchRoute();
+                          }
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -754,8 +686,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          // Cache & API Status Badge
+          const SizedBox(height: 8),
+          // Route Corridor Status Indicator (No API key on screen)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -763,39 +695,32 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                 children: [
                   Icon(
                     _currentRoute?.isFromSupabaseCache == true
-                        ? Icons.storage_rounded
-                        : Icons.bolt_rounded,
+                        ? Icons.check_circle_rounded
+                        : Icons.alt_route_rounded,
                     size: 12,
-                    color: _currentRoute?.isFromSupabaseCache == true
-                        ? const Color(0xFF56E5A9)
-                        : const Color(0xFF38BDF8),
+                    color: const Color(0xFF38BDF8),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 5),
                   Text(
                     _currentRoute?.isFromSupabaseCache == true
-                        ? 'Served from Supabase Cache (0ms latency)'
-                        : 'Google Directions API • Driving Mode',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                      color: _currentRoute?.isFromSupabaseCache == true
-                          ? const Color(0xFF56E5A9)
-                          : const Color(0xFF38BDF8),
+                        ? 'Optimized Corridor (Cached)'
+                        : 'Ahmedabad Transit Network',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF38BDF8),
                     ),
                   ),
                 ],
               ),
-              GestureDetector(
-                onTap: () => _showGoogleMapsConfigModal(context),
-                child: Text(
-                  'API Key: Active',
+              if (_currentRoute != null)
+                Text(
+                  '${_currentRoute!.distanceText} • ${_currentRoute!.durationText}',
                   style: GoogleFonts.jetBrainsMono(
-                    fontSize: 8.5,
-                    color: const Color(0xFF10B981),
-                    decoration: TextDecoration.underline,
+                    fontSize: 9,
+                    color: const Color(0xFF94A3B8),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -889,7 +814,6 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
   /// 1. Interactive Google Maps & Street Polyline Canvas (No dummy data)
   Widget _buildCorridorPolylineCard(bool dark) {
     final route = _currentRoute;
-    final polylineCoords = route?.polylineCoordinates ?? [];
 
     return StitchGlassCard(
       isDarkMode: dark,
@@ -986,9 +910,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
 
           const SizedBox(height: 10),
 
-          // Real Map Canvas with Google Static Map tile + Animated Street Polyline
+          // Real Map Canvas with Google Static Map tile showing street-accurate driving polyline
           Container(
-            height: 200,
+            height: 220,
             width: double.infinity,
             decoration: BoxDecoration(
               color: const Color(0xFF060E20),
@@ -1018,46 +942,65 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                         ),
                         fit: BoxFit.cover,
                         errorBuilder: (ctx, err, stack) {
-                          return const SizedBox.shrink();
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.map_rounded, size: 30, color: Color(0xFF38BDF8)),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Corridor Map: ${route.origin} → ${route.destination}',
+                                  style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          );
                         },
+                      ),
+                    )
+                  else
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.map_outlined,
+                            size: 36,
+                            color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Enter origin and destination above to view map corridor',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
-                  // Dynamic Vector Polyline Overlay
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return CustomPaint(
-                        size: Size.infinite,
-                        painter: _DynamicGpsPolylinePainter(
-                          coordinates: polylineCoords,
-                          progress: _pulseController.value,
-                          isDarkMode: dark,
-                          zoomLevel: _zoomLevel,
-                        ),
-                      );
-                    },
-                  ),
-
                   // Origin Node Label Badge
-                  Positioned(
-                    top: 12,
-                    left: 10,
-                    child: _buildMapNodeLabel(
-                      '1. ${route?.origin ?? "Origin"}',
-                      const Color(0xFF10B981),
+                  if (route != null)
+                    Positioned(
+                      top: 12,
+                      left: 10,
+                      child: _buildMapNodeLabel(
+                        '1. ${route.origin}',
+                        const Color(0xFF10B981),
+                      ),
                     ),
-                  ),
 
                   // Destination Node Label Badge
-                  Positioned(
-                    bottom: 12,
-                    right: 10,
-                    child: _buildMapNodeLabel(
-                      '2. ${route?.destination ?? "Destination"}',
-                      const Color(0xFFF43F5E),
+                  if (route != null)
+                    Positioned(
+                      bottom: 12,
+                      right: 10,
+                      child: _buildMapNodeLabel(
+                        '2. ${route.destination}',
+                        const Color(0xFFF43F5E),
+                      ),
                     ),
-                  ),
 
                   // Map Controls (Zoom In/Out)
                   Positioned(
@@ -1127,7 +1070,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF56E5A9).withValues(alpha: 0.2),
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -1136,39 +1079,44 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                       width: 5,
                       height: 5,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF56E5A9),
+                        color: Color(0xFF38BDF8),
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      route?.isFromSupabaseCache == true
-                          ? 'Optimized Corridor (Cached)'
-                          : 'Live Street Directions',
+                      route == null
+                          ? 'Corridor Search Ready'
+                          : (route.isFromSupabaseCache ? 'Optimized Corridor (Cached)' : 'Live Street Directions'),
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF56E5A9),
+                        color: const Color(0xFF38BDF8),
                       ),
                     ),
                   ],
                 ),
               ),
-              Text(
-                '₹${route?.fareAmount.toStringAsFixed(2) ?? "9.00"}',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF56E5A9),
+              if (route != null)
+                Text(
+                  '₹${route.fareAmount.toStringAsFixed(2)}',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF56E5A9),
+                  ),
                 ),
-              ),
             ],
           ),
 
           const SizedBox(height: 8),
 
           Text(
-            '${route?.origin ?? _originController.text} → ${route?.destination ?? _destController.text}',
+            route != null
+                ? '${route.origin} → ${route.destination}'
+                : (_originController.text.isNotEmpty && _destController.text.isNotEmpty
+                    ? '${_originController.text} → ${_destController.text}'
+                    : 'Search a Corridor in Ahmedabad'),
             style: GoogleFonts.spaceGrotesk(
               fontSize: 14.5,
               fontWeight: FontWeight.w700,
@@ -1178,13 +1126,13 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
 
           const SizedBox(height: 10),
 
-          // Real metric counters
+          // Real metric counters (Zero dummy defaults)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMetric('DURATION', route?.durationText ?? '26 mins', Icons.schedule_rounded),
-              _buildMetric('DISTANCE', route?.distanceText ?? '11.4 km', Icons.route_rounded),
-              _buildMetric('UNIFIED FARE', '₹${route?.fareAmount.toStringAsFixed(2) ?? "9.00"}', Icons.currency_rupee_rounded),
+              _buildMetric('DURATION', route?.durationText ?? '--', Icons.schedule_rounded),
+              _buildMetric('DISTANCE', route?.distanceText ?? '--', Icons.route_rounded),
+              _buildMetric('UNIFIED FARE', route != null ? '₹${route.fareAmount.toStringAsFixed(2)}' : '--', Icons.currency_rupee_rounded),
             ],
           ),
         ],
@@ -1417,84 +1365,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
 
     return Column(
       children: [
-        // Google Maps API Setup Banner
-        GestureDetector(
-          onTap: () => _showGoogleMapsConfigModal(context),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0x200284C7),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: const Color(0xFF0284C7).withValues(alpha: 0.5),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.map_rounded, color: Color(0xFF38BDF8), size: 18),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Google Directions API Active',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'Driving Mode',
-                              style: GoogleFonts.jetBrainsMono(
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF10B981),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Routes are queried with intermediate transit waypoints and cached to Supabase.',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9.5,
-                          color: const Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
         // Interactive Full-View Map Canvas
         Container(
-          height: 320,
+          height: 360,
           decoration: BoxDecoration(
             color: const Color(0xFF060E20),
             borderRadius: BorderRadius.circular(22),
@@ -1522,23 +1395,29 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
                       fit: BoxFit.cover,
                       errorBuilder: (ctx, err, stack) => const SizedBox.shrink(),
                     ),
-                  ),
-
-                Positioned.fill(
-                  child: AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return CustomPaint(
-                        painter: _DynamicGpsPolylinePainter(
-                          coordinates: route?.polylineCoordinates ?? [],
-                          progress: _pulseController.value,
-                          isDarkMode: dark,
-                          zoomLevel: _zoomLevel,
+                  )
+                else
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.map_outlined,
+                          size: 44,
+                          color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
                         ),
-                      );
-                    },
+                        const SizedBox(height: 10),
+                        Text(
+                          'Search a route to preview corridor map',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: const Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
                 Positioned(
                   left: 14,
@@ -1665,149 +1544,3 @@ class _StitchRouteScreenState extends State<StitchRouteScreen>
   }
 }
 
-/// Dynamic GPS Polyline Painter: Plots real decoded latitude/longitude vertices
-/// normalized onto canvas coordinates with smooth anti-aliased curves and glowing pulse
-class _DynamicGpsPolylinePainter extends CustomPainter {
-  final List<MapCoordinate> coordinates;
-  final double progress;
-  final bool isDarkMode;
-  final double zoomLevel;
-
-  _DynamicGpsPolylinePainter({
-    required this.coordinates,
-    required this.progress,
-    required this.isDarkMode,
-    this.zoomLevel = 1.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // 1. Draw subtle coordinate grid
-    final gridPaint = Paint()
-      ..color = const Color(0x1538BDF8)
-      ..strokeWidth = 0.5;
-
-    for (double x = 0; x < size.width; x += 24) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-    }
-    for (double y = 0; y < size.height; y += 24) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    if (coordinates.length < 2) return;
-
-    // Find bounding box for geographic coordinates
-    double minLat = coordinates.first.latitude;
-    double maxLat = coordinates.first.latitude;
-    double minLng = coordinates.first.longitude;
-    double maxLng = coordinates.first.longitude;
-
-    for (final c in coordinates) {
-      if (c.latitude < minLat) minLat = c.latitude;
-      if (c.latitude > maxLat) maxLat = c.latitude;
-      if (c.longitude < minLng) minLng = c.longitude;
-      if (c.longitude > maxLng) maxLng = c.longitude;
-    }
-
-    final latRange = (maxLat - minLat == 0) ? 0.01 : (maxLat - minLat);
-    final lngRange = (maxLng - minLng == 0) ? 0.01 : (maxLng - minLng);
-
-    const padding = 28.0;
-    final w = size.width - padding * 2;
-    final h = size.height - padding * 2;
-
-    Offset toCanvas(MapCoordinate c) {
-      final normX = (c.longitude - minLng) / lngRange;
-      final normY = 1.0 - ((c.latitude - minLat) / latRange);
-      return Offset(
-        padding + normX * w,
-        padding + normY * h,
-      );
-    }
-
-    final path = Path();
-    final firstOffset = toCanvas(coordinates.first);
-    path.moveTo(firstOffset.dx, firstOffset.dy);
-
-    for (int i = 1; i < coordinates.length; i++) {
-      final offset = toCanvas(coordinates[i]);
-      path.lineTo(offset.dx, offset.dy);
-    }
-
-    // Glow underlay
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0x6600F5FF)
-        ..strokeWidth = 7 * zoomLevel
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..style = PaintingStyle.stroke
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-    );
-
-    // Vibrant core line
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFF00F5FF)
-        ..strokeWidth = 3.5 * zoomLevel
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..style = PaintingStyle.stroke,
-    );
-
-    // Draw Nodes (Origin & Destination)
-    final startPt = toCanvas(coordinates.first);
-    final endPt = toCanvas(coordinates.last);
-
-    _drawNode(canvas, startPt, const Color(0xFF10B981));
-    _drawNode(canvas, endPt, const Color(0xFFF43F5E));
-
-    // Vehicle Marker animated along the path
-    final metrics = path.computeMetrics().toList();
-    if (metrics.isNotEmpty) {
-      final metric = metrics.first;
-      final tangent = metric.getTangentForOffset(metric.length * (progress % 1.0));
-      if (tangent != null) {
-        canvas.drawCircle(
-          tangent.position,
-          7,
-          Paint()
-            ..color = const Color(0xFF00F5FF)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-        );
-        canvas.drawCircle(
-          tangent.position,
-          4,
-          Paint()..color = Colors.white,
-        );
-      }
-    }
-  }
-
-  void _drawNode(Canvas canvas, Offset pos, Color color) {
-    canvas.drawCircle(
-      pos,
-      6.0,
-      Paint()
-        ..color = const Color(0xFF060E20)
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      pos,
-      6.0,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.4,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _DynamicGpsPolylinePainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.coordinates != coordinates ||
-        oldDelegate.zoomLevel != zoomLevel;
-  }
-}

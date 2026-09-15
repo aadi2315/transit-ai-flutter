@@ -13,14 +13,62 @@ class LocalTransitVault {
   static const String _keyConductorPin = 'transit_ai_conductor_shift_pin';
   static const String _keyValidatedTickets = 'transit_ai_shift_validated_tickets';
 
+  static const String _keyPastJourneys = 'transit_ai_past_journeys_v2';
+
   /// Save confirmed active ticket locally
   Future<void> saveActiveTicket(Map<String, dynamic> ticketData) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyActiveTicket, jsonEncode(ticketData));
       debugPrint('[LocalTransitVault] Active ticket saved to offline vault.');
+
+      // Also record in journey history
+      final origin = ticketData['origin'] ?? 'Origin';
+      final dest = ticketData['destination'] ?? 'Destination';
+      final fare = (ticketData['fare'] as num?)?.toDouble() ?? 9.0;
+      final line = ticketData['line_info'] ?? 'BRTS Corridor';
+      await recordJourney(origin: origin, destination: dest, fare: fare, lineInfo: line);
     } catch (e) {
       debugPrint('[LocalTransitVault] Error saving ticket: $e');
+    }
+  }
+
+  /// Record a journey in local history
+  Future<void> recordJourney({
+    required String origin,
+    required String destination,
+    required double fare,
+    required String lineInfo,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_keyPastJourneys) ?? [];
+      final item = jsonEncode({
+        'title': '$origin → $destination',
+        'fare': '₹${fare.toStringAsFixed(2)}',
+        'badgeText': lineInfo,
+        'timeText': 'Recent',
+      });
+      list.insert(0, item);
+      if (list.length > 10) list.removeLast();
+      await prefs.setStringList(_keyPastJourneys, list);
+    } catch (_) {}
+  }
+
+  /// Get past journeys from local history
+  Future<List<Map<String, dynamic>>> getPastJourneys() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_keyPastJourneys) ?? [];
+      final results = <Map<String, dynamic>>[];
+      for (final raw in list) {
+        try {
+          results.add(jsonDecode(raw) as Map<String, dynamic>);
+        } catch (_) {}
+      }
+      return results;
+    } catch (_) {
+      return [];
     }
   }
 

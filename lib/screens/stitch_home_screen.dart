@@ -5,6 +5,9 @@ import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
 import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
+import '../widgets/stitch_place_autocomplete_dropdown.dart';
+import '../services/transit_place_service.dart';
+import '../core/storage/local_transit_vault.dart';
 
 class StitchHomeScreen extends StatefulWidget {
   final VoidCallback onNavigateToRouteDetails;
@@ -35,13 +38,17 @@ class StitchHomeScreen extends StatefulWidget {
 }
 
 class _StitchHomeScreenState extends State<StitchHomeScreen> {
-  final TextEditingController _originController =
-      TextEditingController(text: 'Sola Bhagwat (BRTS Hub)');
-  final TextEditingController _destController =
-      TextEditingController(text: 'Iskcon Cross Road');
+  final TextEditingController _originController = TextEditingController();
+  final TextEditingController _destController = TextEditingController();
 
   final FocusNode _originFocusNode = FocusNode();
   final FocusNode _destFocusNode = FocusNode();
+
+  List<TransitPlaceSuggestion> _originSuggestions = [];
+  List<TransitPlaceSuggestion> _destSuggestions = [];
+  bool _showOriginDropdown = false;
+  bool _showDestDropdown = false;
+  List<Map<String, dynamic>> _pastJourneys = [];
 
   // Quick suggestions for easy one-tap input
   final List<String> _quickStations = [
@@ -52,6 +59,73 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
     'Shivranjani',
     'Vastrapur',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPastJourneys();
+
+    _originFocusNode.addListener(() {
+      if (_originFocusNode.hasFocus) {
+        _fetchOriginSuggestions(_originController.text);
+        setState(() {
+          _showOriginDropdown = true;
+          _showDestDropdown = false;
+        });
+      } else {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && !_originFocusNode.hasFocus) {
+            setState(() => _showOriginDropdown = false);
+          }
+        });
+      }
+    });
+
+    _destFocusNode.addListener(() {
+      if (_destFocusNode.hasFocus) {
+        _fetchDestSuggestions(_destController.text);
+        setState(() {
+          _showDestDropdown = true;
+          _showOriginDropdown = false;
+        });
+      } else {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && !_destFocusNode.hasFocus) {
+            setState(() => _showDestDropdown = false);
+          }
+        });
+      }
+    });
+  }
+
+  Future<void> _loadPastJourneys() async {
+    final list = await LocalTransitVault.instance.getPastJourneys();
+    if (mounted) {
+      setState(() {
+        _pastJourneys = list;
+      });
+    }
+  }
+
+  Future<void> _fetchOriginSuggestions(String query) async {
+    final list = await TransitPlaceService.instance.getSuggestions(query);
+    if (mounted) {
+      setState(() {
+        _originSuggestions = list;
+        _showOriginDropdown = true;
+      });
+    }
+  }
+
+  Future<void> _fetchDestSuggestions(String query) async {
+    final list = await TransitPlaceService.instance.getSuggestions(query);
+    if (mounted) {
+      setState(() {
+        _destSuggestions = list;
+        _showDestDropdown = true;
+      });
+    }
+  }
 
   void _swap() {
     setState(() {
@@ -298,7 +372,10 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                   TextField(
                                                     controller: _originController,
                                                     focusNode: _originFocusNode,
-                                                    onChanged: (_) => setState(() {}),
+                                                    onChanged: (val) {
+                                                      setState(() {});
+                                                      _fetchOriginSuggestions(val);
+                                                    },
                                                     style: GoogleFonts
                                                         .plusJakartaSans(
                                                       fontSize: 13.5,
@@ -311,7 +388,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                       contentPadding:
                                                           EdgeInsets.zero,
                                                       hintText:
-                                                          'Enter origin stop or landmark',
+                                                          'Enter origin stop (e.g. Sola, Gota)',
                                                       hintStyle: GoogleFonts
                                                           .plusJakartaSans(
                                                         fontSize: 12,
@@ -329,6 +406,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                 onTap: () {
                                                   setState(() {
                                                     _originController.clear();
+                                                    _showOriginDropdown = false;
                                                   });
                                                 },
                                                 child: Padding(
@@ -357,6 +435,21 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                         ),
                                       ),
                                     ),
+
+                                    // Origin Autocomplete Suggestions Dropdown
+                                    if (_showOriginDropdown && _originSuggestions.isNotEmpty)
+                                      StitchPlaceAutocompleteDropdown(
+                                        suggestions: _originSuggestions,
+                                        isDarkMode: dark,
+                                        onSelect: (s) {
+                                          setState(() {
+                                            _originController.text = s.name;
+                                            _showOriginDropdown = false;
+                                          });
+                                          _destFocusNode.requestFocus();
+                                          _fetchDestSuggestions(_destController.text);
+                                        },
+                                      ),
 
                                     const SizedBox(height: 10),
 
@@ -416,7 +509,10 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                   TextField(
                                                     controller: _destController,
                                                     focusNode: _destFocusNode,
-                                                    onChanged: (_) => setState(() {}),
+                                                    onChanged: (val) {
+                                                      setState(() {});
+                                                      _fetchDestSuggestions(val);
+                                                    },
                                                     style: GoogleFonts
                                                         .plusJakartaSans(
                                                       fontSize: 13.5,
@@ -429,7 +525,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                       contentPadding:
                                                           EdgeInsets.zero,
                                                       hintText:
-                                                          'Enter destination stop or landmark',
+                                                          'Enter destination stop (e.g. Iskcon)',
                                                       hintStyle: GoogleFonts
                                                           .plusJakartaSans(
                                                         fontSize: 12,
@@ -447,6 +543,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                 onTap: () {
                                                   setState(() {
                                                     _destController.clear();
+                                                    _showDestDropdown = false;
                                                   });
                                                 },
                                                 child: Padding(
@@ -463,6 +560,20 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                         ),
                                       ),
                                     ),
+
+                                    // Destination Autocomplete Suggestions Dropdown
+                                    if (_showDestDropdown && _destSuggestions.isNotEmpty)
+                                      StitchPlaceAutocompleteDropdown(
+                                        suggestions: _destSuggestions,
+                                        isDarkMode: dark,
+                                        onSelect: (s) {
+                                          setState(() {
+                                            _destController.text = s.name;
+                                            _showDestDropdown = false;
+                                          });
+                                          _destFocusNode.unfocus();
+                                        },
+                                      ),
                                   ],
                                 ),
 
@@ -721,45 +832,100 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
 
                             const SizedBox(height: 14),
 
-                            // Journey Item 1: Sola Bhagwat -> Iskcon
-                            _buildJourneyItem(
-                              dark: dark,
-                              icon: Icons.directions_bus_rounded,
-                              iconBg: const Color(0xFF0284C7),
-                              title: 'Sola Bhagwat → Iskcon Cross Road',
-                              fare: '₹9.00',
-                              badgeText: 'BRTS Line 9U',
-                              timeText: 'Today, 08:30 AM',
-                              onRebook: widget.onNavigateToWallet,
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // Journey Item 2: Iskcon -> Shivranjani
-                            _buildJourneyItem(
-                              dark: dark,
-                              icon: Icons.directions_bus_rounded,
-                              iconBg: const Color(0xFFF59E0B),
-                              title: 'Iskcon Cross Road → Shivranjani',
-                              fare: '₹4.00',
-                              badgeText: 'Feeder 8D',
-                              timeText: 'Yesterday, 06:15 PM',
-                              onRebook: widget.onNavigateToWallet,
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // Journey Item 3: Kalupur -> Vastrapur
-                            _buildJourneyItem(
-                              dark: dark,
-                              icon: Icons.subway_rounded,
-                              iconBg: const Color(0xFF10B981),
-                              title: 'Kalupur Railway Station → Vastrapur',
-                              fare: '₹15.00',
-                              badgeText: 'Metro Line 1',
-                              timeText: '12 Oct, 10:15 AM',
-                              onRebook: widget.onNavigateToWallet,
-                            ),
+                            if (_pastJourneys.isNotEmpty)
+                              ..._pastJourneys.map((j) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _buildJourneyItem(
+                                    dark: dark,
+                                    icon: Icons.directions_bus_rounded,
+                                    iconBg: const Color(0xFF0284C7),
+                                    title: j['title'] ?? 'Corridor Commute',
+                                    fare: j['fare'] ?? '₹9.00',
+                                    badgeText: j['badgeText'] ?? 'Completed',
+                                    timeText: j['timeText'] ?? 'Recent',
+                                    onRebook: widget.onNavigateToWallet,
+                                  ),
+                                );
+                              })
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 18, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: dark
+                                      ? Colors.white.withValues(alpha: 0.03)
+                                      : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: dark
+                                        ? const Color(0x1FFFFFFF)
+                                        : const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF38BDF8)
+                                            .withValues(alpha: 0.15),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.departure_board_rounded,
+                                        color: Color(0xFF38BDF8),
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'No past journeys recorded',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: primaryTextColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Search a corridor above or pick a popular route to begin:',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: secondaryTextColor,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      alignment: WrapAlignment.center,
+                                      children: [
+                                        _buildPopularRoutePill(
+                                          'Sola ➔ Iskcon',
+                                          'Sola Bhagwat',
+                                          'Iskcon Cross Road',
+                                          dark,
+                                        ),
+                                        _buildPopularRoutePill(
+                                          'Gota ➔ Shivranjani',
+                                          'Gota Cross Road',
+                                          'Shivranjani',
+                                          dark,
+                                        ),
+                                        _buildPopularRoutePill(
+                                          'Kalupur ➔ Vastrapur',
+                                          'Kalupur Railway Station',
+                                          'Vastrapur Lake',
+                                          dark,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -787,6 +953,48 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPopularRoutePill(String label, String origin, String dest, bool dark) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _originController.text = origin;
+          _destController.text = dest;
+        });
+        if (widget.onSearchRoute != null) {
+          widget.onSearchRoute!(origin, dest);
+        } else {
+          widget.onNavigateToRouteDetails();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: dark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.flash_on_rounded, size: 12, color: Color(0xFF38BDF8)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: dark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

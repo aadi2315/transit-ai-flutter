@@ -51,10 +51,10 @@ VALUES
     'Sola Bhagwat (BRTS Hub)',
     'Iskcon Cross Road',
     ARRAY['Shivranjani Cross Road'],
-    11.4,
-    26,
+    7.4,
+    14,
     9.00,
-    'm}reDe_svMz@|@bAhAnBpBhDhDnEnEfF|FhGhG|G~G`H|HjInIpJvJ~J`K|KjLlM~MnN`O|OhPtP~P'
+    'wi{kC{wtyLnA[b@Gt@GCf@MlASlCWpBJF|Er@zLxBvK|BfB\rInB~Ch@pI~A|@RtDl@nEp@BTxAXfCf@lEt@zGjAhDz@bHzAtDt@dB`@~Bd@rDl@hE`AjI|AhCj@lCh@vK~B~IfBhBb@nHjBfGjBdH~BpEbBvGhCbQzGbGvBdE`B~FxBvAn@bC`A`A\dBp@~CpAnIbDdJvCjAZnAXjAX|AZn@M^BbDv@vJxBtCl@SfAw@QUGeFkAiFeAaDu@kDo@a@KIA?NDlADd@Jl@t@hC'
 ),
 (
     'ROUTE_VASTRAPUR_KALUPUR',
@@ -63,10 +63,10 @@ VALUES
     'Vastrapur Lake Stand',
     'Kalupur Railway Interchange',
     ARRAY['Income Tax Circle', 'Delhi Darwaja'],
-    9.2,
-    32,
-    8.00,
-    'a`seDsdtvMlC|CjEnEpGtGvIvIvK|KhM~MlO`OpQ~PlS`SbV~VfX`XzZ|Z|\\~\\'
+    9.5,
+    24,
+    9.00,
+    'smrkCw}tyLs@GTyBe@?i@Ae@JiCTM?K}@O}AI_AMgBAc@@gABK~@iCv@mBr@oB|@oCh@yANeAHc@JMdAsBt@yAcC}@kAg@sFwB{CiAoEkBeBaAiBmAsCsBi@c@M?KAyBuAuBoAwC}A_Ag@LeAdBmQJiAPwAh@kBf@iANY\s@dB{ClByD_Ag@qDuB}B}AgA}@w@y@{A{BYk@cAoBqAmDM@OGGIAMBe@DUGq@aAaFWcB]uCOSQm@Fg@NULAD?|@}@jDwEz@_BbA_CPYRUBELKJy@Hk@JUPc@h@}@fAsAj@k@|@gA^m@BQnBa@~Ac@tDqAdEwAfA[vBo@HOHOLc@BOI_@_@sBWsBWoDW}DOmEAgB@iBH_H@kBAkBR}I^oHf@mMd@cF^eELmALwDDgBf@uHVoCPqAjCiR\wBJsAd@{FTcBBo@Ac@KmAIqB@iD@gBE?GCGICM?MJ{ABEHGLo@b@aCf@aBj@uA\w@FSTW`@i@f@m@b@c@\YzBuAv@s@DSHGJIr@MNDPGfDg@zFeAtA[bDuAREQwBYkCHYPGvBAdD?'
 )
 ON CONFLICT (route_id) DO UPDATE SET
     origin_name = EXCLUDED.origin_name,

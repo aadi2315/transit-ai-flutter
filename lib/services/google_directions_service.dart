@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/transit_map_config.dart';
+import 'web_maps_bridge.dart';
 
 /// Represents a geographic coordinate on the transit network
 class MapCoordinate {
@@ -175,6 +176,8 @@ class GoogleDirectionsService {
   static final Map<String, MapCoordinate> ahmedabadLandmarks = {
     'sola': const MapCoordinate(23.0827, 72.5284),
     'sola bhagwat': const MapCoordinate(23.0827, 72.5284),
+    'gota': const MapCoordinate(23.0970, 72.5350),
+    'gota cross road': const MapCoordinate(23.0970, 72.5350),
     'iskcon': const MapCoordinate(23.0315, 72.5074),
     'iskcon cross road': const MapCoordinate(23.0315, 72.5074),
     'shivranjani': const MapCoordinate(23.0234, 72.5312),
@@ -187,6 +190,21 @@ class GoogleDirectionsService {
     'maninagar': const MapCoordinate(22.9978, 72.6025),
     'paldi': const MapCoordinate(23.0125, 72.5620),
     'rto': const MapCoordinate(23.0620, 72.5790),
+    'science city': const MapCoordinate(23.0780, 72.5050),
+    'bopal': const MapCoordinate(23.0340, 72.4720),
+    'chandkheda': const MapCoordinate(23.1090, 72.5850),
+    'prahlad nagar': const MapCoordinate(23.0120, 72.5080),
+    'nehrunagar': const MapCoordinate(23.0180, 72.5410),
+    'geeta mandir': const MapCoordinate(23.0140, 72.5920),
+    'naroda': const MapCoordinate(23.0680, 72.6450),
+    'odhav': const MapCoordinate(23.0250, 72.6650),
+    'ctm': const MapCoordinate(22.9910, 72.6280),
+    'vasna': const MapCoordinate(22.9980, 72.5480),
+    'university': const MapCoordinate(23.0360, 72.5450),
+    'law garden': const MapCoordinate(23.0240, 72.5570),
+    'memnagar': const MapCoordinate(23.0510, 72.5350),
+    'vadaj': const MapCoordinate(23.0550, 72.5730),
+    'helmet': const MapCoordinate(23.0450, 72.5340),
   };
 
   /// Resolves an origin or destination string to standard coordinates
@@ -210,6 +228,62 @@ class GoogleDirectionsService {
     List<String>? waypoints,
     http.Client? httpClient,
   }) async {
+    // 1. If running on Web, query Google Maps JS SDK via WebMapsBridge first (bypasses browser CORS restrictions)
+    if (kIsWeb) {
+      try {
+        final jsResult = await queryJsDirections(
+          origin: origin,
+          destination: destination,
+          waypoints: waypoints,
+        );
+
+        if (jsResult != null && jsResult['status'] == 'OK') {
+          final encPoly = (jsResult['encodedPolyline'] ?? '').toString();
+          final distKm = (jsResult['distanceKm'] as num?)?.toDouble() ?? 10.0;
+          final durMins = (jsResult['durationMins'] as num?)?.toInt() ?? 25;
+          final fare = _calculateStageFare(distKm);
+
+          final rawSteps = jsResult['steps'] as List<dynamic>? ?? [];
+          final stepsList = <TransitRouteStep>[];
+          for (final s in rawSteps) {
+            if (s is Map<String, dynamic>) {
+              stepsList.add(TransitRouteStep.fromJson(s));
+            }
+          }
+
+          final decoded = decodePolyline(encPoly);
+          final oLat = (jsResult['originLat'] as num?)?.toDouble() ?? (decoded.isNotEmpty ? decoded.first.latitude : 23.0827);
+          final oLng = (jsResult['originLng'] as num?)?.toDouble() ?? (decoded.isNotEmpty ? decoded.first.longitude : 72.5284);
+          final dLat = (jsResult['destLat'] as num?)?.toDouble() ?? (decoded.isNotEmpty ? decoded.last.latitude : 23.0315);
+          final dLng = (jsResult['destLng'] as num?)?.toDouble() ?? (decoded.isNotEmpty ? decoded.last.longitude : 72.5074);
+
+          debugPrint('[GoogleDirectionsService] Received route via Web JS SDK: $distKm km, $durMins mins, ${decoded.length} polyline vertices');
+
+          return TransitRouteResult(
+            origin: origin,
+            destination: destination,
+            originLat: oLat,
+            originLng: oLng,
+            destLat: dLat,
+            destLng: dLng,
+            encodedPolyline: encPoly,
+            polylineCoordinates: decoded,
+            distanceKm: distKm,
+            distanceText: '${distKm.toStringAsFixed(1)} km',
+            durationMins: durMins,
+            durationText: '$durMins mins',
+            fareAmount: fare,
+            steps: stepsList,
+            waypoints: waypoints ?? [],
+            isFromSupabaseCache: false,
+          );
+        }
+      } catch (e) {
+        debugPrint('[GoogleDirectionsService] Web JS directions notice: $e');
+      }
+    }
+
+    // 2. Query Google Directions REST API (for mobile or web fallback)
     final client = httpClient ?? http.Client();
     final url = TransitMapConfig.buildDirectionsApiUrl(
       origin: '$origin, Ahmedabad, Gujarat, India',

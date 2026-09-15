@@ -534,6 +534,9 @@ class SupabaseService {
         final poly = (r['encoded_polyline'] ?? '').toString();
 
         if (poly.isNotEmpty &&
+            !poly.startsWith('m}re') &&
+            !poly.startsWith('a`se') &&
+            poly.length >= 20 &&
             (o.contains(cleanOrig) || cleanOrig.contains(o)) &&
             (d.contains(cleanDest) || cleanDest.contains(d))) {
           debugPrint('[SupabaseService] Cache HIT for route: $origin -> $destination');
