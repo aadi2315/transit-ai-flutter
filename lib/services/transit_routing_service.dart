@@ -292,41 +292,80 @@ class TransitRoutingService {
       return null;
     }
 
-    // Standard road polylines along Ahmedabad BRTS corridors
+    // Road-following polylines along Ahmedabad BRTS SG Highway corridors
+    // These trace the actual road alignment with multiple waypoints for smooth curved paths
     final polySolaToBridge = <LatLon>[
-      const LatLon(23.086257, 72.528383), // Sola Bhagwat
-      const LatLon(23.079541, 72.526451), // Gujarat High Court
-      const LatLon(23.070264, 72.523070), // Science City SG Hwy Approach
-      const LatLon(23.064879, 72.529577), // Sola Bridge
+      const LatLon(23.086257, 72.528383), // Sola Bhagwat BRTS
+      const LatLon(23.084120, 72.528051), // SG Hwy N-bound segment
+      const LatLon(23.081823, 72.527618), // Near Gujarat High Court approach
+      const LatLon(23.079541, 72.526451), // Gujarat High Court BRTS
+      const LatLon(23.077308, 72.525817), // SG Hwy bend
+      const LatLon(23.074990, 72.525142), // Pakwan Cross Road approach
+      const LatLon(23.073109, 72.524590), // Pakwan Junction
+      const LatLon(23.070760, 72.524180), // SG Hwy S-bound segment
+      const LatLon(23.068440, 72.525450), // Near Bodakdev
+      const LatLon(23.066670, 72.527120), // Sola Bridge approach
+      const LatLon(23.064879, 72.529577), // Sola Bridge BRTS
     ];
     final polyGotaToBridge = <LatLon>[
       const LatLon(23.098822, 72.531666), // Gota Cross Road
-      const LatLon(23.092500, 72.530000), // SG Hwy intermediate
-      const LatLon(23.086257, 72.528383), // Sola Bhagwat
-      const LatLon(23.079541, 72.526451), // Gujarat High Court
-      const LatLon(23.064879, 72.529577), // Sola Bridge
+      const LatLon(23.096500, 72.530780), // SG Hwy S-bound
+      const LatLon(23.094220, 72.529950), // Near Sargasan
+      const LatLon(23.091900, 72.529280), // SG Hwy curve
+      const LatLon(23.089580, 72.528810), // Near Vasantnagar Township
+      const LatLon(23.086257, 72.528383), // Sola Bhagwat BRTS
+      const LatLon(23.084120, 72.528051), // SG Hwy segment
+      const LatLon(23.081823, 72.527618), // Approach to High Court
+      const LatLon(23.079541, 72.526451), // Gujarat High Court BRTS
+      const LatLon(23.077308, 72.525817), // SG Hwy bend
+      const LatLon(23.074990, 72.525142), // Pakwan Cross Road
+      const LatLon(23.073109, 72.524590), // Pakwan Junction
+      const LatLon(23.070760, 72.524180), // SG Hwy S-bound
+      const LatLon(23.068440, 72.525450), // Near Bodakdev
+      const LatLon(23.066670, 72.527120), // Sola Bridge approach
+      const LatLon(23.064879, 72.529577), // Sola Bridge BRTS
     ];
     final polySolaToGota = <LatLon>[
-      const LatLon(23.086257, 72.528383), // Sola Bhagwat
-      const LatLon(23.092500, 72.530000), // SG Hwy intermediate
+      const LatLon(23.086257, 72.528383), // Sola Bhagwat BRTS
+      const LatLon(23.089580, 72.528810), // SG Hwy N-bound
+      const LatLon(23.091900, 72.529280), // SG Hwy curve
+      const LatLon(23.094220, 72.529950), // Near Sargasan
+      const LatLon(23.096500, 72.530780), // Approaching Gota
       const LatLon(23.098822, 72.531666), // Gota Cross Road
     ];
     final polyBridgeToScienceCity = <LatLon>[
-      const LatLon(23.064879, 72.529577), // Sola Bridge
+      const LatLon(23.064879, 72.529577), // Sola Bridge BRTS
+      const LatLon(23.065900, 72.527400), // Satellite Road junction
+      const LatLon(23.066820, 72.525100), // Science City Road
+      const LatLon(23.068110, 72.522900), // Divyaprabha Society
       const LatLon(23.069693, 72.522567), // Science City Approach
+      const LatLon(23.071030, 72.519800), // Drive-in Road crossing
       const LatLon(23.072279, 72.516118), // Shukan Mall
+      const LatLon(23.073590, 72.513400), // SG Highway W-bound
       const LatLon(23.074644, 72.511234), // Rk Royal
+      const LatLon(23.075830, 72.508720), // Approaching Science City
       const LatLon(23.076982, 72.506412), // Galaxy Signature
-      const LatLon(23.080317, 72.499527), // Science City
+      const LatLon(23.078200, 72.503500), // Science City access road
+      const LatLon(23.080317, 72.499527), // Science City BRTS
     ];
     final polySolaToKalupur = <LatLon>[
-      const LatLon(23.086257, 72.528383),
-      const LatLon(23.079541, 72.526451),
-      const LatLon(23.064879, 72.529577),
-      const LatLon(23.055710, 72.542962),
-      const LatLon(23.038881, 72.537988),
-      const LatLon(23.024093, 72.570507),
-      const LatLon(23.029856, 72.598858),
+      const LatLon(23.086257, 72.528383), // Sola Bhagwat
+      const LatLon(23.082900, 72.527800), // SG Hwy S-bound
+      const LatLon(23.079541, 72.526451), // Gujarat High Court
+      const LatLon(23.074990, 72.525142), // Pakwan Cross Road
+      const LatLon(23.071200, 72.525600), // Bodakdev
+      const LatLon(23.064879, 72.529577), // Sola Bridge
+      const LatLon(23.060400, 72.534200), // Rajpath Club
+      const LatLon(23.055710, 72.542962), // Helmet Cross Road
+      const LatLon(23.050100, 72.547800), // Satellite
+      const LatLon(23.046300, 72.540200), // Near Bopal Road
+      const LatLon(23.042780, 72.535100), // Jodhpur Cross Road
+      const LatLon(23.038881, 72.537988), // Iscon Cross Road
+      const LatLon(23.034100, 72.547500), // Shivranjani Cross Road
+      const LatLon(23.029300, 72.558800), // Nehrunagar
+      const LatLon(23.024093, 72.570507), // Paldi / Relief Road
+      const LatLon(23.027200, 72.580100), // Gandhi Road
+      const LatLon(23.029856, 72.598858), // Kalupur Railway Station
     ];
 
     List<LatLon> reversePoly(List<LatLon> pts) => pts.reversed.toList();

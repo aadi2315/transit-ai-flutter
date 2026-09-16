@@ -287,7 +287,6 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       _isLoadingRoute = true;
       _showOriginDropdown = false;
       _showDestDropdown = false;
-      _transitResult = null;
     });
 
     try {
@@ -486,20 +485,24 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
   /// Pushes driving or cached corridor route to all map canvases via JS bridge.
   void _pushDrivingRouteToMaps(TransitRouteResult route) {
-    for (final divId in [
-      'transit_map_corridor',
-      'transit_map_explore',
-      'transit_map_fullscreen'
-    ]) {
-      updateInteractiveRoute(
-        divId,
-        route.encodedPolyline,
-        route.originLat,
-        route.originLng,
-        route.destLat,
-        route.destLng,
-      );
-    }
+    // Small delay to let the Flutter widget render into the DOM before pushing JS route
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      for (final divId in [
+        'transit_map_corridor',
+        'transit_map_explore',
+        'transit_map_fullscreen'
+      ]) {
+        updateInteractiveRoute(
+          divId,
+          route.encodedPolyline,
+          route.originLat,
+          route.originLng,
+          route.destLat,
+          route.destLng,
+        );
+      }
+    });
   }
 
   /// Accurate distance estimate from all transit leg polylines in km.
@@ -1342,9 +1345,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               child: Stack(
                 children: [
                   // Real Interactive Google Maps Engine Vector Canvas
-                  if (route != null &&
-                      (route.encodedPolyline.isNotEmpty || _transitResult != null) &&
-                      TransitMapConfig.hasGoogleMapsApiKey)
+                  if (TransitMapConfig.hasGoogleMapsApiKey)
                     Positioned.fill(
                       child: InteractiveGoogleMapView(
                         divId: 'transit_map_corridor',
@@ -1376,6 +1377,50 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+
+                  // Route Loading Badge
+                  if (_isLoadingRoute)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xDD0F172A),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0x4438BDF8)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Finding route...',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 

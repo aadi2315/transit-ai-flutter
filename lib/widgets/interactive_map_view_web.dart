@@ -6,6 +6,8 @@ import '../services/google_directions_service.dart';
 import '../services/transit_gps_service.dart';
 import '../services/web_maps_bridge.dart';
 
+import 'dart:js' as js;
+
 final Set<String> _registeredViews = <String>{};
 
 Widget buildPlatformMapView({
@@ -79,6 +81,11 @@ class _WebInteractiveMapViewState extends State<_WebInteractiveMapView> {
           ..style.border = 'none'
           ..style.outline = 'none'
           ..style.backgroundColor = '#f8fafc';
+        try {
+          if (js.context.hasProperty('transitRegisterElement')) {
+            js.context.callMethod('transitRegisterElement', [id, el]);
+          }
+        } catch (_) {}
         return el;
       });
     }
@@ -97,7 +104,7 @@ class _WebInteractiveMapViewState extends State<_WebInteractiveMapView> {
       _initialized = true;
       _syncAll();
       widget.onMapReady?.call();
-    } else if (attempts < 8) {
+    } else if (attempts < 16) {
       Future.delayed(const Duration(milliseconds: 150), () {
         _tryInitMap(attempts: attempts + 1);
       });

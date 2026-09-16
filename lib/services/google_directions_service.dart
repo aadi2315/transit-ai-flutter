@@ -243,6 +243,14 @@ class GoogleDirectionsService {
     'memnagar': const MapCoordinate(23.0510, 72.5350),
     'vadaj': const MapCoordinate(23.0550, 72.5730),
     'helmet': const MapCoordinate(23.0450, 72.5340),
+    'gandhinagar': const MapCoordinate(23.2156, 72.6369),
+    'airport': const MapCoordinate(23.0772, 72.6346),
+    'sabarmati': const MapCoordinate(23.0600, 72.5800),
+    'sabarmati ashram': const MapCoordinate(23.0600, 72.5800),
+    'kankaria': const MapCoordinate(23.0063, 72.6026),
+    'kankaria lake': const MapCoordinate(23.0063, 72.6026),
+    'surat': const MapCoordinate(21.1702, 72.8311),
+    'mumbai': const MapCoordinate(19.0760, 72.8777),
   };
 
   /// Resolves an origin or destination string to standard coordinates
@@ -328,7 +336,17 @@ class GoogleDirectionsService {
         return t;
       }
       final clean = t.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
-      if (clean.toLowerCase().contains('ahmedabad')) {
+      if (clean.isEmpty) return 'Ahmedabad, Gujarat, India';
+      final low = clean.toLowerCase();
+      if (low.contains(',') ||
+          low.contains('gujarat') ||
+          low.contains('india') ||
+          low.contains('ahmedabad') ||
+          low.contains('gandhinagar') ||
+          low.contains('mumbai') ||
+          low.contains('delhi') ||
+          low.contains('surat') ||
+          low.contains('vadodara')) {
         return clean;
       }
       return '$clean, Ahmedabad, Gujarat, India';

@@ -67,9 +67,22 @@
       }
       // 3. Clean parenthetical annotations like "(BRTS Hub)", "(Live GPS)", etc.
       var clean = s.replace(/\s*\([^)]*\)/g, '').trim();
-      if (clean.toLowerCase().indexOf('ahmedabad') >= 0) {
+      if (!clean) return 'Ahmedabad, Gujarat, India';
+
+      var cleanLow = clean.toLowerCase();
+      // If it already has comma, state, country or specific city name, use directly
+      if (cleanLow.indexOf(',') >= 0 ||
+          cleanLow.indexOf('gujarat') >= 0 ||
+          cleanLow.indexOf('india') >= 0 ||
+          cleanLow.indexOf('ahmedabad') >= 0 ||
+          cleanLow.indexOf('gandhinagar') >= 0 ||
+          cleanLow.indexOf('mumbai') >= 0 ||
+          cleanLow.indexOf('delhi') >= 0 ||
+          cleanLow.indexOf('surat') >= 0 ||
+          cleanLow.indexOf('vadodara') >= 0) {
         return clean;
       }
+      // Default to Ahmedabad, Gujarat, India for local stop names
       return clean + ', Ahmedabad, Gujarat, India';
     }
 
@@ -92,72 +105,79 @@
             }
           } catch(e) {}
         }
-        var originEndpoint = transitFormatEndpoint(origin);
-        var destEndpoint = transitFormatEndpoint(destination);
 
-        directionsService.route({
-          origin: originEndpoint,
-          destination: destEndpoint,
-          travelMode: google.maps.TravelMode.DRIVING,
-          waypoints: waypoints
-        }, function(response, status) {
-          if (status === google.maps.DirectionsStatus.OK && response && response.routes && response.routes.length > 0) {
-            var route = response.routes[0];
-            var overviewPoly = route.overview_polyline;
-            if (!overviewPoly && google.maps.geometry && google.maps.geometry.encoding && route.overview_path) {
-              overviewPoly = google.maps.geometry.encoding.encodePath(route.overview_path);
+        function executeRoute(origEndpoint, destEndpoint, fallbackAttempt) {
+          directionsService.route({
+            origin: origEndpoint,
+            destination: destEndpoint,
+            travelMode: google.maps.TravelMode.DRIVING,
+            waypoints: waypoints
+          }, function(response, status) {
+            if (status === google.maps.DirectionsStatus.OK && response && response.routes && response.routes.length > 0) {
+              var route = response.routes[0];
+              var overviewPoly = route.overview_polyline;
+              if (!overviewPoly && google.maps.geometry && google.maps.geometry.encoding && route.overview_path) {
+                overviewPoly = google.maps.geometry.encoding.encodePath(route.overview_path);
+              }
+              var legs = route.legs || [];
+              var totalDist = 0;
+              var totalDuration = 0;
+              var steps = [];
+              var startLoc = { lat: 23.0827, lng: 72.5284 };
+              var endLoc = { lat: 23.0315, lng: 72.5074 };
+
+              for (var i = 0; i < legs.length; i++) {
+                var leg = legs[i];
+                if (leg.distance) totalDist += leg.distance.value;
+                if (leg.duration) totalDuration += leg.duration.value;
+                if (i === 0 && leg.start_location) {
+                  startLoc = { lat: leg.start_location.lat(), lng: leg.start_location.lng() };
+                }
+                if (i === legs.length - 1 && leg.end_location) {
+                  endLoc = { lat: leg.end_location.lat(), lng: leg.end_location.lng() };
+                }
+                var legSteps = leg.steps || [];
+                for (var j = 0; j < legSteps.length; j++) {
+                  var s = legSteps[j];
+                  var plain = (s.instructions || '').replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+                  steps.push({
+                    instruction: plain || 'Continue along corridor',
+                    distance: (s.distance && s.distance.text) ? s.distance.text : '',
+                    duration: (s.duration && s.duration.text) ? s.duration.text : '',
+                    start: { lat: s.start_location ? s.start_location.lat() : 0, lng: s.start_location ? s.start_location.lng() : 0 },
+                    end: { lat: s.end_location ? s.end_location.lat() : 0, lng: s.end_location ? s.end_location.lng() : 0 }
+                  });
+                }
+              }
+
+              var distKm = (totalDist / 1000.0).toFixed(1);
+              var durMins = Math.round(totalDuration / 60);
+
+              callback(JSON.stringify({
+                status: 'OK',
+                origin: origin,
+                destination: destination,
+                originLat: startLoc.lat,
+                originLng: startLoc.lng,
+                destLat: endLoc.lat,
+                destLng: endLoc.lng,
+                encodedPolyline: overviewPoly || '',
+                distanceKm: parseFloat(distKm),
+                durationMins: durMins,
+                steps: steps
+              }));
+            } else if (fallbackAttempt === 1) {
+              // Retry with raw cleaned queries without forced city suffix
+              var cleanOrig = typeof origin === 'string' ? origin.replace(/\s*\([^)]*\)/g, '').trim() : origEndpoint;
+              var cleanDest = typeof destination === 'string' ? destination.replace(/\s*\([^)]*\)/g, '').trim() : destEndpoint;
+              executeRoute(cleanOrig, cleanDest, 2);
+            } else {
+              callback(JSON.stringify({ status: status, error_message: 'Directions request failed with ' + status }));
             }
-            var legs = route.legs || [];
-            var totalDist = 0;
-            var totalDuration = 0;
-            var steps = [];
-            var startLoc = { lat: 23.0827, lng: 72.5284 };
-            var endLoc = { lat: 23.0315, lng: 72.5074 };
+          });
+        }
 
-            for (var i = 0; i < legs.length; i++) {
-              var leg = legs[i];
-              if (leg.distance) totalDist += leg.distance.value;
-              if (leg.duration) totalDuration += leg.duration.value;
-              if (i === 0 && leg.start_location) {
-                startLoc = { lat: leg.start_location.lat(), lng: leg.start_location.lng() };
-              }
-              if (i === legs.length - 1 && leg.end_location) {
-                endLoc = { lat: leg.end_location.lat(), lng: leg.end_location.lng() };
-              }
-              var legSteps = leg.steps || [];
-              for (var j = 0; j < legSteps.length; j++) {
-                var s = legSteps[j];
-                var plain = (s.instructions || '').replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
-                steps.push({
-                  instruction: plain || 'Continue along corridor',
-                  distance: (s.distance && s.distance.text) ? s.distance.text : '',
-                  duration: (s.duration && s.duration.text) ? s.duration.text : '',
-                  start: { lat: s.start_location ? s.start_location.lat() : 0, lng: s.start_location ? s.start_location.lng() : 0 },
-                  end: { lat: s.end_location ? s.end_location.lat() : 0, lng: s.end_location ? s.end_location.lng() : 0 }
-                });
-              }
-            }
-
-            var distKm = (totalDist / 1000.0).toFixed(1);
-            var durMins = Math.round(totalDuration / 60);
-
-            callback(JSON.stringify({
-              status: 'OK',
-              origin: origin,
-              destination: destination,
-              originLat: startLoc.lat,
-              originLng: startLoc.lng,
-              destLat: endLoc.lat,
-              destLng: endLoc.lng,
-              encodedPolyline: overviewPoly || '',
-              distanceKm: parseFloat(distKm),
-              durationMins: durMins,
-              steps: steps
-            }));
-          } else {
-            callback(JSON.stringify({ status: status, error_message: 'Directions request failed with ' + status }));
-          }
-        });
+        executeRoute(transitFormatEndpoint(origin), transitFormatEndpoint(destination), 1);
       } catch (err) {
         callback(JSON.stringify({ status: 'EXCEPTION', error_message: err.toString() }));
       }
@@ -234,42 +254,114 @@
     // REAL INTERACTIVE GOOGLE MAPS ENGINE MANAGER
     // =========================================================================
     window.transitMaps = {};
+    window.transitDomElements = {};
 
-    window.transitInitMap = function(divId, isSatellite) {
-      try {
-        var el = document.getElementById(divId);
-        if (!el || typeof google === 'undefined' || !google.maps) {
-          return false;
-        }
+    // Mathematical route focus and zoom calculator:
+    // Calculates the true midpoint and optimal zoom from degree span so the map
+    // centers on the actual route immediately, completely immune to zero-dimension containers.
+    window.transitApplyRouteFocus = function(instance, bounds, minLat, maxLat, minLng, maxLng) {
+      if (!instance || !instance.map) return;
+      var map = instance.map;
 
-        var existing = window.transitMaps[divId];
-        if (existing && existing.map) {
-          // If already attached to this exact DOM element and functioning
-          if (existing.map.getDiv() === el) {
-            google.maps.event.trigger(existing.map, 'resize');
-            return true;
+      var centerLat = (minLat + maxLat) / 2;
+      var centerLng = (minLng + maxLng) / 2;
+      var spanLat = Math.max(Math.abs(maxLat - minLat), 0.005);
+      var spanLng = Math.max(Math.abs(maxLng - minLng), 0.005);
+      var maxSpan = Math.max(spanLat, spanLng);
+
+      // Compute exact zoom from bounding degree span
+      var zoom = 14;
+      if (maxSpan > 10.0) zoom = 5;
+      else if (maxSpan > 5.0) zoom = 6;
+      else if (maxSpan > 2.5) zoom = 7;
+      else if (maxSpan > 1.2) zoom = 8;
+      else if (maxSpan > 0.6) zoom = 9;
+      else if (maxSpan > 0.3) zoom = 11;
+      else if (maxSpan > 0.15) zoom = 12;
+      else if (maxSpan > 0.07) zoom = 13;
+      else if (maxSpan > 0.035) zoom = 14;
+      else zoom = 15;
+
+      instance.routeBounds = bounds;
+      instance.routeCenter = { lat: centerLat, lng: centerLng };
+      instance.routeZoom = zoom;
+      instance.minLat = minLat;
+      instance.maxLat = maxLat;
+      instance.minLng = minLng;
+      instance.maxLng = maxLng;
+      instance.hasRoute = true;
+
+      // 1. Immediately focus onto the exact route center & zoom level
+      map.setCenter({ lat: centerLat, lng: centerLng });
+      map.setZoom(zoom);
+      google.maps.event.trigger(map, 'resize');
+
+      // 2. Refine with fitBounds once layout is established
+      setTimeout(function() {
+        try {
+          google.maps.event.trigger(map, 'resize');
+          var div = map.getDiv();
+          if (div && div.offsetWidth > 100 && div.offsetHeight > 80 && bounds && !bounds.isEmpty()) {
+            map.fitBounds(bounds, { top: 25, bottom: 25, left: 25, right: 25 });
+            // Guard against world-zoom/Russia fallback
+            setTimeout(function() {
+              try {
+                var z = map.getZoom();
+                if ((z < 10 && maxSpan < 0.1) || z < 3) {
+                  map.setCenter({ lat: centerLat, lng: centerLng });
+                  map.setZoom(zoom);
+                }
+              } catch(e) {}
+            }, 60);
           }
-          // DOM element changed (Flutter Web recreated the div)
-          try {
-            if (existing.resizeObserver) existing.resizeObserver.disconnect();
-          } catch(e) {}
+        } catch(e) {}
+      }, 120);
+    };
+
+    // Get active map or initialize a fresh one on the currently attached DOM element.
+    // Automatically re-attaches if Flutter Web recreated the platform view div!
+    window.transitGetOrInitMap = function(divId, isSatellite) {
+      if (typeof google === 'undefined' || !google.maps) return null;
+      var el = (window.transitDomElements && window.transitDomElements[divId]) || document.getElementById(divId);
+      if (!el) {
+        // Deep search inside Flutter glass-pane shadow roots
+        var all = document.querySelectorAll('*');
+        for (var i = 0; i < all.length; i++) {
+          if (all[i].shadowRoot) {
+            var found = all[i].shadowRoot.getElementById(divId) || all[i].shadowRoot.querySelector('#' + divId);
+            if (found) { el = found; break; }
+          }
+        }
+      }
+      if (!el) return null;
+
+      var instance = window.transitMaps[divId];
+      // If map already exists AND is attached to this exact DOM element that is still connected
+      if (instance && instance.map && instance.map.getDiv() === el && document.contains(el)) {
+        return instance;
+      }
+
+      // Re-create or initialize on el
+      try {
+        if (instance && instance.resizeObserver) {
+          try { instance.resizeObserver.disconnect(); } catch(e) {}
         }
 
         var mapOptions = {
-          center: { lat: 23.0827, lng: 72.5284 },
-          zoom: 14,
-          minZoom: 12,
-          maxZoom: 18,
+          center: (instance && instance.routeCenter) ? instance.routeCenter : { lat: 23.0827, lng: 72.5284 },
+          zoom: (instance && instance.routeZoom) ? instance.routeZoom : 14,
+          minZoom: 3,
+          maxZoom: 20,
           disableDefaultUI: true,
           zoomControl: false,
           gestureHandling: 'greedy',
           mapTypeId: isSatellite ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP,
-          styles: null // Authentic clean white/light Google Maps theme
+          styles: null
         };
 
         var map = new google.maps.Map(el, mapOptions);
 
-        var instance = {
+        instance = {
           map: map,
           polyline: null,
           originMarker: null,
@@ -277,27 +369,27 @@
           gpsMarker: null,
           transitPolylines: [],
           transitMarkers: [],
-          routeBounds: null,
+          routeBounds: (instance && instance.routeBounds) || null,
+          routeCenter: (instance && instance.routeCenter) || null,
+          routeZoom: (instance && instance.routeZoom) || null,
+          minLat: (instance && instance.minLat) || null,
+          maxLat: (instance && instance.maxLat) || null,
+          minLng: (instance && instance.minLng) || null,
+          maxLng: (instance && instance.maxLng) || null,
+          hasRoute: false,
           isSatellite: !!isSatellite,
-          resizeObserver: null
+          resizeObserver: null,
+          cachedTransitArgs: (instance && instance.cachedTransitArgs) || null,
+          cachedDrivingArgs: (instance && instance.cachedDrivingArgs) || null
         };
         window.transitMaps[divId] = instance;
 
-        // ResizeObserver ensures map canvas layout and tiles render as soon as container gets dimensions
         if (window.ResizeObserver) {
           var ro = new ResizeObserver(function(entries) {
             for (var i = 0; i < entries.length; i++) {
               var entry = entries[i];
               if (entry.contentRect && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
                 google.maps.event.trigger(map, 'resize');
-                if (instance.routeBounds && !instance.routeBounds.isEmpty()) {
-                  map.fitBounds(instance.routeBounds, { top: 45, bottom: 45, left: 40, right: 40 });
-                  setTimeout(function() {
-                    var z = map.getZoom();
-                    if (z < 13) map.setZoom(14);
-                    if (z > 16) map.setZoom(15);
-                  }, 120);
-                }
               }
             }
           });
@@ -308,42 +400,61 @@
         // Staggered resize triggers to guarantee smooth tile loading
         setTimeout(function() { google.maps.event.trigger(map, 'resize'); }, 60);
         setTimeout(function() { google.maps.event.trigger(map, 'resize'); }, 180);
-        setTimeout(function() { google.maps.event.trigger(map, 'resize'); }, 350);
 
-        return true;
-      } catch (e) {
-        console.error('[transitInitMap error]', e);
-        return false;
+        // Re-render cached route onto newly mounted div if available
+        if (instance.cachedTransitArgs) {
+          var ca = instance.cachedTransitArgs;
+          setTimeout(function() {
+            window.transitUpdateTransitRoute(divId, ca.legsJson, ca.oLat, ca.oLng, ca.dLat, ca.dLng);
+          }, 60);
+        } else if (instance.cachedDrivingArgs) {
+          var da = instance.cachedDrivingArgs;
+          setTimeout(function() {
+            window.transitUpdateRoute(divId, da.polyEnc, da.oLat, da.oLng, da.dLat, da.dLng);
+          }, 60);
+        }
+
+        return instance;
+      } catch(e) {
+        console.error('[transitGetOrInitMap error]', e);
+        return null;
       }
+    };
+
+    window.transitRegisterElement = function(id, el) {
+      window.transitDomElements[id] = el;
+      var instance = window.transitMaps[id];
+      if (!instance || !instance.map || instance.map.getDiv() !== el) {
+        window.transitGetOrInitMap(id, instance ? instance.isSatellite : false);
+      } else {
+        google.maps.event.trigger(instance.map, 'resize');
+      }
+    };
+
+    window.transitInitMap = function(divId, isSatellite) {
+      return !!window.transitGetOrInitMap(divId, isSatellite);
     };
 
     window.transitUpdateRoute = function(divId, polylineEnc, originLat, originLng, destLat, destLng) {
       try {
-        var instance = window.transitMaps[divId];
-        if (!instance || !instance.map) {
-          // If map not initialized yet, try initializing now
-          if (window.transitInitMap(divId)) {
-            instance = window.transitMaps[divId];
-          } else {
-            return false;
-          }
-        }
+        var instance = window.transitGetOrInitMap(divId);
+        if (!instance || !instance.map) return false;
         var map = instance.map;
         google.maps.event.trigger(map, 'resize');
 
+        instance.cachedDrivingArgs = {
+          polyEnc: polylineEnc,
+          oLat: originLat,
+          oLng: originLng,
+          dLat: destLat,
+          dLng: destLng
+        };
+        instance.cachedTransitArgs = null;
+
         // Clean up previous polyline & markers
-        if (instance.polyline) {
-          instance.polyline.setMap(null);
-          instance.polyline = null;
-        }
-        if (instance.originMarker) {
-          instance.originMarker.setMap(null);
-          instance.originMarker = null;
-        }
-        if (instance.destMarker) {
-          instance.destMarker.setMap(null);
-          instance.destMarker = null;
-        }
+        if (instance.polyline) { instance.polyline.setMap(null); instance.polyline = null; }
+        if (instance.originMarker) { instance.originMarker.setMap(null); instance.originMarker = null; }
+        if (instance.destMarker) { instance.destMarker.setMap(null); instance.destMarker = null; }
         (instance.transitPolylines || []).forEach(function(p) { p.setMap(null); });
         (instance.transitMarkers || []).forEach(function(m) { m.setMap(null); });
         instance.transitPolylines = [];
@@ -351,6 +462,14 @@
 
         var bounds = new google.maps.LatLngBounds();
         var hasPath = false;
+        var minLat = 999, maxLat = -999, minLng = 999, maxLng = -999;
+        function trackPt(lat, lng) {
+          if (!lat || !lng) return;
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+          if (lng < minLng) minLng = lng;
+          if (lng > maxLng) maxLng = lng;
+        }
 
         if (polylineEnc) {
           try {
@@ -359,7 +478,7 @@
               var polyline = new google.maps.Polyline({
                 path: decodedPath,
                 geodesic: true,
-                strokeColor: '#2563EB', // Navigation blue
+                strokeColor: '#2563EB',
                 strokeOpacity: 0.95,
                 strokeWeight: 6,
                 zIndex: 60,
@@ -368,6 +487,7 @@
               instance.polyline = polyline;
               for (var i = 0; i < decodedPath.length; i++) {
                 bounds.extend(decodedPath[i]);
+                trackPt(decodedPath[i].lat(), decodedPath[i].lng());
               }
               hasPath = true;
             }
@@ -383,9 +503,10 @@
         var destPt = new google.maps.LatLng(dLat, dLng);
         bounds.extend(originPt);
         bounds.extend(destPt);
+        trackPt(oLat, oLng);
+        trackPt(dLat, dLng);
 
         if (!hasPath) {
-          // Straight line fallback if polyline string was missing
           var straightPoly = new google.maps.Polyline({
             path: [originPt, destPt],
             geodesic: true,
@@ -398,43 +519,37 @@
           instance.polyline = straightPoly;
         }
 
-        instance.routeBounds = bounds;
-
-        // Circular Waypoint Marker for Origin
+        // Origin marker
         var originPinIcon = {
           url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
             '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">' +
             '<circle fill="#FFFFFF" cx="14" cy="14" r="11" stroke="#334155" stroke-width="4"/>' +
-            '<circle fill="#2563EB" cx="14" cy="14" r="5"/>' +
+            '<circle fill="#10B981" cx="14" cy="14" r="6"/>' +
             '</svg>'
           ),
-          scaledSize: new google.maps.Size(26, 26),
-          anchor: new google.maps.Point(13, 13)
+          scaledSize: new google.maps.Size(28, 28),
+          anchor: new google.maps.Point(14, 14)
         };
-
         instance.originMarker = new google.maps.Marker({
           position: originPt,
           map: map,
           icon: originPinIcon,
-          zIndex: 100,
+          zIndex: 200,
           title: 'Origin Stop'
         });
 
-        // Red Pin Drop for Destination
+        // Destination Red Pin Drop
+        var destPinSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="38" height="52" viewBox="0 0 38 52">' +
+          '<filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.35"/></filter>' +
+          '<g filter="url(#sh)">' +
+          '<path fill="#EA4335" stroke="#B31412" stroke-width="1.2" d="M19 1C9.61 1 2 8.61 2 18c0 12.8 17 31 17 31s17-18.2 17-31C36 8.61 28.39 1 19 1z"/>' +
+          '<circle fill="#FFFFFF" cx="19" cy="18" r="6.5"/>' +
+          '</g></svg>';
         var destPinIcon = {
-          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="38" height="52" viewBox="0 0 38 52">' +
-            '<filter id="shadow" x="-20%" y="-10%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.35"/></filter>' +
-            '<g filter="url(#shadow)">' +
-            '<path fill="#EA4335" stroke="#B31412" stroke-width="1.2" d="M19 1C9.61 1 2 8.61 2 18c0 12.8 17 31 17 31s17-18.2 17-31C36 8.61 28.39 1 19 1z"/>' +
-            '<circle fill="#FFFFFF" cx="19" cy="18" r="6.5"/>' +
-            '</g>' +
-            '</svg>'
-          ),
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(destPinSvg),
           scaledSize: new google.maps.Size(34, 48),
           anchor: new google.maps.Point(17, 47)
         };
-
         instance.destMarker = new google.maps.Marker({
           position: destPt,
           map: map,
@@ -443,17 +558,15 @@
           title: 'Destination Stop'
         });
 
-        if (bounds && !bounds.isEmpty()) {
-          map.fitBounds(bounds, { top: 50, bottom: 50, left: 45, right: 45 });
-          setTimeout(function() {
-            var z = map.getZoom();
-            if (z < 13) map.setZoom(14);
-            if (z > 16) map.setZoom(15);
-          }, 150);
-        } else {
-          map.setCenter({ lat: (oLat + dLat) / 2, lng: (oLng + dLng) / 2 });
-          map.setZoom(14);
+        if (minLat === 999) {
+          minLat = Math.min(oLat, dLat);
+          maxLat = Math.max(oLat, dLat);
+          minLng = Math.min(oLng, dLng);
+          maxLng = Math.max(oLng, dLng);
         }
+
+        // Focus & zoom immediately to this route
+        window.transitApplyRouteFocus(instance, bounds, minLat, maxLat, minLng, maxLng);
         return true;
       } catch (e) {
         console.error('[transitUpdateRoute error]', e);
@@ -461,19 +574,28 @@
       }
     };
 
+    window.transitZoomToRoute = function(divId, oLat, oLng, dLat, dLng) {
+      var instance = window.transitGetOrInitMap(divId);
+      if (!instance || !instance.map) return;
+      window.transitResetMap(divId);
+    };
+
     // Multi-Leg Transit Route Renderer (Bus Lines with Bus Badges & Stop Markers)
     window.transitUpdateTransitRoute = function(divId, legsJson, originLat, originLng, destLat, destLng) {
       try {
-        var instance = window.transitMaps[divId];
-        if (!instance || !instance.map) {
-          if (window.transitInitMap(divId)) {
-            instance = window.transitMaps[divId];
-          } else {
-            return false;
-          }
-        }
+        var instance = window.transitGetOrInitMap(divId);
+        if (!instance || !instance.map) return false;
         var map = instance.map;
         google.maps.event.trigger(map, 'resize');
+
+        instance.cachedTransitArgs = {
+          legsJson: legsJson,
+          oLat: originLat,
+          oLng: originLng,
+          dLat: destLat,
+          dLng: destLng
+        };
+        instance.cachedDrivingArgs = null;
 
         // Clear previous overlays
         if (instance.polyline) { instance.polyline.setMap(null); instance.polyline = null; }
@@ -490,6 +612,14 @@
 
         var bounds = new google.maps.LatLngBounds();
         var legColors = ['#1A73E8','#EA4335','#34A853','#FBBC05','#9B59B6'];
+        var minLat = 999, maxLat = -999, minLng = 999, maxLng = -999;
+        function trackPt(lat, lng) {
+          if (!lat || !lng) return;
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+          if (lng < minLng) minLng = lng;
+          if (lng > maxLng) maxLng = lng;
+        }
 
         legs.forEach(function(leg, idx) {
           var color = leg.color || legColors[idx % legColors.length];
@@ -510,14 +640,16 @@
                   map: map
                 });
                 instance.transitPolylines.push(poly);
-                path.forEach(function(pt) { bounds.extend(pt); });
+                path.forEach(function(pt) {
+                  bounds.extend(pt);
+                  trackPt(pt.lat(), pt.lng());
+                });
                 drawn = true;
               }
             } catch(e) {}
           }
 
           if (!drawn && leg.boardLat && leg.alightLat) {
-            // Straight-line fallback between board & alight
             var straight = [
               new google.maps.LatLng(leg.boardLat, leg.boardLng),
               new google.maps.LatLng(leg.alightLat, leg.alightLng)
@@ -534,6 +666,8 @@
             instance.transitPolylines.push(polyFallback);
             bounds.extend(straight[0]);
             bounds.extend(straight[1]);
+            trackPt(leg.boardLat, leg.boardLng);
+            trackPt(leg.alightLat, leg.alightLng);
           }
 
           // 2. Board marker (First stop of this leg with Bus Badge)
@@ -559,6 +693,7 @@
             });
             instance.transitMarkers.push(boardMarker);
             bounds.extend(new google.maps.LatLng(leg.boardLat, leg.boardLng));
+            trackPt(leg.boardLat, leg.boardLng);
           }
 
           // 3. Alight / Transfer marker
@@ -584,8 +719,8 @@
             });
             instance.transitMarkers.push(alightMarker);
             bounds.extend(new google.maps.LatLng(leg.alightLat, leg.alightLng));
-          } else if (idx < legs.length - 1 && leg.alightLat && leg.alightLng) {
-            // Transfer Marker between bus legs
+            trackPt(leg.alightLat, leg.alightLng);
+          } else if (leg.isTransfer && leg.alightLat && leg.alightLng) {
             var transferIcon = {
               url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
@@ -605,21 +740,19 @@
             });
             instance.transitMarkers.push(transferMarker);
             bounds.extend(new google.maps.LatLng(leg.alightLat, leg.alightLng));
+            trackPt(leg.alightLat, leg.alightLng);
           }
         });
 
-        instance.routeBounds = bounds;
-        if (bounds && !bounds.isEmpty()) {
-          map.fitBounds(bounds, { top: 50, bottom: 50, left: 45, right: 45 });
-          setTimeout(function() {
-            var z = map.getZoom();
-            if (z < 13) map.setZoom(14);
-            if (z > 16) map.setZoom(15);
-          }, 150);
-        } else {
-          map.setCenter({ lat: 23.0827, lng: 72.5284 });
-          map.setZoom(14);
+        if (originLat && originLng) trackPt(originLat, originLng);
+        if (destLat && destLng) trackPt(destLat, destLng);
+
+        if (minLat === 999) {
+          minLat = 23.038; maxLat = 23.086;
+          minLng = 72.528; maxLng = 72.538;
         }
+
+        window.transitApplyRouteFocus(instance, bounds, minLat, maxLat, minLng, maxLng);
         return true;
       } catch (e) {
         console.error('[transitUpdateTransitRoute error]', e);
@@ -628,7 +761,7 @@
     };
 
     window.transitClearRoute = function(divId) {
-      var instance = window.transitMaps[divId];
+      var instance = window.transitGetOrInitMap(divId);
       if (!instance) return;
       if (instance.polyline) { instance.polyline.setMap(null); instance.polyline = null; }
       if (instance.originMarker) { instance.originMarker.setMap(null); instance.originMarker = null; }
@@ -638,75 +771,87 @@
       instance.transitPolylines = [];
       instance.transitMarkers = [];
       instance.routeBounds = null;
+      instance.routeCenter = null;
+      instance.routeZoom = null;
+      instance.cachedTransitArgs = null;
+      instance.cachedDrivingArgs = null;
     };
 
     window.transitSetMapScope = function(divId, scope) {
-      var instance = window.transitMaps[divId];
+      var instance = window.transitGetOrInitMap(divId);
       if (!instance || !instance.map) return;
       var map = instance.map;
       google.maps.event.trigger(map, 'resize');
 
       if (scope === 'corridor' || scope === 'Route') {
-        if (instance.routeBounds && !instance.routeBounds.isEmpty()) {
-          map.fitBounds(instance.routeBounds, { top: 50, bottom: 50, left: 45, right: 45 });
-          setTimeout(function() {
-            var z = map.getZoom();
-            if (z < 13) map.setZoom(14);
-            if (z > 16) map.setZoom(15);
-          }, 150);
-        } else {
-          map.setCenter({ lat: 23.0827, lng: 72.5284 });
-          map.setZoom(14);
-        }
+        window.transitResetMap(divId);
       } else if (scope === 'city' || scope === 'City Grid') {
-        if (instance.routeBounds && !instance.routeBounds.isEmpty()) {
-          map.setCenter(instance.routeBounds.getCenter());
-          map.setZoom(13);
+        if (instance.routeCenter) {
+          map.setCenter(instance.routeCenter);
+          map.setZoom(12);
         } else {
           map.setCenter({ lat: 23.0750, lng: 72.5250 });
-          map.setZoom(13);
+          map.setZoom(12);
         }
       }
     };
 
     window.transitSetMapType = function(divId, isSatellite) {
-      var instance = window.transitMaps[divId];
+      var instance = window.transitGetOrInitMap(divId, isSatellite);
       if (!instance || !instance.map) return;
       instance.isSatellite = !!isSatellite;
       instance.map.setMapTypeId(isSatellite ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP);
     };
 
     window.transitZoomMap = function(divId, delta) {
-      var instance = window.transitMaps[divId];
+      var instance = window.transitGetOrInitMap(divId);
       if (!instance || !instance.map) return;
       var currentZoom = instance.map.getZoom() || 14;
       var targetZoom = currentZoom + delta;
-      if (targetZoom < 12) targetZoom = 12;
-      if (targetZoom > 18) targetZoom = 18;
+      if (targetZoom < 3) targetZoom = 3;
+      if (targetZoom > 20) targetZoom = 20;
       instance.map.setZoom(targetZoom);
     };
 
+    // Recenter Button: Always re-focuses on the current route center & zoom level
     window.transitResetMap = function(divId) {
-      var instance = window.transitMaps[divId];
+      var instance = window.transitGetOrInitMap(divId);
       if (!instance || !instance.map) return;
-      google.maps.event.trigger(instance.map, 'resize');
-      if (instance.routeBounds && !instance.routeBounds.isEmpty()) {
-        instance.map.fitBounds(instance.routeBounds, { top: 50, bottom: 50, left: 45, right: 45 });
-        setTimeout(function() {
-          var z = instance.map.getZoom();
-          if (z < 13) instance.map.setZoom(14);
-          if (z > 16) instance.map.setZoom(15);
-        }, 150);
+      var map = instance.map;
+      google.maps.event.trigger(map, 'resize');
+
+      if (instance.routeCenter && instance.routeZoom) {
+        map.setCenter(instance.routeCenter);
+        map.setZoom(instance.routeZoom);
+        if (instance.routeBounds && !instance.routeBounds.isEmpty()) {
+          try {
+            map.fitBounds(instance.routeBounds, { top: 25, bottom: 25, left: 25, right: 25 });
+            setTimeout(function() {
+              var z = map.getZoom();
+              if (z < 10 && instance.routeZoom >= 12) {
+                map.setCenter(instance.routeCenter);
+                map.setZoom(instance.routeZoom);
+              }
+            }, 60);
+          } catch(e) {}
+        }
+      } else if (instance.routeBounds && !instance.routeBounds.isEmpty()) {
+        try {
+          map.fitBounds(instance.routeBounds, { top: 25, bottom: 25, left: 25, right: 25 });
+        } catch(e) {
+          map.setCenter({ lat: 23.0827, lng: 72.5284 });
+          map.setZoom(14);
+        }
       } else {
-        instance.map.setCenter({ lat: 23.0827, lng: 72.5284 });
-        instance.map.setZoom(14);
+        map.setCenter({ lat: 23.0827, lng: 72.5284 });
+        map.setZoom(14);
       }
     };
 
     window.transitUpdateGps = function(divId, lat, lng) {
       try {
         window.transitLastGps = { lat: lat, lng: lng };
-        var instance = window.transitMaps[divId];
+        var instance = window.transitGetOrInitMap(divId);
         if (!instance || !instance.map) return;
         var map = instance.map;
 
@@ -736,7 +881,7 @@
     };
 
     window.transitCenterOnGps = function(divId, lat, lng) {
-      var instance = window.transitMaps[divId];
+      var instance = window.transitGetOrInitMap(divId);
       if (!instance || !instance.map) return;
       instance.map.panTo({ lat: lat, lng: lng });
       instance.map.setZoom(16);
