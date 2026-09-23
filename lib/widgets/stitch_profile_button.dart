@@ -40,33 +40,10 @@ class StitchProfileButton extends StatelessWidget {
                 ),
               ],
             ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  Icons.person_rounded,
-                  color: const Color(0xFF0891B2),
-                  size: size * 0.52,
-                ),
-                Positioned(
-                  top: 7,
-                  right: 7,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFF10B981),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            child: Icon(
+              Icons.person_rounded,
+              color: const Color(0xFF0891B2),
+              size: size * 0.52,
             ),
           ),
         ),

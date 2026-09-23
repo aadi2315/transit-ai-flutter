@@ -943,21 +943,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                         color: primaryTextColor,
                                       ),
                                     ),
-                                    const SizedBox(width: 5),
-                                    Container(
-                                      width: 5,
-                                      height: 5,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF10B981),
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Color(0xFF10B981),
-                                            blurRadius: 4,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+
                                   ],
                                 ),
                               ),

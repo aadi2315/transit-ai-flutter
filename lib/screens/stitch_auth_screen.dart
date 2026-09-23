@@ -280,15 +280,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                 color: primaryTextColor,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF10B981),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
+
                           ],
                         ),
                       ),

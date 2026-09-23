@@ -330,31 +330,6 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     color: primaryTextColor,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF10B981),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Color(0xFF10B981),
-                                        blurRadius: 5,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'KYC LIVE',
-                                  style: GoogleFonts.jetBrainsMono(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF10B981),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
                               ],
                             ),
                           ),
