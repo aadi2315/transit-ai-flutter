@@ -5,7 +5,6 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
-import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../services/razorpay_service.dart';
 import '../services/supabase_service.dart';
@@ -19,7 +18,7 @@ class StitchPaymentQrScreen extends StatefulWidget {
   final VoidCallback onNavigateToAskRoute;
   final VoidCallback onNavigateToPasses;
   final VoidCallback onNavigateToProfile;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
   final bool isDarkMode;
   final bool initialIsTicketView;
 
@@ -30,7 +29,7 @@ class StitchPaymentQrScreen extends StatefulWidget {
     required this.onNavigateToAskRoute,
     required this.onNavigateToPasses,
     required this.onNavigateToProfile,
-    required this.onToggleTheme,
+    this.onToggleTheme,
     required this.isDarkMode,
     this.initialIsTicketView = false,
   });
@@ -329,21 +328,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                               ),
                             ),
                           ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              StitchProfileButton(
-                                isDarkMode: dark,
-                                onTap: widget.onNavigateToProfile,
-                                size: 36,
-                              ),
-                              const SizedBox(width: 8),
-                              StitchThemeToggleButton(
-                                isDarkMode: dark,
-                                onToggleTheme: widget.onToggleTheme,
-                                size: 36,
-                              ),
-                            ],
+                          StitchProfileButton(
+                            isDarkMode: dark,
+                            onTap: widget.onNavigateToProfile,
+                            size: 36,
                           ),
                         ],
                       ),

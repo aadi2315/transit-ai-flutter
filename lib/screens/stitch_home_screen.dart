@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
-import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../widgets/stitch_place_autocomplete_dropdown.dart';
 import '../services/transit_place_service.dart';
@@ -16,7 +15,7 @@ class StitchHomeScreen extends StatefulWidget {
   final VoidCallback onNavigateToPasses;
   final VoidCallback onNavigateToWallet;
   final VoidCallback onNavigateToProfile;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
   final bool isDarkMode;
   final VoidCallback? onReplaySplash;
 
@@ -28,7 +27,7 @@ class StitchHomeScreen extends StatefulWidget {
     required this.onNavigateToPasses,
     required this.onNavigateToWallet,
     required this.onNavigateToProfile,
-    required this.onToggleTheme,
+    this.onToggleTheme,
     required this.isDarkMode,
     this.onReplaySplash,
   });
@@ -254,23 +253,10 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                             ),
                           ),
 
-                          // Top Right Actions: Profile Button + Theme Toggle
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Profile Icon leading to Login/Sign Up
-                              StitchProfileButton(
-                                isDarkMode: dark,
-                                onTap: widget.onNavigateToProfile,
-                              ),
-                              const SizedBox(width: 8),
-
-                              // Dynamic Theme Toggle
-                              StitchThemeToggleButton(
-                                isDarkMode: dark,
-                                onToggleTheme: widget.onToggleTheme,
-                              ),
-                            ],
+                          // Top Right Actions: Profile Button
+                          StitchProfileButton(
+                            isDarkMode: dark,
+                            onTap: widget.onNavigateToProfile,
                           ),
                         ],
                       ),

@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_background.dart';
-import '../widgets/stitch_theme_toggle_button.dart';
 import '../services/supabase_service.dart';
 
 class StitchAuthScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
   final VoidCallback onNavigateToWallet;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
   final VoidCallback onBack;
   final bool isDarkMode;
 
@@ -16,7 +15,7 @@ class StitchAuthScreen extends StatefulWidget {
     super.key,
     required this.onNavigateToHome,
     required this.onNavigateToWallet,
-    required this.onToggleTheme,
+    this.onToggleTheme,
     required this.onBack,
     required this.isDarkMode,
   });
@@ -195,51 +194,20 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Column(
                 children: [
-                  // TOP BAR: Back Button + Brand Pill + Theme Toggle
+                  // TOP BAR: Back Button + Brand Pill
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          // Back Button
-                          Tooltip(
-                            message: 'Go Back',
-                            child: GestureDetector(
-                              onTap: widget.onBack,
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: brandPillBg,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: brandPillBorder,
-                                    width: 1,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF0891B2).withValues(alpha: 0.08),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.arrow_back_rounded,
-                                  color: primaryTextColor,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-
-                          // Brand Pill
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 7),
+                      // Back Button
+                      Tooltip(
+                        message: 'Go Back',
+                        child: GestureDetector(
+                          onTap: widget.onBack,
+                          child: Container(
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
                               color: brandPillBg,
-                              borderRadius: BorderRadius.circular(30),
+                              shape: BoxShape.circle,
                               border: Border.all(
                                 color: brandPillBorder,
                                 width: 1,
@@ -247,62 +215,82 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(0xFF0891B2).withValues(alpha: 0.08),
-                                  blurRadius: 8,
+                                  blurRadius: 6,
                                 ),
                               ],
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFECFEFF),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: const Color(0xFFA5F3FC)),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF0891B2).withValues(alpha: 0.15),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Image.asset(
-                                    'assets/images/pravha_logo.png',
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'PRAVHA',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.6,
-                                    color: primaryTextColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF10B981),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ],
+                            child: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: primaryTextColor,
+                              size: 16,
                             ),
                           ),
-                        ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
 
-                      // Dynamic Theme Toggle Button
-                      StitchThemeToggleButton(
-                        isDarkMode: dark,
-                        onToggleTheme: widget.onToggleTheme,
+                      // Brand Pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: brandPillBg,
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: brandPillBorder,
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0891B2).withValues(alpha: 0.08),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECFEFF),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFFA5F3FC)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF0891B2).withValues(alpha: 0.15),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Image.asset(
+                                'assets/images/pravha_logo.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'PRAVHA',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6,
+                                color: primaryTextColor,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

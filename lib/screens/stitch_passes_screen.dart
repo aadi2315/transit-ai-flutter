@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
-import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../services/razorpay_service.dart';
 import '../services/gemini_service.dart';
@@ -19,7 +18,7 @@ class StitchPassesScreen extends StatefulWidget {
   final VoidCallback onNavigateToAskRoute;
   final VoidCallback onNavigateToWallet;
   final VoidCallback onNavigateToProfile;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
   final bool isDarkMode;
 
   const StitchPassesScreen({
@@ -29,7 +28,7 @@ class StitchPassesScreen extends StatefulWidget {
     required this.onNavigateToAskRoute,
     required this.onNavigateToWallet,
     required this.onNavigateToProfile,
-    required this.onToggleTheme,
+    this.onToggleTheme,
     required this.isDarkMode,
   });
 
@@ -360,20 +359,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                             ),
                           ),
 
-                          // Top Right Actions: Theme Toggle + Profile Button (leading to Auth)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              StitchThemeToggleButton(
-                                isDarkMode: dark,
-                                onToggleTheme: widget.onToggleTheme,
-                              ),
-                              const SizedBox(width: 8),
-                              StitchProfileButton(
-                                isDarkMode: dark,
-                                onTap: widget.onNavigateToProfile,
-                              ),
-                            ],
+                          // Top Right Actions: Profile Button (leading to Auth)
+                          StitchProfileButton(
+                            isDarkMode: dark,
+                            onTap: widget.onNavigateToProfile,
                           ),
                         ],
                       ),

@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
-import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../widgets/stitch_formatted_text.dart';
 import '../services/supabase_service.dart';
@@ -128,7 +127,7 @@ class StitchAskRouteScreen extends StatefulWidget {
   final VoidCallback onNavigateToPasses;
   final VoidCallback onNavigateToWallet;
   final VoidCallback onNavigateToProfile;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
   final bool isDarkMode;
   final void Function(String location, String incident)? onNavigateToRouteWithFocus;
 
@@ -139,7 +138,7 @@ class StitchAskRouteScreen extends StatefulWidget {
     required this.onNavigateToPasses,
     required this.onNavigateToWallet,
     required this.onNavigateToProfile,
-    required this.onToggleTheme,
+    this.onToggleTheme,
     required this.isDarkMode,
     this.onNavigateToRouteWithFocus,
   });
@@ -964,20 +963,10 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                             ],
                           ),
 
-                          // Right: Profile button (Linked to Auth/Login) + Theme Toggle
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              StitchProfileButton(
-                                isDarkMode: dark,
-                                onTap: widget.onNavigateToProfile,
-                              ),
-                              const SizedBox(width: 6),
-                              StitchThemeToggleButton(
-                                isDarkMode: dark,
-                                onToggleTheme: widget.onToggleTheme,
-                              ),
-                            ],
+                          // Right: Profile button (Linked to Auth/Login)
+                          StitchProfileButton(
+                            isDarkMode: dark,
+                            onTap: widget.onNavigateToProfile,
                           ),
                         ],
                       ),

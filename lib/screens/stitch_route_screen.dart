@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
-import '../widgets/stitch_theme_toggle_button.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../widgets/stitch_place_autocomplete_dropdown.dart';
 import '../widgets/interactive_google_map_view.dart';
@@ -24,7 +23,7 @@ class StitchRouteScreen extends StatefulWidget {
   final VoidCallback onNavigateToPasses;
   final VoidCallback onNavigateToWallet;
   final VoidCallback onNavigateToProfile;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
   final bool isDarkMode;
   final String? focusLocation;
   final String? focusIncident;
@@ -39,7 +38,7 @@ class StitchRouteScreen extends StatefulWidget {
     required this.onNavigateToPasses,
     required this.onNavigateToWallet,
     required this.onNavigateToProfile,
-    required this.onToggleTheme,
+    this.onToggleTheme,
     required this.isDarkMode,
     this.focusLocation,
     this.focusIncident,
@@ -710,19 +709,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             ],
           ),
         ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            StitchProfileButton(
-              isDarkMode: false,
-              onTap: widget.onNavigateToProfile,
-            ),
-            const SizedBox(width: 8),
-            StitchThemeToggleButton(
-              isDarkMode: false,
-              onToggleTheme: widget.onToggleTheme,
-            ),
-          ],
+        StitchProfileButton(
+          isDarkMode: false,
+          onTap: widget.onNavigateToProfile,
         ),
       ],
     );
