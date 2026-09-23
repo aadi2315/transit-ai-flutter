@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
@@ -813,48 +814,60 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                 child: Column(
                   children: [
                     // Origin Input
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.circle, size: 8, color: Color(0xFF10B981)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _originController,
-                              focusNode: _originFocusNode,
-                              onChanged: (v) => _fetchOriginSuggestions(v),
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF0F172A),
-                              ),
-                              decoration: const InputDecoration(
-                                isDense: true,
-                                border: InputBorder.none,
-                                hintText: 'Enter Origin (e.g. Sola, Gota)',
-                              ),
-                              onSubmitted: (_) => _fetchRoute(),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0xFFCBD5E1).withValues(alpha: 0.30),
+                              width: 0.9,
                             ),
                           ),
-                          if (_originController.text.isNotEmpty)
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _originController.clear();
-                                  _showOriginDropdown = false;
-                                });
-                              },
-                              child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
-                            ),
-                        ],
+                          child: Row(
+                            children: [
+                              const Icon(Icons.circle, size: 8, color: Color(0xFF10B981)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: _originController,
+                                  focusNode: _originFocusNode,
+                                  onChanged: (v) => _fetchOriginSuggestions(v),
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    hintText: 'Enter Origin (e.g. Sola, Gota)',
+                                    hintStyle: GoogleFonts.spaceGrotesk(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF94A3B8).withValues(alpha: 0.40),
+                                    ),
+                                  ),
+                                  onSubmitted: (_) => _fetchRoute(),
+                                ),
+                              ),
+                              if (_originController.text.isNotEmpty)
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _originController.clear();
+                                      _showOriginDropdown = false;
+                                    });
+                                  },
+                                  child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
 
@@ -876,48 +889,60 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     const SizedBox(height: 6),
 
                     // Destination Input
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.location_on_rounded, size: 10, color: Color(0xFFF43F5E)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _destController,
-                              focusNode: _destFocusNode,
-                              onChanged: (v) => _fetchDestSuggestions(v),
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF0F172A),
-                              ),
-                              decoration: const InputDecoration(
-                                isDense: true,
-                                border: InputBorder.none,
-                                hintText: 'Enter Destination (e.g. Iskcon)',
-                              ),
-                              onSubmitted: (_) => _fetchRoute(),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0xFFCBD5E1).withValues(alpha: 0.30),
+                              width: 0.9,
                             ),
                           ),
-                          if (_destController.text.isNotEmpty)
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _destController.clear();
-                                  _showDestDropdown = false;
-                                });
-                              },
-                              child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
-                            ),
-                        ],
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on_rounded, size: 10, color: Color(0xFFF43F5E)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: _destController,
+                                  focusNode: _destFocusNode,
+                                  onChanged: (v) => _fetchDestSuggestions(v),
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    hintText: 'Enter Destination (e.g. Iskcon)',
+                                    hintStyle: GoogleFonts.spaceGrotesk(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF94A3B8).withValues(alpha: 0.40),
+                                    ),
+                                  ),
+                                  onSubmitted: (_) => _fetchRoute(),
+                                ),
+                              ),
+                              if (_destController.text.isNotEmpty)
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _destController.clear();
+                                      _showDestDropdown = false;
+                                    });
+                                  },
+                                  child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
 

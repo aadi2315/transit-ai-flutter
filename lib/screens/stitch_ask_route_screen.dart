@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
@@ -826,8 +827,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
     const secondaryTextColor = Color(0xFF64748B);
     const brandPillBg = Colors.white;
     const brandPillBorder = Color(0xFFA5F3FC);
-    const inputBg = Color(0xFFF8FAFC);
-    const inputBorder = Color(0xFFE2E8F0);
+    final inputBg = const Color(0xFFF8FAFC).withValues(alpha: 0.35);
+    final inputBorder = const Color(0xFFE2E8F0).withValues(alpha: 0.35);
 
     final filteredQuestions = _selectedCategory == 'all'
         ? _questions
@@ -1043,51 +1044,6 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF10B981)
-                                            .withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: const Color(0xFF10B981)
-                                              .withValues(alpha: 0.4),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          _isLoadingCloud
-                                              ? const SizedBox(
-                                                  width: 9,
-                                                  height: 9,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                    strokeWidth: 1.5,
-                                                    color: Color(0xFF10B981),
-                                                  ),
-                                                )
-                                              : const Icon(
-                                                  Icons.cloud_done_rounded,
-                                                  color: Color(0xFF10B981),
-                                                  size: 9,
-                                                ),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            _isLoadingCloud
-                                                ? 'Syncing...'
-                                                : 'Supabase Synced',
-                                            style: GoogleFonts.jetBrainsMono(
-                                              fontSize: 8.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: const Color(0xFF10B981),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 2),
@@ -1221,115 +1177,145 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: inputBg,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: inputBorder),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 5),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                          sigmaX: 10, sigmaY: 10),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.28),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: const Color(0xFFCBD5E1)
+                                                .withValues(alpha: 0.28),
+                                            width: 0.9,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 5),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(
-                                              Icons.radio_button_checked,
-                                              color: Color(0xFF0891B2),
-                                              size: 10,
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.radio_button_checked,
+                                                  color: Color(0xFF0891B2),
+                                                  size: 10,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'FROM: ORIGIN',
+                                                  style:
+                                                      GoogleFonts.jetBrainsMono(
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: secondaryTextColor
+                                                        .withValues(alpha: 0.55),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'FROM: ORIGIN',
-                                              style: GoogleFonts.jetBrainsMono(
-                                                fontSize: 8,
-                                                fontWeight: FontWeight.w700,
-                                                color: secondaryTextColor,
+                                            TextField(
+                                              controller: _originController,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: primaryTextColor,
+                                              ),
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                contentPadding:
+                                                    const EdgeInsets.only(
+                                                        top: 3),
+                                                border: InputBorder.none,
+                                                hintText: 'e.g. Kalupur Stn',
+                                                hintStyle:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  fontSize: 10.5,
+                                                  color: secondaryTextColor
+                                                      .withValues(alpha: 0.32),
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
-                                        TextField(
-                                          controller: _originController,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: primaryTextColor,
-                                          ),
-                                          decoration: InputDecoration(
-                                            isDense: true,
-                                            contentPadding:
-                                                const EdgeInsets.only(top: 3),
-                                            border: InputBorder.none,
-                                            hintText: 'e.g. Kalupur Stn',
-                                            hintStyle:
-                                                GoogleFonts.plusJakartaSans(
-                                              fontSize: 10.5,
-                                              color: secondaryTextColor
-                                                  .withValues(alpha: 0.6),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Expanded(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: inputBg,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: inputBorder),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 5),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                          sigmaX: 10, sigmaY: 10),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.28),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: const Color(0xFFCBD5E1)
+                                                .withValues(alpha: 0.28),
+                                            width: 0.9,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 5),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(
-                                              Icons.location_on,
-                                              color: Color(0xFFFF5252),
-                                              size: 10,
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.location_on,
+                                                  color: Color(0xFFFF5252),
+                                                  size: 10,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'TO: DESTINATION',
+                                                  style:
+                                                      GoogleFonts.jetBrainsMono(
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: secondaryTextColor
+                                                        .withValues(alpha: 0.55),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'TO: DESTINATION',
-                                              style: GoogleFonts.jetBrainsMono(
-                                                fontSize: 8,
-                                                fontWeight: FontWeight.w700,
-                                                color: secondaryTextColor,
+                                            TextField(
+                                              controller: _destController,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: primaryTextColor,
+                                              ),
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                contentPadding:
+                                                    const EdgeInsets.only(
+                                                        top: 3),
+                                                border: InputBorder.none,
+                                                hintText: 'e.g. SG Hwy',
+                                                hintStyle:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  fontSize: 10.5,
+                                                  color: secondaryTextColor
+                                                      .withValues(alpha: 0.32),
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
-                                        TextField(
-                                          controller: _destController,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: primaryTextColor,
-                                          ),
-                                          decoration: InputDecoration(
-                                            isDense: true,
-                                            contentPadding:
-                                                const EdgeInsets.only(top: 3),
-                                            border: InputBorder.none,
-                                            hintText: 'e.g. SG Hwy',
-                                            hintStyle:
-                                                GoogleFonts.plusJakartaSans(
-                                              fontSize: 10.5,
-                                              color: secondaryTextColor
-                                                  .withValues(alpha: 0.6),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1383,42 +1369,52 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                             const SizedBox(height: 8),
 
                             // Question Textarea with Character Counter
-                            Container(
-                              decoration: BoxDecoration(
-                                color: inputBg,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: inputBorder),
-                              ),
-                              padding: const EdgeInsets.all(9),
-                              child: Column(
-                                children: [
-                                  TextField(
-                                    controller: _questionController,
-                                    maxLines: 3,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11.5,
-                                      color: primaryTextColor,
-                                      height: 1.35,
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                    sigmaX: 10, sigmaY: 10),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.28),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: const Color(0xFFCBD5E1)
+                                          .withValues(alpha: 0.28),
+                                      width: 0.9,
                                     ),
-                                    onChanged: (_) => setState(() {}),
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      border: InputBorder.none,
-                                      hintText:
-                                          'Ask your question (e.g. "What is fastest BRTS/Metro route to GIFT City after 8 PM?")...',
-                                      hintStyle: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: secondaryTextColor
-                                            .withValues(alpha: 0.6),
+                                  ),
+                                  padding: const EdgeInsets.all(9),
+                                  child: Column(
+                                    children: [
+                                      TextField(
+                                        controller: _questionController,
+                                        maxLines: 3,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11.5,
+                                          color: primaryTextColor,
+                                          height: 1.35,
+                                        ),
+                                        onChanged: (_) => setState(() {}),
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.zero,
+                                          border: InputBorder.none,
+                                          hintText:
+                                              'Ask your question (e.g. "What is fastest BRTS/Metro route to GIFT City after 8 PM?")...',
+                                          hintStyle: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            color: secondaryTextColor
+                                                .withValues(alpha: 0.32),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Divider(
-                                    color: Color(0xFFE2E8F0),
-                                    height: 1,
-                                  ),
+                                      const SizedBox(height: 6),
+                                      Divider(
+                                        color: const Color(0xFFE2E8F0)
+                                            .withValues(alpha: 0.4),
+                                        height: 1,
+                                      ),
                                   const SizedBox(height: 5),
                                   Row(
                                     mainAxisAlignment:
@@ -1526,6 +1522,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                 ],
                               ),
                             ),
+                          ),
+                        ),
 
                             const SizedBox(height: 10),
 
