@@ -698,42 +698,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'PRAVHA',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                      color: const Color(0xFF0F172A),
-                      height: 1.1,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 4,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF0891B2),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        'Google Directions • Live Transit',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 8,
-                          color: const Color(0xFF0891B2),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              Text(
+                'PRAVHA',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  color: const Color(0xFF0F172A),
+                ),
               ),
             ],
           ),
@@ -1054,43 +1026,20 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Route Corridor Status Indicator (No API key on screen)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    _currentRoute?.isFromSupabaseCache == true
-                        ? Icons.check_circle_rounded
-                        : Icons.alt_route_rounded,
-                    size: 12,
-                    color: const Color(0xFF0891B2),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    _currentRoute?.isFromSupabaseCache == true
-                        ? 'Optimized Corridor (Cached)'
-                        : 'Ahmedabad Transit Network',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0891B2),
-                    ),
-                  ),
-                ],
-              ),
-              if (_currentRoute != null)
-                Text(
-                  '${_currentRoute!.distanceText} • ${_currentRoute!.durationText}',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 9,
-                    color: const Color(0xFF64748B),
-                  ),
+          if (_currentRoute != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${_currentRoute!.distanceText} • ${_currentRoute!.durationText}',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF64748B),
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1312,44 +1261,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  // Live GPS interactive chip
-                  GestureDetector(
-                    onTap: _locateUser,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFECFEFF),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFA5F3FC), width: 0.8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 5,
-                            height: 5,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF0891B2),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(color: Color(0xFF0891B2), blurRadius: 4, spreadRadius: 1),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _currentGps != null ? 'GPS Live (${_currentGps!.accuracyLabel})' : 'Live GPS',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF0891B2),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+
                 ],
               ),
             ],
@@ -1608,10 +1520,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       modeLabel = transit.busNumbers.isNotEmpty
           ? 'Bus ${transit.busNumbers.join(' → ')}'  // e.g. "Bus 9U → 8D"
           : 'Transit Route';
-    } else if (route?.isFromSupabaseCache == true) {
-      modeLabel = 'Optimized Corridor (Cached)';
     } else {
-      modeLabel = route != null ? 'Live Street Directions' : 'Corridor Search Ready';
+      modeLabel = 'Transit Route';
     }
 
     return StitchGlassCard(
