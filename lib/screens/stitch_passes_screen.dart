@@ -378,82 +378,6 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Badges Row
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFECFEFF),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: const Color(0xFFA5F3FC),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.verified_user_rounded,
-                                        size: 13,
-                                        color: Color(0xFF0891B2),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        'AI KYC CONCESSION',
-                                        style: GoogleFonts.jetBrainsMono(
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF0891B2),
-                                          letterSpacing: 0.4,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFECFEFF),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: const Color(0xFFA5F3FC),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.school_rounded,
-                                        size: 13,
-                                        color: Color(0xFF0891B2),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        'STUDENT PASS',
-                                        style: GoogleFonts.jetBrainsMono(
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF0891B2),
-                                          letterSpacing: 0.4,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 12),
 
                             // Heading
                             Text(
@@ -511,7 +435,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Unlimited BRTS & Metro Corridors',
+                                        'BRTS & Metro Corridors',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w500,
@@ -693,48 +617,21 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header & Save Badge
+                            // Header
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.payments_rounded,
-                                      size: 17,
-                                      color: Color(0xFF0891B2),
-                                    ),
-                                    const SizedBox(width: 7),
-                                    Text(
-                                      'Concession Fare Summary',
-                                      style: GoogleFonts.spaceGrotesk(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: primaryTextColor,
-                                      ),
-                                    ),
-                                  ],
+                                const Icon(
+                                  Icons.payments_rounded,
+                                  size: 17,
+                                  color: Color(0xFF0891B2),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFECFDF5),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: const Color(0xFFA7F3D0),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Save ₹1,200/mo',
-                                    style: GoogleFonts.jetBrainsMono(
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF047857),
-                                    ),
+                                const SizedBox(width: 7),
+                                Text(
+                                  'Concession Fare Summary',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: primaryTextColor,
                                   ),
                                 ),
                               ],
@@ -816,29 +713,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                               ),
                             ),
 
-                            const SizedBox(height: 10),
 
-                            // Subtitle Details with Infinity icon
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.all_inclusive_rounded,
-                                  size: 15,
-                                  color: Color(0xFF0891B2),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    'Unlimited trips on BRTS corridors & Metro Phase 1 • Auto-renews monthly',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11,
-                                      color: secondaryTextColor,
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
 
                             const SizedBox(height: 14),
 
@@ -1064,55 +939,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFECFEFF),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFFA5F3FC),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.lock_rounded,
-                      color: Color(0xFF0891B2),
-                      size: 17,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Fast-Track with DigiLocker',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: primaryTextColor,
-                        ),
-                      ),
-                      Text(
-                        'GOV.IN • NeGD Certified Portal',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 9,
-                          color: const Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: const Color(0xFFECFEFF),
                   borderRadius: BorderRadius.circular(10),
@@ -1121,14 +951,32 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     width: 1,
                   ),
                 ),
-                child: Text(
-                  '10-Sec Flow',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0891B2),
-                  ),
+                child: const Icon(
+                  Icons.lock_rounded,
+                  color: Color(0xFF0891B2),
+                  size: 17,
                 ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Fast-Track with DigiLocker',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: primaryTextColor,
+                    ),
+                  ),
+                  Text(
+                    'GOV.IN • NeGD Certified Portal',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 9,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1297,30 +1145,15 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Upload Manually',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: primaryTextColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            'AI OCR ENGINE • INSTANT VERIFICATION',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 8.5,
-                              color: const Color(0xFF94A3B8),
-                              letterSpacing: 0.2,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                      child: Text(
+                        'Upload Manually',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: primaryTextColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
