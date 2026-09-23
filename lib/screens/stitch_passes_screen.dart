@@ -378,7 +378,6 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-
                             // Heading
                             Text(
                               'Student & Commuter Passes',
@@ -435,7 +434,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'BRTS & Metro Corridors',
+                                        'Unlimited BRTS & Metro Corridors',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w500,
@@ -712,8 +711,6 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 ],
                               ),
                             ),
-
-
 
                             const SizedBox(height: 14),
 
@@ -1145,15 +1142,20 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        'Upload Manually',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: primaryTextColor,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Upload Manually',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: primaryTextColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
