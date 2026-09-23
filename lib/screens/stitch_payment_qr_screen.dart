@@ -492,8 +492,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
       children: [
         // Peeking Map Header Card
         Container(
-          height: 90,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -509,78 +508,72 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Row(
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  'ETA: 4 MIN',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF64748B),
-                  ),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFEFF),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFA5F3FC)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0891B2).withValues(alpha: 0.15),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  'assets/images/pravha_logo.png',
+                  fit: BoxFit.contain,
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Sola Crossroad → Iskcon Circle',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Interchange at Shivranjani',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0891B2),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFEFF),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFFA5F3FC)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0891B2).withValues(alpha: 0.15),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Image.asset(
-                            'assets/images/pravha_logo.png',
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Sola Crossroad → Iskcon Circle',
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF0F172A),
-                                ),
-                              ),
-                              Text(
-                                'Interchange at Shivranjani',
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF0891B2),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                  Text(
+                    'ETA: 4 MIN',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF64748B),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 2),
                   Text(
                     '₹9.00',
                     style: GoogleFonts.jetBrainsMono(
@@ -619,59 +612,34 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               const SizedBox(height: 10),
 
               // Header Block
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
                     children: [
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 6,
-                        children: [
-                          Text(
-                            'Unified Fare Checkout',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF0F172A),
-                            ),
-                          ),
-                          const Icon(
-                            Icons.verified_rounded,
-                            size: 16,
-                            color: Color(0xFF0891B2),
-                          ),
-                        ],
-                      ),
                       Text(
-                        'Valid for 1 journey within 90 mins',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF16A34A),
+                        'Unified Fare Checkout',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF0F172A),
                         ),
+                      ),
+                      const Icon(
+                        Icons.verified_rounded,
+                        size: 16,
+                        color: Color(0xFF0891B2),
                       ),
                     ],
                   ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Text(
-                      'SECURE INTENT',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF64748B),
-                      ),
+                  Text(
+                    'Valid for 1 journey within 90 mins',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF16A34A),
                     ),
                   ),
                 ],
@@ -924,7 +892,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 2.3,
+                childAspectRatio: 2.15,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
                 children: [
@@ -1185,41 +1153,50 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
     return GestureDetector(
       onTap: () => setState(() => _selectedUpi = name),
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFFECFEFF)
               : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF0891B2)
                 : const Color(0xFFE2E8F0),
             width: isSelected ? 1.5 : 1.0,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF0891B2).withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
             Container(
-              width: 24,
-              height: 24,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFFFFEDD5)
                     : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
               ),
               alignment: Alignment.center,
               child: Text(
                 iconText,
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 12,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: accentColor,
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1228,34 +1205,38 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   Text(
                     name,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF0F172A),
                     ),
                     maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 1),
                   Text(
                     subtitle,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 8,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w500,
                       color: const Color(0xFF64748B),
                     ),
                     maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
             if (isSelected)
               Container(
-                width: 14,
-                height: 14,
+                width: 18,
+                height: 18,
                 decoration: const BoxDecoration(
                   color: Color(0xFF0891B2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.check,
-                  size: 10,
+                  Icons.check_rounded,
+                  size: 12,
                   color: Colors.white,
                 ),
               ),

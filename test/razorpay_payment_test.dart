@@ -73,16 +73,11 @@ void main() {
       );
       await tester.pump();
 
-      // Verify Razorpay Test Mode indicator
-      expect(find.text('Razorpay Test Mode'), findsOneWidget);
-      expect(find.text('YOUR_RAZORPAY_KEY_ID'), findsOneWidget);
-
       // Verify Pay button
       expect(find.text('Pay ₹9.00 via Google Pay'), findsOneWidget);
 
       // Verify Dedicated UPI Payment QR Section exists
       expect(find.text('Pay via UPI QR Code'), findsOneWidget);
-      expect(find.text('PAYMENT QR'), findsOneWidget);
 
       // Verify simulation clearance button in UPI QR card
       final simulateUpiPayBtn =
