@@ -512,48 +512,16 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF86EFAC)),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 5,
-                          height: 5,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF16A34A),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'GPS LOCK: ACTIVE',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF16A34A),
-                          ),
-                        ),
-                      ],
-                    ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'ETA: 4 MIN',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF64748B),
                   ),
-                  Text(
-                    'ETA: 4 MIN',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
+                ),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -781,13 +749,6 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                   color: const Color(0xFF0F172A),
                                 ),
                               ),
-                              Text(
-                                'Rapid AC Line • 5 stops (4.8 km, 13 min)',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 9,
-                                  color: const Color(0xFF64748B),
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -907,35 +868,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 6,
-                          children: [
-                            Text(
-                              'Unified Total Fare',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF0F172A),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 5, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFDCFCE7),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Multi-Leg QR',
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF16A34A),
-                                ),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          'Unified Total Fare',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
+                          ),
                         ),
                         Text(
                           'INR ₹9.00',
@@ -1002,49 +941,6 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
               const SizedBox(height: 14),
 
-              // Gateway Info Chip
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF86EFAC)),
-                ),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.shield_rounded,
-                            size: 14, color: Color(0xFF16A34A)),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Razorpay Test Mode',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF16A34A),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'YOUR_RAZORPAY_KEY_ID',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF475569),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
 
               // Pay CTA Button
               GestureDetector(
@@ -1143,56 +1039,28 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFECFEFF),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFFA5F3FC)),
-                                ),
-                                child: const Icon(
-                                  Icons.qr_code_2_rounded,
-                                  size: 16,
-                                  color: Color(0xFF0891B2),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  'Pay via UPI QR Code',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF0F172A),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFEFF),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFA5F3FC)),
+                          ),
+                          child: const Icon(
+                            Icons.qr_code_2_rounded,
+                            size: 16,
+                            color: Color(0xFF0891B2),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFEFF),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFA5F3FC)),
-                          ),
-                          child: Text(
-                            'PAYMENT QR',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF0891B2),
-                            ),
+                        Text(
+                          'Pay via UPI QR Code',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
                           ),
                         ),
                       ],
@@ -1793,29 +1661,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    Text(
-                      'Adult / General Passenger',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                    Text(
-                      'Platform 02 • Gate D',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
+
               ],
             ),
           ),
