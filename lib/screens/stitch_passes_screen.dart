@@ -220,15 +220,12 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = widget.isDarkMode;
+    const dark = false;
 
-    final primaryTextColor = dark ? Colors.white : const Color(0xFF0F172A);
-    final secondaryTextColor =
-        dark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
-    final brandPillBg =
-        dark ? const Color(0xB30F172A) : const Color(0xE6FFFFFF);
-    final brandPillBorder =
-        dark ? const Color(0x38FFFFFF) : const Color(0x40FFFFFF);
+    const primaryTextColor = Color(0xFF0F172A);
+    const secondaryTextColor = Color(0xFF475569);
+    const brandPillBg = Colors.white;
+    const brandPillBorder = Color(0xFFA5F3FC);
 
     final bool isEligibleForPayment;
     final String ctaText;
@@ -295,11 +292,9 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 color: brandPillBorder,
                                 width: 1,
                               ),
-                              boxShadow: [
+                              boxShadow: const [
                                 BoxShadow(
-                                  color: dark
-                                      ? Colors.black.withValues(alpha: 0.25)
-                                      : Colors.black.withValues(alpha: 0.08),
+                                  color: Color(0x14000000),
                                   blurRadius: 10,
                                 ),
                               ],
@@ -315,7 +310,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                        color: const Color(0xFF0891B2).withValues(alpha: 0.25),
                                         blurRadius: 6,
                                       ),
                                     ],
@@ -341,11 +336,11 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                   width: 6,
                                   height: 6,
                                   decoration: const BoxDecoration(
-                                    color: Color(0xFF56E5A9),
+                                    color: Color(0xFF10B981),
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Color(0xFF56E5A9),
+                                        color: Color(0xFF10B981),
                                         blurRadius: 5,
                                       ),
                                     ],
@@ -357,7 +352,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                   style: GoogleFonts.jetBrainsMono(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF56E5A9),
+                                    color: const Color(0xFF10B981),
                                     letterSpacing: 0.5,
                                   ),
                                 ),
@@ -404,12 +399,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF38BDF8)
-                                        .withValues(alpha: 0.18),
+                                    color: const Color(0xFFECFEFF),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: const Color(0xFF38BDF8)
-                                          .withValues(alpha: 0.40),
+                                      color: const Color(0xFFA5F3FC),
                                       width: 1,
                                     ),
                                   ),
@@ -419,7 +412,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                       const Icon(
                                         Icons.verified_user_rounded,
                                         size: 13,
-                                        color: Color(0xFF56E5A9),
+                                        color: Color(0xFF0891B2),
                                       ),
                                       const SizedBox(width: 5),
                                       Text(
@@ -427,7 +420,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         style: GoogleFonts.jetBrainsMono(
                                           fontSize: 9.5,
                                           fontWeight: FontWeight.w700,
-                                          color: const Color(0xFFC4E7FF),
+                                          color: const Color(0xFF0891B2),
                                           letterSpacing: 0.4,
                                         ),
                                       ),
@@ -440,12 +433,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF56E5A9)
-                                        .withValues(alpha: 0.18),
+                                    color: const Color(0xFFECFEFF),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: const Color(0xFF56E5A9)
-                                          .withValues(alpha: 0.35),
+                                      color: const Color(0xFFA5F3FC),
                                       width: 1,
                                     ),
                                   ),
@@ -455,7 +446,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                       const Icon(
                                         Icons.school_rounded,
                                         size: 13,
-                                        color: Color(0xFF56E5A9),
+                                        color: Color(0xFF0891B2),
                                       ),
                                       const SizedBox(width: 5),
                                       Text(
@@ -463,7 +454,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         style: GoogleFonts.jetBrainsMono(
                                           fontSize: 9.5,
                                           fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF56E5A9),
+                                          color: const Color(0xFF0891B2),
                                           letterSpacing: 0.4,
                                         ),
                                       ),
@@ -505,14 +496,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 horizontal: 16,
                               ),
                               decoration: BoxDecoration(
-                                color: dark
-                                    ? const Color(0xFF38BDF8)
-                                        .withValues(alpha: 0.12)
-                                    : const Color(0xFFE0F2FE),
+                                color: const Color(0xFFECFEFF),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: const Color(0xFF38BDF8)
-                                      .withValues(alpha: 0.40),
+                                  color: const Color(0xFFA5F3FC),
                                   width: 1.2,
                                 ),
                               ),
@@ -529,9 +516,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         style: GoogleFonts.jetBrainsMono(
                                           fontSize: 9.5,
                                           fontWeight: FontWeight.w700,
-                                          color: dark
-                                              ? const Color(0xFF8ED5FF)
-                                              : const Color(0xFF0284C7),
+                                          color: const Color(0xFF0891B2),
                                           letterSpacing: 0.5,
                                         ),
                                       ),
@@ -556,9 +541,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         style: GoogleFonts.spaceGrotesk(
                                           fontSize: 24,
                                           fontWeight: FontWeight.w800,
-                                          color: dark
-                                              ? const Color(0xFF38BDF8)
-                                              : const Color(0xFF0284C7),
+                                          color: const Color(0xFF0891B2),
                                         ),
                                       ),
                                       const SizedBox(width: 3),
@@ -586,20 +569,16 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         height: 44,
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: dark
-                              ? const Color(0xCC060E20)
-                              : const Color(0xFFE2E8F0),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
-                            color: const Color(0xFF38BDF8)
-                                .withValues(alpha: 0.40),
+                            color: const Color(0xFFA5F3FC),
                             width: 1.2,
                           ),
-                          boxShadow: [
+                          boxShadow: const [
                             BoxShadow(
-                              color: const Color(0xFF38BDF8)
-                                  .withValues(alpha: 0.15),
-                              blurRadius: 16,
+                              color: Color(0x14FF6B00),
+                              blurRadius: 12,
                             ),
                           ],
                         ),
@@ -615,15 +594,13 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: _selectedMethod == 'digilocker'
-                                        ? const Color(0xFF38BDF8)
-                                            .withValues(alpha: 0.25)
+                                        ? const Color(0xFFECFEFF)
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(18),
                                     border: _selectedMethod == 'digilocker'
                                         ? Border.all(
-                                            color: const Color(0xFF38BDF8)
-                                                .withValues(alpha: 0.50),
-                                            width: 1,
+                                            color: const Color(0xFF0891B2),
+                                            width: 1.2,
                                           )
                                         : null,
                                   ),
@@ -635,8 +612,8 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         Icons.bolt_rounded,
                                         size: 15,
                                         color: _selectedMethod == 'digilocker'
-                                            ? const Color(0xFF38BDF8)
-                                            : const Color(0xFF94A3B8),
+                                            ? const Color(0xFF0891B2)
+                                            : const Color(0xFF64748B),
                                       ),
                                       const SizedBox(width: 5),
                                       Text(
@@ -645,10 +622,8 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w700,
                                           color: _selectedMethod == 'digilocker'
-                                              ? (dark
-                                                  ? Colors.white
-                                                  : const Color(0xFF0284C7))
-                                              : const Color(0xFF94A3B8),
+                                              ? const Color(0xFF0891B2)
+                                              : const Color(0xFF64748B),
                                         ),
                                       ),
                                     ],
@@ -667,15 +642,13 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: _selectedMethod == 'manual'
-                                        ? const Color(0xFF38BDF8)
-                                            .withValues(alpha: 0.25)
+                                        ? const Color(0xFFECFEFF)
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(18),
                                     border: _selectedMethod == 'manual'
                                         ? Border.all(
-                                            color: const Color(0xFF38BDF8)
-                                                .withValues(alpha: 0.50),
-                                            width: 1,
+                                            color: const Color(0xFF0891B2),
+                                            width: 1.2,
                                           )
                                         : null,
                                   ),
@@ -687,8 +660,8 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         Icons.upload_file_rounded,
                                         size: 15,
                                         color: _selectedMethod == 'manual'
-                                            ? const Color(0xFF38BDF8)
-                                            : const Color(0xFF94A3B8),
+                                            ? const Color(0xFF0891B2)
+                                            : const Color(0xFF64748B),
                                       ),
                                       const SizedBox(width: 5),
                                       Text(
@@ -697,10 +670,8 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w700,
                                           color: _selectedMethod == 'manual'
-                                              ? (dark
-                                                  ? Colors.white
-                                                  : const Color(0xFF0284C7))
-                                              : const Color(0xFF94A3B8),
+                                              ? const Color(0xFF0891B2)
+                                              : const Color(0xFF64748B),
                                         ),
                                       ),
                                     ],
@@ -742,7 +713,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     const Icon(
                                       Icons.payments_rounded,
                                       size: 17,
-                                      color: Color(0xFF38BDF8),
+                                      color: Color(0xFF0891B2),
                                     ),
                                     const SizedBox(width: 7),
                                     Text(
@@ -761,12 +732,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF56E5A9)
-                                        .withValues(alpha: 0.18),
+                                    color: const Color(0xFFECFDF5),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: const Color(0xFF56E5A9)
-                                          .withValues(alpha: 0.35),
+                                      color: const Color(0xFFA7F3D0),
                                       width: 1,
                                     ),
                                   ),
@@ -775,7 +744,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     style: GoogleFonts.jetBrainsMono(
                                       fontSize: 9.5,
                                       fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF56E5A9),
+                                      color: const Color(0xFF047857),
                                     ),
                                   ),
                                 ),
@@ -788,14 +757,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                             Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: dark
-                                    ? Colors.white.withValues(alpha: 0.06)
-                                    : const Color(0xFFF1F5F9),
+                                color: const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: dark
-                                      ? Colors.white.withValues(alpha: 0.12)
-                                      : const Color(0xFFCBD5E1),
+                                  color: const Color(0xFFE2E8F0),
                                   width: 1,
                                 ),
                               ),
@@ -817,7 +782,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                             style: GoogleFonts.spaceGrotesk(
                                               fontSize: 22,
                                               fontWeight: FontWeight.w800,
-                                              color: const Color(0xFF38BDF8),
+                                              color: const Color(0xFF0891B2),
                                             ),
                                           ),
                                           const SizedBox(width: 4),
@@ -836,7 +801,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF56E5A9),
+                                          color: const Color(0xFF047857),
                                         ),
                                       ),
                                     ],
@@ -845,18 +810,16 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     width: 36,
                                     height: 36,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF38BDF8)
-                                          .withValues(alpha: 0.20),
+                                      color: const Color(0xFFECFEFF),
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: const Color(0xFF38BDF8)
-                                            .withValues(alpha: 0.35),
+                                        color: const Color(0xFFA5F3FC),
                                         width: 1,
                                       ),
                                     ),
                                     child: const Icon(
                                       Icons.verified_rounded,
-                                      color: Color(0xFF38BDF8),
+                                      color: Color(0xFF0891B2),
                                       size: 20,
                                     ),
                                   ),
@@ -872,7 +835,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 const Icon(
                                   Icons.all_inclusive_rounded,
                                   size: 15,
-                                  color: Color(0xFF38BDF8),
+                                  color: Color(0xFF0891B2),
                                 ),
                                 const SizedBox(width: 6),
                                 Expanded(
@@ -899,22 +862,19 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 gradient: isEligibleForPayment
                                     ? const LinearGradient(
                                         colors: [
-                                          Color(0xFF56E5A9),
-                                          Color(0xFF38BDF8),
+                                          Color(0xFF0891B2),
+                                          Color(0xFF06B6D4),
                                         ],
                                       )
                                     : null,
                                 color: isEligibleForPayment
                                     ? null
-                                    : dark
-                                        ? const Color(0xFF1E293B)
-                                            .withValues(alpha: 0.60)
-                                        : const Color(0xFFE2E8F0),
+                                    : const Color(0xFFE2E8F0),
                                 boxShadow: isEligibleForPayment
                                     ? const [
                                         BoxShadow(
-                                          color: Color(0x5556E5A9),
-                                          blurRadius: 18,
+                                          color: Color(0x33FF6B00),
+                                          blurRadius: 14,
                                           offset: Offset(0, 4),
                                         ),
                                       ]
@@ -922,9 +882,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 border: isEligibleForPayment
                                     ? null
                                     : Border.all(
-                                        color: dark
-                                            ? const Color(0x22FFFFFF)
-                                            : const Color(0xFFCBD5E1),
+                                        color: const Color(0xFFCBD5E1),
                                         width: 1,
                                       ),
                               ),
@@ -936,9 +894,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
-                                  disabledForegroundColor: dark
-                                      ? const Color(0xFF64748B)
-                                      : const Color(0xFF94A3B8),
+                                  disabledForegroundColor: const Color(0xFF94A3B8),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
@@ -952,14 +908,14 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         height: 18,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          color: Color(0xFF060E20),
+                                          color: Colors.white,
                                         ),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
                                         'Opening Razorpay...',
                                         style: GoogleFonts.spaceGrotesk(
-                                          color: const Color(0xFF060E20),
+                                          color: Colors.white,
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0.2,
@@ -968,7 +924,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                     ] else if (isEligibleForPayment) ...[
                                       const Icon(
                                         Icons.account_balance_wallet_rounded,
-                                        color: Color(0xFF060E20),
+                                        color: Colors.white,
                                         size: 19,
                                       ),
                                       const SizedBox(width: 8),
@@ -976,7 +932,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         child: Text(
                                           ctaText,
                                           style: GoogleFonts.spaceGrotesk(
-                                            color: const Color(0xFF060E20),
+                                            color: Colors.white,
                                             fontSize: 13.5,
                                             fontWeight: FontWeight.w800,
                                             letterSpacing: 0.2,
@@ -987,7 +943,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                       const SizedBox(width: 8),
                                       const Icon(
                                         Icons.arrow_forward_rounded,
-                                        color: Color(0xFF060E20),
+                                        color: Colors.white,
                                         size: 17,
                                       ),
                                     ] else ...[
@@ -996,9 +952,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                                 _verificationStatus == 'rejected'
                                             ? Icons.block_rounded
                                             : Icons.lock_outline_rounded,
-                                        color: dark
-                                            ? const Color(0xFF64748B)
-                                            : const Color(0xFF94A3B8),
+                                        color: const Color(0xFF94A3B8),
                                         size: 18,
                                       ),
                                       const SizedBox(width: 8),
@@ -1006,9 +960,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         child: Text(
                                           ctaText,
                                           style: GoogleFonts.spaceGrotesk(
-                                            color: dark
-                                                ? const Color(0xFF64748B)
-                                                : const Color(0xFF94A3B8),
+                                            color: const Color(0xFF94A3B8),
                                             fontSize: 13,
                                             fontWeight: FontWeight.w700,
                                             letterSpacing: 0.2,
@@ -1063,17 +1015,17 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xF00B1326),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
-                      width: 1,
+                      color: const Color(0xFFA5F3FC),
+                      width: 1.2,
                     ),
                     boxShadow: const [
                       BoxShadow(
-                        color: Colors.black45,
-                        blurRadius: 16,
-                        offset: Offset(0, 6),
+                        color: Color(0x28FF6B00),
+                        blurRadius: 14,
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -1082,7 +1034,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     children: [
                       const Icon(
                         Icons.check_circle_rounded,
-                        color: Color(0xFF56E5A9),
+                        color: Color(0xFF0891B2),
                         size: 17,
                       ),
                       const SizedBox(width: 8),
@@ -1090,7 +1042,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         child: Text(
                           _toastMessage!,
                           style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white,
+                            color: const Color(0xFF0F172A),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1115,10 +1067,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
   ) {
     return StitchGlassCard(
       key: const ValueKey('digilocker'),
-      isDarkMode: dark,
+      isDarkMode: false,
       borderRadius: 24,
       padding: const EdgeInsets.all(18),
-      hasCyanGlow: true,
+      hasCyanGlow: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1131,16 +1083,16 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
+                      color: const Color(0xFFECFEFF),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.20),
+                        color: const Color(0xFFA5F3FC),
                         width: 1,
                       ),
                     ),
                     child: const Icon(
                       Icons.lock_rounded,
-                      color: Color(0xFF38BDF8),
+                      color: Color(0xFF0891B2),
                       size: 17,
                     ),
                   ),
@@ -1173,10 +1125,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   vertical: 3,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.20),
+                  color: const Color(0xFFECFEFF),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.40),
+                    color: const Color(0xFFA5F3FC),
                     width: 1,
                   ),
                 ),
@@ -1185,7 +1137,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFC4E7FF),
+                    color: const Color(0xFF0891B2),
                   ),
                 ),
               ),
@@ -1211,16 +1163,19 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [
-                  const Color(0xFF38BDF8).withValues(alpha: 0.35),
-                  const Color(0xFF0284C7).withValues(alpha: 0.45),
+                  Color(0xFF0891B2),
+                  Color(0xFF06B6D4),
                 ],
               ),
-              border: Border.all(
-                color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
-                width: 1,
-              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33FF6B00),
+                  blurRadius: 10,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
             child: InkWell(
               onTap: () {
@@ -1233,14 +1188,14 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                 children: [
                   const Icon(
                     Icons.verified_rounded,
-                    color: Color(0xFF38BDF8),
+                    color: Colors.white,
                     size: 18,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Connect DigiLocker Account',
                     style: GoogleFonts.spaceGrotesk(
-                      color: const Color(0xFFC4E7FF),
+                      color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1248,7 +1203,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   const SizedBox(width: 6),
                   const Icon(
                     Icons.arrow_forward_rounded,
-                    color: Color(0xFF38BDF8),
+                    color: Colors.white,
                     size: 16,
                   ),
                 ],
@@ -1263,10 +1218,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF56E5A9).withValues(alpha: 0.12),
+                color: const Color(0xFFECFDF5),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: const Color(0xFF56E5A9).withValues(alpha: 0.35),
+                  color: const Color(0xFFA7F3D0),
                   width: 1,
                 ),
               ),
@@ -1275,7 +1230,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                 children: [
                   const Icon(
                     Icons.check_circle_rounded,
-                    color: Color(0xFF56E5A9),
+                    color: Color(0xFF10B981),
                     size: 18,
                   ),
                   const SizedBox(width: 8),
@@ -1288,7 +1243,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF6FFBBE),
+                            color: const Color(0xFF047857),
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -1321,10 +1276,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
     return StitchGlassCard(
       key: const ValueKey('manual'),
-      isDarkMode: dark,
+      isDarkMode: false,
       borderRadius: 24,
       padding: const EdgeInsets.all(18),
-      hasCyanGlow: true,
+      hasCyanGlow: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1338,16 +1293,16 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
+                        color: const Color(0xFFECFEFF),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.20),
+                          color: const Color(0xFFA5F3FC),
                           width: 1,
                         ),
                       ),
                       child: const Icon(
                         Icons.document_scanner_rounded,
-                        color: Color(0xFF38BDF8),
+                        color: Color(0xFF0891B2),
                         size: 17,
                       ),
                     ),
@@ -1391,25 +1346,21 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: _verificationStatus == 'verified'
-                      ? const Color(0xFF56E5A9).withValues(alpha: 0.20)
+                      ? const Color(0xFFECFDF5)
                       : _verificationStatus == 'rejected'
-                          ? const Color(0xFFEF4444).withValues(alpha: 0.20)
+                          ? const Color(0xFFFEF2F2)
                           : _isVerifying
-                              ? const Color(0xFF38BDF8).withValues(alpha: 0.20)
-                              : dark
-                                  ? const Color(0xFF222A3D)
-                                  : const Color(0xFFE2E8F0),
+                              ? const Color(0xFFECFEFF)
+                              : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: _verificationStatus == 'verified'
-                        ? const Color(0xFF56E5A9).withValues(alpha: 0.40)
+                        ? const Color(0xFFA7F3D0)
                         : _verificationStatus == 'rejected'
-                            ? const Color(0xFFEF4444).withValues(alpha: 0.40)
+                            ? const Color(0xFFFECACA)
                             : _isVerifying
-                                ? const Color(0xFF38BDF8).withValues(alpha: 0.40)
-                                : dark
-                                    ? const Color(0x33FFFFFF)
-                                    : const Color(0xFFCBD5E1),
+                                ? const Color(0xFFA5F3FC)
+                                : const Color(0xFFE2E8F0),
                     width: 1,
                   ),
                 ),
@@ -1427,11 +1378,11 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
                     color: _verificationStatus == 'verified'
-                        ? const Color(0xFF56E5A9)
+                        ? const Color(0xFF047857)
                         : _verificationStatus == 'rejected'
-                            ? const Color(0xFFF87171)
+                            ? const Color(0xFFDC2626)
                             : _isVerifying
-                                ? const Color(0xFF38BDF8)
+                                ? const Color(0xFF0891B2)
                                 : secondaryTextColor,
                   ),
                 ),
@@ -1461,12 +1412,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: dark
-                      ? const Color(0xFF38BDF8).withValues(alpha: 0.08)
-                      : const Color(0xFFF0F9FF),
+                  color: const Color(0xFFECFEFF),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.40),
+                    color: const Color(0xFFA5F3FC),
                     width: 1.2,
                   ),
                 ),
@@ -1475,13 +1424,13 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF38BDF8).withValues(alpha: 0.18),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFA5F3FC),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.file_upload_rounded,
-                        color: Color(0xFF38BDF8),
+                        color: Color(0xFF0891B2),
                         size: 20,
                       ),
                     ),
@@ -1491,7 +1440,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
-                        color: dark ? const Color(0xFF7DD3FC) : const Color(0xFF0284C7),
+                        color: const Color(0xFF0891B2),
                       ),
                     ),
                   ],
@@ -1503,12 +1452,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: dark
-                    ? const Color(0xFF38BDF8).withValues(alpha: 0.12)
-                    : const Color(0xFFE0F2FE),
+                color: const Color(0xFFECFEFF),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                  color: const Color(0xFFA5F3FC),
                   width: 1.2,
                 ),
               ),
@@ -1517,12 +1464,12 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF38BDF8).withValues(alpha: 0.20),
+                      color: const Color(0xFFA5F3FC),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
                       Icons.picture_as_pdf_rounded,
-                      color: Color(0xFF38BDF8),
+                      color: Color(0xFF0891B2),
                       size: 18,
                     ),
                   ),
@@ -1564,9 +1511,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        color: dark
-                            ? Colors.white.withValues(alpha: 0.12)
-                            : Colors.black.withValues(alpha: 0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -1586,16 +1531,12 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: dark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : const Color(0xFFF8FAFC),
+              color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _simulateFailure
                     ? const Color(0xFFEF4444).withValues(alpha: 0.45)
-                    : dark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : const Color(0xFFCBD5E1),
+                    : const Color(0xFFCBD5E1),
                 width: 1,
               ),
             ),
@@ -1651,9 +1592,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     activeTrackColor:
                         const Color(0xFFEF4444).withValues(alpha: 0.35),
                     inactiveThumbColor: const Color(0xFF94A3B8),
-                    inactiveTrackColor: dark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
+                    inactiveTrackColor: const Color(0xFFE2E8F0),
                     onChanged: (val) {
                       setState(() {
                         _simulateFailure = val;
@@ -1682,34 +1621,27 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
               gradient: canVerify
                   ? const LinearGradient(
                       colors: [
-                        Color(0xFF38BDF8),
-                        Color(0xFF0284C7),
+                        Color(0xFF0891B2),
+                        Color(0xFF06B6D4),
                       ],
                     )
                   : null,
               color: canVerify
                   ? null
-                  : dark
-                      ? const Color(0xFF1E293B).withValues(alpha: 0.60)
-                      : const Color(0xFFE2E8F0),
+                  : const Color(0xFFE2E8F0),
               boxShadow: canVerify
                   ? const [
                       BoxShadow(
-                        color: Color(0x4038BDF8),
-                        blurRadius: 12,
+                        color: Color(0x33FF6B00),
+                        blurRadius: 10,
                         offset: Offset(0, 3),
                       ),
                     ]
                   : null,
               border: canVerify
-                  ? Border.all(
-                      color: const Color(0xFF38BDF8).withValues(alpha: 0.60),
-                      width: 1,
-                    )
+                  ? null
                   : Border.all(
-                      color: dark
-                          ? const Color(0x22FFFFFF)
-                          : const Color(0xFFCBD5E1),
+                      color: const Color(0xFFCBD5E1),
                       width: 1,
                     ),
             ),
@@ -1718,9 +1650,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                disabledForegroundColor: dark
-                    ? const Color(0xFF64748B)
-                    : const Color(0xFF94A3B8),
+                disabledForegroundColor: const Color(0xFF94A3B8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -1733,9 +1663,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     size: 16,
                     color: canVerify
                         ? Colors.white
-                        : (dark
-                            ? const Color(0xFF64748B)
-                            : const Color(0xFF94A3B8)),
+                        : const Color(0xFF94A3B8),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -1743,9 +1671,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     style: GoogleFonts.spaceGrotesk(
                       color: canVerify
                           ? Colors.white
-                          : (dark
-                              ? const Color(0xFF64748B)
-                              : const Color(0xFF94A3B8)),
+                          : const Color(0xFF94A3B8),
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1763,18 +1689,16 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
               padding:
                   const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               decoration: BoxDecoration(
-                color: dark
-                    ? const Color(0xFF0F172A).withValues(alpha: 0.85)
-                    : const Color(0xFFF0F9FF),
+                color: const Color(0xFFECFEFF),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                  color: const Color(0xFFA5F3FC),
                   width: 1.2,
                 ),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.18),
-                    blurRadius: 18,
+                    color: Color(0x14FF6B00),
+                    blurRadius: 14,
                   ),
                 ],
               ),
@@ -1787,7 +1711,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     child: CircularProgressIndicator(
                       strokeWidth: 2.8,
                       valueColor:
-                          AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+                          AlwaysStoppedAnimation<Color>(Color(0xFF0891B2)),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1796,7 +1720,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: dark ? Colors.white : const Color(0xFF0F172A),
+                      color: const Color(0xFF0F172A),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1902,7 +1826,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   _buildExtractedFieldRow(
                     'Official Seal',
                     'Authenticated (${((_extractionResult?.confidenceScore ?? 0.94) * 100).toInt()}% confidence)',
-                    const Color(0xFF38BDF8),
+                    const Color(0xFF0891B2),
                   ),
                   const SizedBox(height: 6),
                   _buildExtractedFieldRow(

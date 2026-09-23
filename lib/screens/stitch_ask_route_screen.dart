@@ -821,19 +821,14 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = widget.isDarkMode;
+    const dark = false;
 
-    final primaryTextColor = dark ? Colors.white : const Color(0xFF0F172A);
-    final secondaryTextColor =
-        dark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
-    final brandPillBg =
-        dark ? const Color(0xB30F172A) : const Color(0xE6FFFFFF);
-    final brandPillBorder =
-        dark ? const Color(0x38FFFFFF) : const Color(0x40FFFFFF);
-    final inputBg =
-        dark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9);
-    final inputBorder =
-        dark ? const Color(0x38FFFFFF) : const Color(0xFFCBD5E1);
+    const primaryTextColor = Color(0xFF0F172A);
+    const secondaryTextColor = Color(0xFF64748B);
+    const brandPillBg = Colors.white;
+    const brandPillBorder = Color(0xFFA5F3FC);
+    const inputBg = Color(0xFFF8FAFC);
+    const inputBorder = Color(0xFFE2E8F0);
 
     final filteredQuestions = _selectedCategory == 'all'
         ? _questions
@@ -844,7 +839,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
         : _reports.where((r) => r.reportType == _selectedReportFilter).toList();
 
     return StitchBackground(
-      isDarkMode: dark,
+      isDarkMode: false,
       child: Stack(
         children: [
           // Main Scrollable Area
@@ -889,7 +884,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                         width: 1.2,
                                       ),
                                     ),
-                                    child: Icon(
+                                    child: const Icon(
                                       Icons.arrow_back_rounded,
                                       color: primaryTextColor,
                                       size: 17,
@@ -912,9 +907,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: dark
-                                          ? Colors.black.withValues(alpha: 0.25)
-                                          : Colors.black.withValues(alpha: 0.08),
+                                      color: const Color(0xFF0891B2).withValues(alpha: 0.08),
                                       blurRadius: 10,
                                     ),
                                   ],
@@ -999,15 +992,15 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                             width: 30,
                             height: 30,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                              color: const Color(0xFFECFEFF),
                               borderRadius: BorderRadius.circular(9),
                               border: Border.all(
-                                color: const Color(0xFF00E5FF).withValues(alpha: 0.4),
+                                color: const Color(0xFFA5F3FC),
                               ),
                             ),
                             child: const Icon(
                               Icons.chat_bubble_outline_rounded,
-                              color: Color(0xFF00E5FF),
+                              color: Color(0xFF0891B2),
                               size: 16,
                             ),
                           ),
@@ -1035,12 +1028,10 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF00E5FF)
-                                            .withValues(alpha: 0.12),
+                                        color: const Color(0xFFECFEFF),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
-                                          color: const Color(0xFF00E5FF)
-                                              .withValues(alpha: 0.35),
+                                          color: const Color(0xFFA5F3FC),
                                         ),
                                       ),
                                       child: Row(
@@ -1048,7 +1039,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                         children: [
                                           const Icon(
                                             Icons.location_on_rounded,
-                                            color: Color(0xFF00E5FF),
+                                            color: Color(0xFF0891B2),
                                             size: 9,
                                           ),
                                           const SizedBox(width: 2),
@@ -1057,7 +1048,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                             style: GoogleFonts.jetBrainsMono(
                                               fontSize: 8.5,
                                               fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF00E5FF),
+                                              color: const Color(0xFF0891B2),
                                             ),
                                           ),
                                         ],
@@ -1195,17 +1186,15 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                   width: 26,
                                   height: 26,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF00E5FF)
-                                        .withValues(alpha: 0.15),
+                                    color: const Color(0xFFECFEFF),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: const Color(0xFF00E5FF)
-                                          .withValues(alpha: 0.4),
+                                      color: const Color(0xFFA5F3FC),
                                     ),
                                   ),
                                   child: const Icon(
                                     Icons.explore_outlined,
-                                    color: Color(0xFF00E5FF),
+                                    color: Color(0xFF0891B2),
                                     size: 15,
                                   ),
                                 ),
@@ -1259,7 +1248,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                           children: [
                                             const Icon(
                                               Icons.radio_button_checked,
-                                              color: Color(0xFF00E5FF),
+                                              color: Color(0xFF0891B2),
                                               size: 10,
                                             ),
                                             const SizedBox(width: 4),
@@ -1378,13 +1367,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                 _buildTagChip(
                                   tag: 'Fastest Leg',
                                   icon: Icons.bolt_rounded,
-                                  color: const Color(0xFF00E5FF),
+                                  color: const Color(0xFF0891B2),
                                   dark: dark,
                                 ),
                                 _buildTagChip(
                                   tag: 'AC BRTS',
                                   icon: Icons.ac_unit_rounded,
-                                  color: const Color(0xFF38BDF8),
+                                  color: const Color(0xFF0284C7),
                                   dark: dark,
                                 ),
                                 _buildTagChip(
@@ -1432,15 +1421,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                       hintStyle: GoogleFonts.plusJakartaSans(
                                         fontSize: 11,
                                         color: secondaryTextColor
-                                            .withValues(alpha: 0.7),
+                                            .withValues(alpha: 0.6),
                                       ),
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Divider(
-                                    color: dark
-                                        ? Colors.white.withValues(alpha: 0.1)
-                                        : Colors.black.withValues(alpha: 0.08),
+                                  const Divider(
+                                    color: Color(0xFFE2E8F0),
                                     height: 1,
                                   ),
                                   const SizedBox(height: 5),
@@ -1467,20 +1454,18 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                                       horizontal: 5,
                                                       vertical: 2.5),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFF00E5FF)
-                                                    .withValues(alpha: 0.1),
+                                                color: const Color(0xFFECFEFF),
                                                 borderRadius:
                                                     BorderRadius.circular(6),
                                                 border: Border.all(
-                                                  color: const Color(0xFF00E5FF)
-                                                      .withValues(alpha: 0.3),
+                                                  color: const Color(0xFFA5F3FC),
                                                 ),
                                               ),
                                               child: Row(
                                                 children: [
                                                   const Icon(
                                                     Icons.my_location_rounded,
-                                                    color: Color(0xFF00E5FF),
+                                                    color: Color(0xFF0891B2),
                                                     size: 9,
                                                   ),
                                                   const SizedBox(width: 2),
@@ -1492,7 +1477,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       color:
-                                                          const Color(0xFF00E5FF),
+                                                          const Color(0xFF0891B2),
                                                     ),
                                                   ),
                                                 ],
@@ -1518,7 +1503,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                                       vertical: 2.5),
                                               child: Row(
                                                 children: [
-                                                  Icon(
+                                                  const Icon(
                                                     Icons.shield_outlined,
                                                     color: secondaryTextColor,
                                                     size: 10,
@@ -1565,16 +1550,16 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
                                     colors: [
-                                      Color(0xFF00E5FF),
-                                      Color(0xFF0284C7),
+                                      Color(0xFF0891B2),
+                                      Color(0xFF06B6D4),
                                     ],
                                   ),
                                   borderRadius: BorderRadius.circular(14),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF00E5FF)
-                                          .withValues(alpha: 0.35),
-                                      blurRadius: 12,
+                                      color: const Color(0xFF0891B2)
+                                          .withValues(alpha: 0.3),
+                                      blurRadius: 10,
                                       offset: const Offset(0, 3),
                                     ),
                                   ],
@@ -1584,7 +1569,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                   children: [
                                     const Icon(
                                       Icons.send_rounded,
-                                      color: Color(0xFF002233),
+                                      color: Colors.white,
                                       size: 14,
                                     ),
                                     const SizedBox(width: 6),
@@ -1594,7 +1579,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 0.7,
-                                        color: const Color(0xFF002233),
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ],
@@ -1609,7 +1594,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                 children: [
                                   const Icon(
                                     Icons.group_outlined,
-                                    color: Color(0xFF00E5FF),
+                                    color: Color(0xFF0891B2),
                                     size: 10,
                                   ),
                                   const SizedBox(width: 4),
@@ -1641,7 +1626,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                             children: [
                               const Icon(
                                 Icons.forum_rounded,
-                                color: Color(0xFF00E5FF),
+                                color: Color(0xFF0891B2),
                                 size: 13,
                               ),
                               const SizedBox(width: 5),
@@ -1718,16 +1703,17 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.95),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: const Color(0xFF00E5FF).withValues(alpha: 0.6),
+                      color: const Color(0xFFA5F3FC),
                       width: 1.2,
                     ),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
-                        blurRadius: 14,
+                        color: Color(0x28FF6B00),
+                        blurRadius: 12,
+                        offset: Offset(0, 3),
                       ),
                     ],
                   ),
@@ -1736,7 +1722,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                     children: [
                       const Icon(
                         Icons.check_circle_outline_rounded,
-                        color: Color(0xFF00E5FF),
+                        color: Color(0xFF0891B2),
                         size: 14,
                       ),
                       const SizedBox(width: 6),
@@ -1745,7 +1731,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: const Color(0xFF0F172A),
                         ),
                       ),
                     ],
@@ -1754,7 +1740,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
               ),
             ),
 
-          // Floating Ask Gemini AI Button (Cyan-Violet Gradient)
+          // Floating Ask Gemini AI Button (Warm Orange Gradient)
           Positioned(
             bottom: 96,
             right: 18,
@@ -1768,18 +1754,18 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF00E5FF), Color(0xFF7C3AED)],
+                      colors: [Color(0xFF0891B2), Color(0xFF0E7490)],
                     ),
                     borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.45),
-                        blurRadius: 14,
-                        offset: const Offset(0, 3),
+                        color: Color(0x33FF6B00),
+                        blurRadius: 12,
+                        offset: Offset(0, 3),
                       ),
                     ],
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.35),
+                      color: const Color(0xFFA5F3FC),
                       width: 1.2,
                     ),
                   ),
@@ -1847,17 +1833,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF00E5FF).withValues(alpha: 0.22)
-                  : dark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : const Color(0xFFF1F5F9),
+                  ? const Color(0xFFECFEFF)
+                  : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF00E5FF)
-                    : dark
-                        ? Colors.white.withValues(alpha: 0.12)
-                        : const Color(0xFFCBD5E1),
+                    ? const Color(0xFF0891B2)
+                    : const Color(0xFFE2E8F0),
                 width: isSelected ? 1.2 : 1,
               ),
             ),
@@ -1868,10 +1850,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                   icon,
                   size: 11,
                   color: isSelected
-                      ? const Color(0xFF00E5FF)
-                      : dark
-                          ? const Color(0xFFCBD5E1)
-                          : const Color(0xFF475569),
+                      ? const Color(0xFF0891B2)
+                      : const Color(0xFF64748B),
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -1880,8 +1860,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                     fontSize: 10.5,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
-                        ? (dark ? Colors.white : const Color(0xFF0369A1))
-                        : (dark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
+                        ? const Color(0xFF0891B2)
+                        : const Color(0xFF475569),
                   ),
                 ),
                 if (badgeCount != null) ...[
@@ -1890,7 +1870,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                      color: const Color(0xFFA5F3FC),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -1898,7 +1878,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 8.5,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF00E5FF),
+                        color: const Color(0xFF0891B2),
                       ),
                     ),
                   ),
@@ -1936,17 +1916,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected
-              ? color.withValues(alpha: 0.18)
-              : dark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : const Color(0xFFF1F5F9),
+              ? color.withValues(alpha: 0.15)
+              : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(9),
           border: Border.all(
             color: isSelected
                 ? color
-                : dark
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : const Color(0xFFCBD5E1),
+                : const Color(0xFFE2E8F0),
             width: isSelected ? 1.2 : 1,
           ),
         ),
@@ -1965,7 +1941,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                 fontSize: 9.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected
-                    ? (dark ? Colors.white : const Color(0xFF0F172A))
+                    ? const Color(0xFF0F172A)
                     : const Color(0xFF94A3B8),
               ),
             ),
@@ -1977,9 +1953,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
 
   // Helper: Question Card
   Widget _buildQuestionCard(QuestionItem q, bool dark) {
-    final primaryTextColor = dark ? Colors.white : const Color(0xFF0F172A);
-    final secondaryTextColor =
-        dark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    const primaryTextColor = Color(0xFF0F172A);
+    const secondaryTextColor = Color(0xFF475569);
 
     if (!_replyControllers.containsKey(q.id)) {
       _replyControllers[q.id] = TextEditingController();
@@ -1988,7 +1963,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: StitchGlassCard(
-        isDarkMode: dark,
+        isDarkMode: false,
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2005,11 +1980,11 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                         height: 28,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF00E5FF), Color(0xFF3B82F6)],
+                            colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
                           ),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFF00E5FF).withValues(alpha: 0.4),
+                            color: const Color(0xFFA5F3FC),
                             width: 1,
                           ),
                         ),
@@ -2021,7 +1996,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF002233),
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -2103,7 +2078,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                 fontSize: 11.5,
                 height: 1.35,
                 fontWeight: FontWeight.w400,
-                color: dark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                color: const Color(0xFF1E293B),
               ),
             ),
 
@@ -2123,17 +2098,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: q.isUpvoted
-                          ? const Color(0xFF00E5FF).withValues(alpha: 0.2)
-                          : dark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : const Color(0xFFF1F5F9),
+                          ? const Color(0xFFECFEFF)
+                          : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: q.isUpvoted
-                            ? const Color(0xFF00E5FF)
-                            : dark
-                                ? Colors.white.withValues(alpha: 0.12)
-                                : const Color(0xFFCBD5E1),
+                            ? const Color(0xFF0891B2)
+                            : const Color(0xFFE2E8F0),
                       ),
                     ),
                     child: Row(
@@ -2142,8 +2113,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                           Icons.arrow_upward_rounded,
                           size: 12,
                           color: q.isUpvoted
-                              ? const Color(0xFF00E5FF)
-                              : const Color(0xFF94A3B8),
+                              ? const Color(0xFF0891B2)
+                              : const Color(0xFF64748B),
                         ),
                         const SizedBox(width: 3),
                         Text(
@@ -2152,7 +2123,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: q.isUpvoted
-                                ? const Color(0xFF00E5FF)
+                                ? const Color(0xFF0891B2)
                                 : primaryTextColor,
                           ),
                         ),
@@ -2166,17 +2137,17 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF00E5FF).withValues(alpha: 0.08),
+                    color: const Color(0xFFECFEFF),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                      color: const Color(0xFFA5F3FC),
                     ),
                   ),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.route_rounded,
-                        color: Color(0xFF00E5FF),
+                        color: Color(0xFF0891B2),
                         size: 9,
                       ),
                       const SizedBox(width: 3),
@@ -2185,7 +2156,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 8.5,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF00E5FF),
+                          color: const Color(0xFF0891B2),
                         ),
                       ),
                     ],
@@ -2267,7 +2238,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       q.pinnedGuide!.content,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10.5,
-                        color: dark ? Colors.white : const Color(0xFF0F172A),
+                        color: const Color(0xFF0F172A),
                         height: 1.25,
                       ),
                     ),
@@ -2299,7 +2270,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                         children: [
                           const Icon(
                             Icons.chat_outlined,
-                            color: Color(0xFF00E5FF),
+                            color: Color(0xFF0891B2),
                             size: 12,
                           ),
                           const SizedBox(width: 4),
@@ -2309,7 +2280,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF00E5FF),
+                                color: const Color(0xFF0891B2),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -2319,7 +2290,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                             q.isThreadExpanded
                                 ? Icons.keyboard_arrow_up_rounded
                                 : Icons.keyboard_arrow_down_rounded,
-                            color: const Color(0xFF00E5FF),
+                            color: const Color(0xFF0891B2),
                             size: 13,
                           ),
                         ],
@@ -2351,14 +2322,10 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: dark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : const Color(0xFFF1F5F9),
+                        color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: dark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : const Color(0xFFCBD5E1),
+                          color: const Color(0xFFE2E8F0),
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -2391,12 +2358,12 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       width: 28,
                       height: 28,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF00E5FF),
+                        color: Color(0xFF0891B2),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.send_rounded,
-                        color: Color(0xFF00354A),
+                        color: Colors.white,
                         size: 12,
                       ),
                     ),
@@ -2412,22 +2379,17 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
 
   // Helper: Individual Answer Bubble
   Widget _buildAnswerBubble(AnswerItem ans, bool dark) {
-    final primaryTextColor = dark ? Colors.white : const Color(0xFF0F172A);
-    final secondaryTextColor =
-        dark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    const primaryTextColor = Color(0xFF0F172A);
+    const secondaryTextColor = Color(0xFF475569);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: dark
-            ? Colors.white.withValues(alpha: 0.04)
-            : const Color(0xFFF8FAFC),
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.08)
-              : const Color(0xFFE2E8F0),
+          color: const Color(0xFFE2E8F0),
         ),
       ),
       child: Row(
@@ -2481,8 +2443,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF00E5FF)
-                                    .withValues(alpha: 0.15),
+                                color: const Color(0xFFECFEFF),
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               child: Text(
@@ -2490,7 +2451,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                                 style: GoogleFonts.jetBrainsMono(
                                   fontSize: 7.5,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF00E5FF),
+                                  color: const Color(0xFF0891B2),
                                 ),
                               ),
                             ),
@@ -2513,7 +2474,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                   baseStyle: GoogleFonts.plusJakartaSans(
                     fontSize: 10.5,
                     height: 1.25,
-                    color: dark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                    color: const Color(0xFF334155),
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -2544,17 +2505,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
               decoration: BoxDecoration(
                 color: isLiked
-                    ? const Color(0xFF00E5FF).withValues(alpha: 0.22)
-                    : dark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : const Color(0xFFF1F5F9),
+                    ? const Color(0xFFECFEFF)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(7),
                 border: Border.all(
                   color: isLiked
-                      ? const Color(0xFF00E5FF)
-                      : dark
-                          ? Colors.white.withValues(alpha: 0.12)
-                          : const Color(0xFFCBD5E1),
+                      ? const Color(0xFF0891B2)
+                      : const Color(0xFFE2E8F0),
                   width: isLiked ? 1.2 : 1,
                 ),
               ),
@@ -2564,7 +2521,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                     '👍',
                     style: TextStyle(
                       fontSize: 10,
-                      color: isLiked ? const Color(0xFF00E5FF) : null,
+                      color: isLiked ? const Color(0xFF0891B2) : null,
                     ),
                   ),
                   const SizedBox(width: 3),
@@ -2575,10 +2532,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       fontWeight:
                           isLiked ? FontWeight.w800 : FontWeight.w600,
                       color: isLiked
-                          ? const Color(0xFF00E5FF)
-                          : (dark
-                              ? const Color(0xFFCBD5E1)
-                              : const Color(0xFF475569)),
+                          ? const Color(0xFF0891B2)
+                          : const Color(0xFF475569),
                     ),
                   ),
                 ],
@@ -2600,17 +2555,13 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
               decoration: BoxDecoration(
                 color: isDisliked
-                    ? const Color(0xFFFF5252).withValues(alpha: 0.22)
-                    : dark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : const Color(0xFFF1F5F9),
+                    ? const Color(0xFFFEF2F2)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(7),
                 border: Border.all(
                   color: isDisliked
-                      ? const Color(0xFFFF5252)
-                      : dark
-                          ? Colors.white.withValues(alpha: 0.12)
-                          : const Color(0xFFCBD5E1),
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFFE2E8F0),
                   width: isDisliked ? 1.2 : 1,
                 ),
               ),
@@ -2620,7 +2571,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                     '👎',
                     style: TextStyle(
                       fontSize: 10,
-                      color: isDisliked ? const Color(0xFFFF5252) : null,
+                      color: isDisliked ? const Color(0xFFEF4444) : null,
                     ),
                   ),
                   const SizedBox(width: 3),
@@ -2631,10 +2582,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       fontWeight:
                           isDisliked ? FontWeight.w800 : FontWeight.w600,
                       color: isDisliked
-                          ? const Color(0xFFFF5252)
-                          : (dark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B)),
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF64748B),
                     ),
                   ),
                 ],
@@ -2651,14 +2600,10 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: dark
-            ? Colors.white.withValues(alpha: 0.05)
-            : const Color(0xFFF1F5F9),
+        color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.12)
-              : const Color(0xFFCBD5E1),
+          color: const Color(0xFFE2E8F0),
           width: 1,
         ),
       ),
@@ -2674,11 +2619,11 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: _activeViewTab == 0
-                      ? const Color(0xFF00E5FF).withValues(alpha: dark ? 0.22 : 0.15)
+                      ? const Color(0xFFECFEFF)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: _activeViewTab == 0
-                      ? Border.all(color: const Color(0xFF00E5FF), width: 1.2)
+                      ? Border.all(color: const Color(0xFF0891B2), width: 1.2)
                       : null,
                 ),
                 child: Row(
@@ -2689,8 +2634,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                       Icons.chat_bubble_outline_rounded,
                       size: 13,
                       color: _activeViewTab == 0
-                          ? const Color(0xFF00E5FF)
-                          : (dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                          ? const Color(0xFF0891B2)
+                          : const Color(0xFF64748B),
                     ),
                     const SizedBox(width: 4),
                     Flexible(
@@ -2702,8 +2647,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                               ? FontWeight.w800
                               : FontWeight.w600,
                           color: _activeViewTab == 0
-                              ? (dark ? Colors.white : const Color(0xFF0284C7))
-                              : (dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                              ? const Color(0xFF0891B2)
+                              : const Color(0xFF64748B),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2714,8 +2659,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                           horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
                         color: _activeViewTab == 0
-                            ? const Color(0xFF00E5FF).withValues(alpha: 0.25)
-                            : Colors.black.withValues(alpha: 0.1),
+                            ? const Color(0xFFA5F3FC)
+                            : Colors.black.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -2724,8 +2669,8 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                           fontSize: 8.5,
                           fontWeight: FontWeight.w700,
                           color: _activeViewTab == 0
-                              ? const Color(0xFF00E5FF)
-                              : (dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                              ? const Color(0xFF0891B2)
+                              : const Color(0xFF64748B),
                         ),
                       ),
                     ),
@@ -2839,7 +2784,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFFF5252), Color(0xFFEA580C)],
+                        colors: [Color(0xFFFF5252), Color(0xFF0E7490)],
                       ),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
@@ -4134,7 +4079,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFFFF5252), Color(0xFFEA580C)],
+                              colors: [Color(0xFFFF5252), Color(0xFF0E7490)],
                             ),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [

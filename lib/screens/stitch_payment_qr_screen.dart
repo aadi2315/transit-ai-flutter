@@ -232,7 +232,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
   @override
   Widget build(BuildContext context) {
-    final dark = widget.isDarkMode;
+    const dark = false;
 
     return StitchBackground(
       isDarkMode: dark,
@@ -261,24 +261,22 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: dark ? const Color(0xB30F172A) : const Color(0xE6FFFFFF),
+                                color: Colors.white,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: dark ? const Color(0x38FFFFFF) : const Color(0x40FFFFFF),
+                                  color: const Color(0xFFE2E8F0),
                                   width: 1,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: dark
-                                        ? Colors.black.withValues(alpha: 0.25)
-                                        : Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 8,
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 6,
                                   ),
                                 ],
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.arrow_back_rounded,
-                                color: dark ? Colors.white : const Color(0xFF0F172A),
+                                color: Color(0xFF0F172A),
                                 size: 16,
                               ),
                             ),
@@ -291,14 +289,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(
-                                    width: 22,
-                                    height: 22,
+                                    width: 24,
+                                    height: 24,
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: const Color(0xFFECFEFF),
                                       shape: BoxShape.circle,
+                                      border: Border.all(color: const Color(0xFFA5F3FC)),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                          color: const Color(0xFF0891B2).withValues(alpha: 0.15),
                                           blurRadius: 4,
                                         ),
                                       ],
@@ -309,7 +308,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                       fit: BoxFit.contain,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 8),
                                   Flexible(
                                     child: Text(
                                       _isTicketView
@@ -319,10 +318,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 1,
                                       style: GoogleFonts.spaceGrotesk(
-                                        fontSize: 14,
+                                        fontSize: 15,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 0.3,
-                                        color: dark ? Colors.white : const Color(0xFF0F172A),
+                                        color: const Color(0xFF0F172A),
                                       ),
                                     ),
                                   ),
@@ -356,12 +355,19 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         height: 42,
                         padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.35),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: const Color(0x26FFFFFF),
+                            color: const Color(0xFFA5F3FC),
                             width: 1,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0891B2).withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
@@ -370,9 +376,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 onTap: () => setState(() => _isTicketView = false),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: !_isTicketView
-                                        ? const Color(0xFF38BDF8)
-                                        : Colors.transparent,
+                                    gradient: !_isTicketView
+                                        ? const LinearGradient(
+                                            colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
+                                          )
+                                        : null,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   alignment: Alignment.center,
@@ -386,8 +394,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                           Icons.payment_rounded,
                                           size: 14,
                                           color: !_isTicketView
-                                              ? const Color(0xFF00354A)
-                                              : const Color(0xFF94A3B8),
+                                              ? Colors.white
+                                              : const Color(0xFF64748B),
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
@@ -396,8 +404,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                             fontSize: 12,
                                             fontWeight: FontWeight.w700,
                                             color: !_isTicketView
-                                                ? const Color(0xFF00354A)
-                                                : const Color(0xFF94A3B8),
+                                                ? Colors.white
+                                                : const Color(0xFF64748B),
                                           ),
                                         ),
                                       ],
@@ -411,9 +419,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 onTap: () => setState(() => _isTicketView = true),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: _isTicketView
-                                        ? const Color(0xFF38BDF8)
-                                        : Colors.transparent,
+                                    gradient: _isTicketView
+                                        ? const LinearGradient(
+                                            colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
+                                          )
+                                        : null,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   alignment: Alignment.center,
@@ -427,8 +437,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                           Icons.qr_code_2_rounded,
                                           size: 14,
                                           color: _isTicketView
-                                              ? const Color(0xFF00354A)
-                                              : const Color(0xFF94A3B8),
+                                              ? Colors.white
+                                              : const Color(0xFF64748B),
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
@@ -437,8 +447,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                             fontSize: 12,
                                             fontWeight: FontWeight.w700,
                                             color: _isTicketView
-                                                ? const Color(0xFF00354A)
-                                                : const Color(0xFF94A3B8),
+                                                ? Colors.white
+                                                : const Color(0xFF64748B),
                                           ),
                                         ),
                                       ],
@@ -497,12 +507,19 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           height: 90,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0x26FFFFFF),
+              color: const Color(0xFFA5F3FC),
               width: 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0891B2).withValues(alpha: 0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -514,8 +531,9 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF56E5A9).withValues(alpha: 0.15),
+                      color: const Color(0xFFDCFCE7),
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF86EFAC)),
                     ),
                     child: Row(
                       children: [
@@ -523,7 +541,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           width: 5,
                           height: 5,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF56E5A9),
+                            color: Color(0xFF16A34A),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -533,7 +551,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 8,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF56E5A9),
+                            color: const Color(0xFF16A34A),
                           ),
                         ),
                       ],
@@ -543,8 +561,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     'ETA: 4 MIN',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFCBD5E1),
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF64748B),
                     ),
                   ),
                 ],
@@ -556,14 +574,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     child: Row(
                       children: [
                         Container(
-                          width: 26,
-                          height: 26,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: const Color(0xFFECFEFF),
                             shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFA5F3FC)),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                color: const Color(0xFF0891B2).withValues(alpha: 0.15),
                                 blurRadius: 4,
                               ),
                             ],
@@ -586,7 +605,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                  color: const Color(0xFF0F172A),
                                 ),
                               ),
                               Text(
@@ -595,7 +614,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 maxLines: 1,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 9,
-                                  color: const Color(0xFF38BDF8),
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF0891B2),
                                 ),
                               ),
                             ],
@@ -610,7 +630,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF38BDF8),
+                      color: const Color(0xFF0891B2),
                     ),
                   ),
                 ],
@@ -634,7 +654,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: const Color(0xFFCBD5E1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -661,13 +681,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: const Color(0xFF0F172A),
                             ),
                           ),
                           const Icon(
                             Icons.verified_rounded,
                             size: 16,
-                            color: Color(0xFF38BDF8),
+                            color: Color(0xFF0891B2),
                           ),
                         ],
                       ),
@@ -675,7 +695,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         'Valid for 1 journey within 90 mins',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
-                          color: const Color(0xFF56E5A9),
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF16A34A),
                         ),
                       ),
                     ],
@@ -684,15 +705,16 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Text(
                       'SECURE INTENT',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 8,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFFCBD5E1),
+                        color: const Color(0xFF64748B),
                       ),
                     ),
                   ),
@@ -705,10 +727,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.04),
+                  color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0x26FFFFFF),
+                    color: const Color(0xFFE2E8F0),
                     width: 1,
                   ),
                 ),
@@ -724,14 +746,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFCBD5E1),
+                            color: const Color(0xFF64748B),
                           ),
                         ),
                         Text(
                           '8.4 km • ~24 mins',
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 9,
-                            color: const Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF64748B),
                           ),
                         ),
                       ],
@@ -745,7 +768,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF38BDF8),
+                            color: const Color(0xFF0891B2),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -753,7 +776,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF00354A),
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -767,14 +790,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                  color: const Color(0xFF0F172A),
                                 ),
                               ),
                               Text(
                                 'Rapid AC Line • 5 stops (4.8 km, 13 min)',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 9,
-                                  color: const Color(0xFF94A3B8),
+                                  color: const Color(0xFF64748B),
                                 ),
                               ),
                             ],
@@ -785,7 +808,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: const Color(0xFF0F172A),
                           ),
                         ),
                       ],
@@ -798,15 +821,16 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
+                        color: const Color(0xFFECFEFF),
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFA5F3FC)),
                       ),
                       child: Row(
                         children: [
                           const Icon(
                             Icons.transfer_within_a_station_rounded,
                             size: 13,
-                            color: Color(0xFF56E5A9),
+                            color: Color(0xFF0891B2),
                           ),
                           const SizedBox(width: 6),
                           Expanded(
@@ -814,7 +838,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                               'Interchange at Shivranjani Junction',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 9,
-                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF0F172A),
                               ),
                             ),
                           ),
@@ -823,7 +848,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF56E5A9),
+                              color: const Color(0xFF0891B2),
                             ),
                           ),
                         ],
@@ -839,7 +864,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFB95F),
+                            color: const Color(0xFF06B6D4),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -847,7 +872,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF0F172A),
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -861,14 +886,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                  color: const Color(0xFF0F172A),
                                 ),
                               ),
                               Text(
                                 'Feeder Bypass • 3 stops (3.6 km, 8 min)',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 9,
-                                  color: const Color(0xFF94A3B8),
+                                  color: const Color(0xFF64748B),
                                 ),
                               ),
                             ],
@@ -879,13 +904,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: const Color(0xFF0F172A),
                           ),
                         ),
                       ],
                     ),
 
-                    const Divider(color: Color(0x26FFFFFF), height: 18),
+                    const Divider(color: Color(0xFFE2E8F0), height: 18),
 
                     // Total
                     Wrap(
@@ -903,15 +928,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                color: const Color(0xFF0F172A),
                               ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 5, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF56E5A9)
-                                    .withValues(alpha: 0.2),
+                                color: const Color(0xFFDCFCE7),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -919,7 +943,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 style: GoogleFonts.jetBrainsMono(
                                   fontSize: 8,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF56E5A9),
+                                  color: const Color(0xFF16A34A),
                                 ),
                               ),
                             ),
@@ -930,7 +954,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
-                            color: const Color(0xFF38BDF8),
+                            color: const Color(0xFF0891B2),
                           ),
                         ),
                       ],
@@ -953,14 +977,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
-                      color: const Color(0xFFE2E8F0),
+                      color: const Color(0xFF0F172A),
                     ),
                   ),
                   Text(
                     '0% Convenience Fee',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 9,
-                      color: const Color(0xFF56E5A9),
+                      color: const Color(0xFF16A34A),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -978,13 +1002,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 mainAxisSpacing: 8,
                 children: [
                   _buildUpiOption('Google Pay', 'Instant Intent', 'G',
-                      const Color(0xFF38BDF8)),
+                      const Color(0xFFEA4335)),
                   _buildUpiOption('PhonePe', 'Linked VPA', 'P',
                       const Color(0xFF9333EA)),
                   _buildUpiOption('Paytm', 'Fast UPI', '₹',
                       const Color(0xFF0284C7)),
                   _buildUpiOption('Any UPI ID', 'Enter handle', '@',
-                      const Color(0xFF94A3B8)),
+                      const Color(0xFF0891B2)),
                 ],
               ),
 
@@ -994,9 +1018,9 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0x2638BDF8)),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
                 ),
                 child: Wrap(
                   alignment: WrapAlignment.spaceBetween,
@@ -1008,14 +1032,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.shield_rounded,
-                            size: 14, color: Color(0xFF56E5A9)),
+                            size: 14, color: Color(0xFF16A34A)),
                         const SizedBox(width: 6),
                         Text(
                           'Razorpay Test Mode',
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF56E5A9),
+                            color: const Color(0xFF16A34A),
                           ),
                         ),
                       ],
@@ -1024,7 +1048,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       'YOUR_RAZORPAY_KEY_ID',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 8.5,
-                        color: const Color(0xFF94A3B8),
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF475569),
                       ),
                     ),
                   ],
@@ -1048,12 +1073,12 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF38BDF8), Color(0xFF0284C7)],
+                      colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
                     ),
                     boxShadow: const [
                       BoxShadow(
-                        color: Color(0x6638BDF8),
-                        blurRadius: 18,
+                        color: Color(0x40FF6B00),
+                        blurRadius: 12,
                         offset: Offset(0, 4),
                       ),
                     ],
@@ -1067,7 +1092,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Color(0xFF00354A),
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1077,7 +1102,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF00354A),
+                              color: Colors.white,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1086,7 +1111,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         const Icon(
                           Icons.payment_rounded,
                           size: 18,
-                          color: Color(0xFF00354A),
+                          color: Colors.white,
                         ),
                         const SizedBox(width: 8),
                         Flexible(
@@ -1095,7 +1120,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF00354A),
+                              color: Colors.white,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1112,12 +1137,19 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0x3338BDF8),
+                    color: const Color(0xFFA5F3FC),
                     width: 1,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0891B2).withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1129,16 +1161,17 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           child: Row(
                             children: [
                               Container(
-                                width: 26,
-                                height: 26,
+                                width: 28,
+                                height: 28,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                                  color: const Color(0xFFECFEFF),
                                   shape: BoxShape.circle,
+                                  border: Border.all(color: const Color(0xFFA5F3FC)),
                                 ),
                                 child: const Icon(
                                   Icons.qr_code_2_rounded,
-                                  size: 15,
-                                  color: Color(0xFF38BDF8),
+                                  size: 16,
+                                  color: Color(0xFF0891B2),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1148,7 +1181,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                   style: GoogleFonts.spaceGrotesk(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                                    color: const Color(0xFF0F172A),
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1161,15 +1194,16 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                            color: const Color(0xFFECFEFF),
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFA5F3FC)),
                           ),
                           child: Text(
                             'PAYMENT QR',
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 8.5,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF38BDF8),
+                              color: const Color(0xFF0891B2),
                             ),
                           ),
                         ),
@@ -1180,7 +1214,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       'Scan this payment QR with GPay, PhonePe, Paytm, or any UPI app to pay ₹9.00. Your ticket QR unlocks in the Ticket section once payment is confirmed.',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
-                        color: const Color(0xFF94A3B8),
+                        color: const Color(0xFF64748B),
                         height: 1.3,
                       ),
                     ),
@@ -1191,10 +1225,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: const [
+                          border: Border.all(color: const Color(0xFFA5F3FC)),
+                          boxShadow: [
                             BoxShadow(
-                              color: Color(0x40000000),
-                              blurRadius: 16,
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 10,
                             ),
                           ],
                         ),
@@ -1222,7 +1257,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFFCBD5E1),
+                          color: const Color(0xFF475569),
                         ),
                       ),
                     ),
@@ -1245,10 +1280,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         height: 40,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF56E5A9).withValues(alpha: 0.15),
+                          color: const Color(0xFFDCFCE7),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0xFF56E5A9),
+                            color: const Color(0xFF16A34A),
                             width: 1,
                           ),
                         ),
@@ -1259,7 +1294,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             const Icon(
                               Icons.check_circle_outline_rounded,
                               size: 16,
-                              color: Color(0xFF56E5A9),
+                              color: Color(0xFF16A34A),
                             ),
                             const SizedBox(width: 6),
                             Flexible(
@@ -1268,7 +1303,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 style: GoogleFonts.spaceGrotesk(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF56E5A9),
+                                  color: const Color(0xFF16A34A),
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1297,14 +1332,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF1E293B)
-              : Colors.white.withValues(alpha: 0.04),
+              ? const Color(0xFFECFEFF)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF38BDF8)
-                : const Color(0x26FFFFFF),
-            width: isSelected ? 1.2 : 0.8,
+                ? const Color(0xFF0891B2)
+                : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1.0,
           ),
         ),
         child: Row(
@@ -1313,7 +1348,9 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: isSelected
+                    ? const Color(0xFFFFEDD5)
+                    : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(6),
               ),
               alignment: Alignment.center,
@@ -1337,7 +1374,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: const Color(0xFF0F172A),
                     ),
                     maxLines: 1,
                   ),
@@ -1345,7 +1382,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     subtitle,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 8,
-                      color: const Color(0xFF94A3B8),
+                      color: const Color(0xFF64748B),
                     ),
                     maxLines: 1,
                   ),
@@ -1357,13 +1394,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 width: 14,
                 height: 14,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF38BDF8),
+                  color: Color(0xFF0891B2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.check,
                   size: 10,
-                  color: Color(0xFF00354A),
+                  color: Colors.white,
                 ),
               ),
           ],
@@ -1392,15 +1429,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
+              color: const Color(0xFFECFEFF),
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFFFFB95F).withValues(alpha: 0.6),
+                color: const Color(0xFFA5F3FC),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFB95F).withValues(alpha: 0.2),
+                  color: const Color(0xFF0891B2).withValues(alpha: 0.12),
                   blurRadius: 18,
                   spreadRadius: 2,
                 ),
@@ -1409,7 +1446,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
             child: const Icon(
               Icons.lock_outline_rounded,
               size: 34,
-              color: Color(0xFFFFB95F),
+              color: Color(0xFF0891B2),
             ),
           ),
           const SizedBox(height: 16),
@@ -1418,10 +1455,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFB95F).withValues(alpha: 0.15),
+              color: const Color(0xFFECFEFF),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFFFFB95F).withValues(alpha: 0.35),
+                color: const Color(0xFFA5F3FC),
                 width: 1,
               ),
             ),
@@ -1431,7 +1468,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 const Icon(
                   Icons.schedule_rounded,
                   size: 12,
-                  color: Color(0xFFFFB95F),
+                  color: Color(0xFF0891B2),
                 ),
                 const SizedBox(width: 5),
                 Flexible(
@@ -1440,7 +1477,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 8.5,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFFFFB95F),
+                      color: const Color(0xFF0891B2),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1456,7 +1493,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
             style: GoogleFonts.spaceGrotesk(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: const Color(0xFF0F172A),
             ),
           ),
           const SizedBox(height: 8),
@@ -1465,7 +1502,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11.5,
-              color: const Color(0xFF94A3B8),
+              color: const Color(0xFF64748B),
               height: 1.45,
             ),
           ),
@@ -1476,10 +1513,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: const Color(0xFFECFEFF),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: const Color(0x26FFFFFF),
+                color: const Color(0xFFA5F3FC),
                 width: 1,
               ),
             ),
@@ -1489,12 +1526,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFA5F3FC)),
                   ),
                   child: const Icon(
                     Icons.directions_bus_rounded,
-                    color: Color(0xFF38BDF8),
+                    color: Color(0xFF0891B2),
                     size: 18,
                   ),
                 ),
@@ -1508,7 +1546,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: const Color(0xFF0F172A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1517,7 +1555,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         'Fare: ₹9.00 • 2 Legs (9U ➔ 8D)',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9.5,
-                          color: const Color(0xFF38BDF8),
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0891B2),
                         ),
                       ),
                     ],
@@ -1528,7 +1567,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: const Color(0xFF0F172A),
                   ),
                 ),
               ],
@@ -1546,12 +1585,12 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF38BDF8), Color(0xFF0284C7)],
+                  colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
                 ),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x6638BDF8),
-                    blurRadius: 18,
+                    color: Color(0x40FF6B00),
+                    blurRadius: 14,
                     offset: Offset(0, 4),
                   ),
                 ],
@@ -1562,7 +1601,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   const Icon(
                     Icons.payment_rounded,
                     size: 18,
-                    color: Color(0xFF00354A),
+                    color: Colors.white,
                   ),
                   const SizedBox(width: 8),
                   Flexible(
@@ -1571,7 +1610,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF00354A),
+                        color: Colors.white,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1589,7 +1628,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
               const Icon(
                 Icons.verified_user_rounded,
                 size: 12,
-                color: Color(0xFF56E5A9),
+                color: Color(0xFF16A34A),
               ),
               const SizedBox(width: 5),
               Flexible(
@@ -1598,7 +1637,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF56E5A9),
+                    color: const Color(0xFF16A34A),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1614,7 +1653,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
     return StitchGlassCard(
       borderRadius: 26,
       padding: const EdgeInsets.all(18),
-      hasCyanGlow: true,
+      hasCyanGlow: false,
       child: Column(
         children: [
           // Header: Ahmedabad BRTS + CONFIRMED
@@ -1627,7 +1666,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     const Icon(
                       Icons.directions_bus_rounded,
                       size: 18,
-                      color: Color(0xFF38BDF8),
+                      color: Color(0xFF0891B2),
                     ),
                     const SizedBox(width: 6),
                     Flexible(
@@ -1636,7 +1675,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: const Color(0xFF0F172A),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1649,10 +1688,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF56E5A9).withValues(alpha: 0.2),
+                  color: const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0xFF56E5A9).withValues(alpha: 0.35),
+                    color: const Color(0xFF86EFAC),
                     width: 1,
                   ),
                 ),
@@ -1661,7 +1700,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     const Icon(
                       Icons.check_circle_rounded,
                       size: 12,
-                      color: Color(0xFF56E5A9),
+                      color: Color(0xFF16A34A),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -1669,7 +1708,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF56E5A9),
+                        color: const Color(0xFF16A34A),
                       ),
                     ),
                   ],
@@ -1684,8 +1723,9 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: const Color(0xFFECFEFF),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFA5F3FC)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1700,17 +1740,17 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: const Color(0xFF0F172A),
                       ),
                     ),
                     const Icon(Icons.arrow_forward_rounded,
-                        size: 14, color: Color(0xFF38BDF8)),
+                        size: 14, color: Color(0xFF0891B2)),
                     Text(
                       'Iskcon Cross Rd',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: const Color(0xFF0F172A),
                       ),
                     ),
                   ],
@@ -1726,16 +1766,16 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color:
-                            const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFA5F3FC)),
                       ),
                       child: Text(
                         'AC Electric • 9U ➔ 8D',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF38BDF8),
+                          color: const Color(0xFF0891B2),
                         ),
                       ),
                     ),
@@ -1743,14 +1783,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: Text(
                         'Single Stage',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9,
-                          color: const Color(0xFFCBD5E1),
+                          color: const Color(0xFF64748B),
                         ),
                       ),
                     ),
@@ -1759,7 +1800,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFFFFB95F),
+                        color: const Color(0xFF0891B2),
                       ),
                     ),
                   ],
@@ -1774,14 +1815,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       'Adult / General Passenger',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 9,
-                        color: const Color(0xFF94A3B8),
+                        color: const Color(0xFF64748B),
                       ),
                     ),
                     Text(
                       'Platform 02 • Gate D',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 9,
-                        color: const Color(0xFF94A3B8),
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF64748B),
                       ),
                     ),
                   ],
@@ -1796,8 +1838,9 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Column(
               children: [
@@ -1808,10 +1851,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
+                    border: Border.all(color: const Color(0xFFA5F3FC)),
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0x66000000),
-                        blurRadius: 20,
+                        color: const Color(0xFF0891B2).withValues(alpha: 0.1),
+                        blurRadius: 16,
                       ),
                     ],
                   ),
@@ -1853,15 +1897,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                                 gradient: LinearGradient(
                                   colors: [
                                     Colors.transparent,
-                                    Color(0xFF38BDF8),
-                                    Color(0xFF00F5FF),
-                                    Color(0xFF38BDF8),
+                                    Color(0xFF0891B2),
+                                    Color(0xFFFFA000),
+                                    Color(0xFF0891B2),
                                     Colors.transparent,
                                   ],
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Color(0xFF38BDF8),
+                                    color: Color(0xFF0891B2),
                                     blurRadius: 10,
                                     spreadRadius: 2,
                                   ),
@@ -1881,14 +1925,14 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.qr_code_2_rounded,
-                        size: 14, color: Color(0xFF56E5A9)),
+                        size: 14, color: Color(0xFF16A34A)),
                     const SizedBox(width: 4),
                     Text(
                       _paymentId,
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF38BDF8),
+                        color: const Color(0xFF0891B2),
                       ),
                     ),
                   ],
@@ -1898,7 +1942,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 8.5,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF56E5A9),
+                    color: const Color(0xFF64748B),
                   ),
                 ),
 
@@ -1908,12 +1952,18 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0x26FFFFFF),
+                      color: const Color(0xFFA5F3FC),
                       width: 1,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0891B2).withValues(alpha: 0.05),
+                        blurRadius: 6,
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
@@ -1927,15 +1977,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             CircularProgressIndicator(
                               value: _totpSeconds / 15.0,
                               strokeWidth: 2.5,
-                              color: const Color(0xFF38BDF8),
-                              backgroundColor: Colors.white.withValues(alpha: 0.1),
+                              color: const Color(0xFF0891B2),
+                              backgroundColor: const Color(0xFFECFEFF),
                             ),
                             Text(
                               '$_totpSeconds',
                               style: GoogleFonts.jetBrainsMono(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
-                                color: Colors.white,
+                                color: const Color(0xFF0F172A),
                               ),
                             ),
                           ],
@@ -1951,14 +2001,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                color: const Color(0xFF0F172A),
                               ),
                             ),
                             Text(
                               'Rotates dynamically',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 8,
-                                color: const Color(0xFF56E5A9),
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF16A34A),
                               ),
                             ),
                           ],
@@ -1968,15 +2019,16 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                          color: const Color(0xFFECFEFF),
                           borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFA5F3FC)),
                         ),
                         child: Text(
                           'NFC READY',
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 8,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF38BDF8),
+                            color: const Color(0xFF0891B2),
                           ),
                         ),
                       ),
@@ -1992,12 +2044,18 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
           // Digital Receipt Accordion
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: const Color(0x26FFFFFF),
+                color: const Color(0xFFE2E8F0),
                 width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 6,
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -2016,7 +2074,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: const Color(0xFF0F172A),
                             ),
                           ),
                         ),
@@ -2025,7 +2083,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                               ? Icons.keyboard_arrow_up_rounded
                               : Icons.keyboard_arrow_down_rounded,
                           size: 18,
-                          color: const Color(0xFF94A3B8),
+                          color: const Color(0xFF64748B),
                         ),
                       ],
                     ),
@@ -2038,7 +2096,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     child: Column(
                       children: [
                         const Divider(
-                            color: Color(0x26FFFFFF), height: 12),
+                            color: Color(0xFFE2E8F0), height: 12),
                         _buildReceiptRow('Base Transit Fare', '₹9.00'),
                         _buildReceiptRow('SGST / CGST (0%)', '₹0.00'),
                         _buildReceiptRow('Razorpay Ref ID', _paymentId),
@@ -2050,7 +2108,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           'Hold phone 2-4 inches above the AFC turnstile scanner at Platform 02 Gate D.',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 9,
-                            color: const Color(0xFFCBD5E1),
+                            color: const Color(0xFF64748B),
                           ),
                         ),
                       ],
@@ -2073,10 +2131,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
             child: Container(
               height: 42,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: const Color(0xFFECFEFF),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: const Color(0x38FFFFFF),
+                  color: const Color(0xFFA5F3FC),
                   width: 1,
                 ),
               ),
@@ -2088,7 +2146,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   const Icon(
                     Icons.replay_rounded,
                     size: 15,
-                    color: Colors.white,
+                    color: Color(0xFF0891B2),
                   ),
                   const SizedBox(width: 6),
                   Flexible(
@@ -2097,7 +2155,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: const Color(0xFF0891B2),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -2119,12 +2177,12 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
         children: [
           Text(label,
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10, color: const Color(0xFF94A3B8))),
+                  fontSize: 10, color: const Color(0xFF64748B))),
           Text(val,
               style: GoogleFonts.jetBrainsMono(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white)),
+                  color: const Color(0xFF0F172A))),
         ],
       ),
     );

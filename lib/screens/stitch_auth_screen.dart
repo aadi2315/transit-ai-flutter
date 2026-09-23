@@ -171,27 +171,18 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = widget.isDarkMode;
+    const dark = false;
 
-    final primaryTextColor = dark ? Colors.white : const Color(0xFF0F172A);
-    final secondaryTextColor =
-        dark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
-    final subLabelColor =
-        dark ? const Color(0xFFE2E8F0) : const Color(0xFF334155);
-    final inputBg =
-        dark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9);
-    final inputBorder =
-        dark ? const Color(0x38FFFFFF) : const Color(0xFFCBD5E1);
-    final chipBg = dark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0);
-    final brandPillBg =
-        dark ? const Color(0xB30F172A) : const Color(0xE6FFFFFF);
-    final brandPillBorder =
-        dark ? const Color(0x38FFFFFF) : const Color(0x40FFFFFF);
-    final tabBg =
-        dark ? Colors.black.withValues(alpha: 0.25) : const Color(0xFFE2E8F0);
-    final activeTabBg = dark ? const Color(0x4D64748B) : Colors.white;
-    final dividerColor =
-        dark ? const Color(0x38FFFFFF) : const Color(0xFFCBD5E1);
+    const primaryTextColor = Color(0xFF0F172A);
+    const secondaryTextColor = Color(0xFF64748B);
+    const subLabelColor = Color(0xFF475569);
+    const inputBg = Color(0xFFF8FAFC);
+    const inputBorder = Color(0xFFE2E8F0);
+    const chipBg = Color(0xFFECFEFF);
+    const brandPillBg = Colors.white;
+    const brandPillBorder = Color(0xFFA5F3FC);
+    const tabBg = Color(0xFFECFEFF);
+    const dividerColor = Color(0xFFE2E8F0);
 
     return StitchBackground(
       isDarkMode: dark,
@@ -227,14 +218,12 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: dark
-                                          ? Colors.black.withValues(alpha: 0.25)
-                                          : Colors.black.withValues(alpha: 0.08),
-                                      blurRadius: 8,
+                                      color: const Color(0xFF0891B2).withValues(alpha: 0.08),
+                                      blurRadius: 6,
                                     ),
                                   ],
                                 ),
-                                child: Icon(
+                                child: const Icon(
                                   Icons.arrow_back_rounded,
                                   color: primaryTextColor,
                                   size: 16,
@@ -257,10 +246,8 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: dark
-                                      ? Colors.black.withValues(alpha: 0.25)
-                                      : Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 10,
+                                  color: const Color(0xFF0891B2).withValues(alpha: 0.08),
+                                  blurRadius: 8,
                                 ),
                               ],
                             ),
@@ -271,12 +258,13 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   width: 24,
                                   height: 24,
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: const Color(0xFFECFEFF),
                                     shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0xFFA5F3FC)),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
-                                        blurRadius: 6,
+                                        color: const Color(0xFF0891B2).withValues(alpha: 0.15),
+                                        blurRadius: 4,
                                       ),
                                     ],
                                   ),
@@ -326,7 +314,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                     isDarkMode: dark,
                     borderRadius: 28,
                     padding: const EdgeInsets.all(20),
-                    hasCyanGlow: true,
+                    hasCyanGlow: false,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -371,9 +359,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                             color: tabBg,
                             borderRadius: BorderRadius.circular(22),
                             border: Border.all(
-                              color: dark
-                                  ? const Color(0x26FFFFFF)
-                                  : const Color(0xFFCBD5E1),
+                              color: const Color(0xFFA5F3FC),
                               width: 1,
                             ),
                           ),
@@ -384,27 +370,21 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   onTap: () => setState(() => _isLogin = true),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: _isLogin
-                                          ? activeTabBg
-                                          : Colors.transparent,
+                                      gradient: _isLogin
+                                          ? const LinearGradient(
+                                              colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
+                                            )
+                                          : null,
                                       borderRadius: BorderRadius.circular(18),
-                                      boxShadow: _isLogin && !dark
+                                      boxShadow: _isLogin
                                           ? [
                                               BoxShadow(
-                                                color: Colors.black
-                                                    .withValues(alpha: 0.08),
+                                                color: const Color(0xFF0891B2)
+                                                    .withValues(alpha: 0.25),
                                                 blurRadius: 6,
                                                 offset: const Offset(0, 2),
                                               ),
                                             ]
-                                          : null,
-                                      border: _isLogin
-                                          ? Border.all(
-                                              color: dark
-                                                  ? const Color(0x55FFFFFF)
-                                                  : Colors.white,
-                                              width: 1,
-                                            )
                                           : null,
                                     ),
                                     alignment: Alignment.center,
@@ -414,10 +394,8 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
                                         color: _isLogin
-                                            ? primaryTextColor
-                                            : (dark
-                                                ? const Color(0xFF94A3B8)
-                                                : const Color(0xFF64748B)),
+                                            ? Colors.white
+                                            : const Color(0xFF64748B),
                                       ),
                                     ),
                                   ),
@@ -428,27 +406,21 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   onTap: () => setState(() => _isLogin = false),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: !_isLogin
-                                          ? activeTabBg
-                                          : Colors.transparent,
+                                      gradient: !_isLogin
+                                          ? const LinearGradient(
+                                              colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
+                                            )
+                                          : null,
                                       borderRadius: BorderRadius.circular(18),
-                                      boxShadow: !_isLogin && !dark
+                                      boxShadow: !_isLogin
                                           ? [
                                               BoxShadow(
-                                                color: Colors.black
-                                                    .withValues(alpha: 0.08),
+                                                color: const Color(0xFF0891B2)
+                                                    .withValues(alpha: 0.25),
                                                 blurRadius: 6,
                                                 offset: const Offset(0, 2),
                                               ),
                                             ]
-                                          : null,
-                                      border: !_isLogin
-                                          ? Border.all(
-                                              color: dark
-                                                  ? const Color(0x55FFFFFF)
-                                                  : Colors.white,
-                                              width: 1,
-                                            )
                                           : null,
                                     ),
                                     alignment: Alignment.center,
@@ -458,10 +430,8 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
                                         color: !_isLogin
-                                            ? primaryTextColor
-                                            : (dark
-                                                ? const Color(0xFF94A3B8)
-                                                : const Color(0xFF64748B)),
+                                            ? Colors.white
+                                            : const Color(0xFF64748B),
                                       ),
                                     ),
                                   ),
@@ -483,12 +453,10 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF38BDF8)
-                                      .withValues(alpha: 0.15),
+                                  color: const Color(0xFFECFEFF),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: const Color(0xFF38BDF8)
-                                        .withValues(alpha: 0.35),
+                                    color: const Color(0xFFA5F3FC),
                                     width: 0.8,
                                   ),
                                 ),
@@ -498,7 +466,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                     const Icon(
                                       Icons.auto_fix_high_rounded,
                                       size: 12,
-                                      color: Color(0xFF38BDF8),
+                                      color: Color(0xFF0891B2),
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
@@ -506,7 +474,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                       style: GoogleFonts.jetBrainsMono(
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF38BDF8),
+                                        color: const Color(0xFF0891B2),
                                       ),
                                     ),
                                   ],
@@ -552,9 +520,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                     color: chipBg,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: dark
-                                          ? const Color(0x2EFFFFFF)
-                                          : const Color(0xFFCBD5E1),
+                                      color: const Color(0xFFA5F3FC),
                                       width: 1,
                                     ),
                                   ),
@@ -566,7 +532,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                         style: GoogleFonts.jetBrainsMono(
                                           fontSize: 8,
                                           fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF0284C7),
+                                          color: const Color(0xFF0891B2),
                                           height: 1.0,
                                         ),
                                       ),
@@ -575,7 +541,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                         style: GoogleFonts.jetBrainsMono(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF0284C7),
+                                          color: const Color(0xFF0891B2),
                                           height: 1.1,
                                         ),
                                       ),
@@ -646,7 +612,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF0284C7),
+                                  color: const Color(0xFF0891B2),
                                 ),
                               ),
                             ],
@@ -671,11 +637,12 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   decoration: BoxDecoration(
                                     color: chipBg,
                                     borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFA5F3FC)),
                                   ),
                                   child: const Icon(
                                     Icons.lock_outline_rounded,
                                     size: 14,
-                                    color: Color(0xFF0284C7),
+                                    color: Color(0xFF0891B2),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -725,7 +692,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                               const Icon(
                                 Icons.shield_outlined,
                                 size: 14,
-                                color: Color(0xFF10B981),
+                                color: Color(0xFF16A34A),
                               ),
                               const SizedBox(width: 6),
                               Expanded(
@@ -752,12 +719,12 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF38BDF8), Color(0xFF0284C7)],
+                                colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Color(0x6638BDF8),
-                                  blurRadius: 18,
+                                  color: Color(0x40FF6B00),
+                                  blurRadius: 14,
                                   offset: Offset(0, 4),
                                 ),
                               ],
@@ -829,7 +796,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                     TextSpan(
                                       text: 'Sign Up',
                                       style: GoogleFonts.plusJakartaSans(
-                                        color: const Color(0xFF0284C7),
+                                        color: const Color(0xFF0891B2),
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -870,11 +837,12 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   decoration: BoxDecoration(
                                     color: chipBg,
                                     borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFA5F3FC)),
                                   ),
                                   child: const Icon(
                                     Icons.person_outline_rounded,
                                     size: 15,
-                                    color: Color(0xFF0284C7),
+                                    color: Color(0xFF0891B2),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -937,7 +905,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                       const Icon(
                                         Icons.my_location_rounded,
                                         size: 11,
-                                        color: Color(0xFF00E5FF),
+                                        color: Color(0xFF0891B2),
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
@@ -945,7 +913,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                         style: GoogleFonts.jetBrainsMono(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF00E5FF),
+                                          color: const Color(0xFF0891B2),
                                         ),
                                       ),
                                     ],
@@ -974,11 +942,12 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   decoration: BoxDecoration(
                                     color: chipBg,
                                     borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFA5F3FC)),
                                   ),
                                   child: const Icon(
                                     Icons.location_on_outlined,
                                     size: 15,
-                                    color: Color(0xFF00E5FF),
+                                    color: Color(0xFF0891B2),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -1051,16 +1020,11 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: dark
-                                              ? Colors.white
-                                                  .withValues(alpha: 0.05)
-                                              : const Color(0xFFF1F5F9),
+                                          color: const Color(0xFFECFEFF),
                                           borderRadius:
                                               BorderRadius.circular(14),
                                           border: Border.all(
-                                            color: dark
-                                                ? const Color(0x2EFFFFFF)
-                                                : const Color(0xFFCBD5E1),
+                                            color: const Color(0xFFA5F3FC),
                                           ),
                                         ),
                                         child: Text(
@@ -1068,9 +1032,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w600,
-                                            color: dark
-                                                ? const Color(0xFFCBD5E1)
-                                                : const Color(0xFF475569),
+                                            color: const Color(0xFF475569),
                                           ),
                                         ),
                                       ),
@@ -1112,13 +1074,14 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   decoration: BoxDecoration(
                                     color: chipBg,
                                     borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFA5F3FC)),
                                   ),
                                   child: Text(
                                     '🇮🇳 +91',
                                     style: GoogleFonts.jetBrainsMono(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
-                                      color: const Color(0xFF0284C7),
+                                      color: const Color(0xFF0891B2),
                                     ),
                                   ),
                                 ),
@@ -1180,11 +1143,12 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   decoration: BoxDecoration(
                                     color: chipBg,
                                     borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFA5F3FC)),
                                   ),
                                   child: const Icon(
                                     Icons.lock_outline_rounded,
                                     size: 14,
-                                    color: Color(0xFF0284C7),
+                                    color: Color(0xFF0891B2),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -1237,10 +1201,8 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   height: 3.5,
                                   decoration: BoxDecoration(
                                     color: _passwordStrength >= 1
-                                        ? const Color(0xFFF43F5E)
-                                        : (dark
-                                            ? const Color(0x26FFFFFF)
-                                            : const Color(0xFFCBD5E1)),
+                                        ? const Color(0xFFEF4444)
+                                        : const Color(0xFFE2E8F0),
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -1252,9 +1214,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   decoration: BoxDecoration(
                                     color: _passwordStrength >= 2
                                         ? const Color(0xFFF59E0B)
-                                        : (dark
-                                            ? const Color(0x26FFFFFF)
-                                            : const Color(0xFFCBD5E1)),
+                                        : const Color(0xFFE2E8F0),
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -1265,10 +1225,8 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   height: 3.5,
                                   decoration: BoxDecoration(
                                     color: _passwordStrength >= 3
-                                        ? const Color(0xFF10B981)
-                                        : (dark
-                                            ? const Color(0x26FFFFFF)
-                                            : const Color(0xFFCBD5E1)),
+                                        ? const Color(0xFF16A34A)
+                                        : const Color(0xFFE2E8F0),
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -1286,11 +1244,11 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w600,
                                   color: _passwordStrength == 1
-                                      ? const Color(0xFFF43F5E)
+                                      ? const Color(0xFFEF4444)
                                       : _passwordStrength == 2
                                           ? const Color(0xFFF59E0B)
                                           : _passwordStrength == 3
-                                              ? const Color(0xFF10B981)
+                                              ? const Color(0xFF16A34A)
                                               : secondaryTextColor,
                                 ),
                               ),
@@ -1318,12 +1276,12 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF38BDF8), Color(0xFF0284C7)],
+                                colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Color(0x6638BDF8),
-                                  blurRadius: 18,
+                                  color: Color(0x40FF6B00),
+                                  blurRadius: 14,
                                   offset: Offset(0, 4),
                                 ),
                               ],
@@ -1395,7 +1353,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                     TextSpan(
                                       text: 'Sign In',
                                       style: GoogleFonts.plusJakartaSans(
-                                        color: const Color(0xFF0284C7),
+                                        color: const Color(0xFF0891B2),
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -1411,7 +1369,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                         // OR Divider
                         Row(
                           children: [
-                            Expanded(
+                            const Expanded(
                               child:
                                   Divider(color: dividerColor, thickness: 0.8),
                             ),
@@ -1427,7 +1385,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                 ),
                               ),
                             ),
-                            Expanded(
+                            const Expanded(
                               child:
                                   Divider(color: dividerColor, thickness: 0.8),
                             ),
@@ -1455,7 +1413,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                 const Icon(
                                   Icons.bolt_rounded,
                                   size: 16,
-                                  color: Color(0xFFF59E0B),
+                                  color: Color(0xFF0891B2),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(

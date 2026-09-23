@@ -18,36 +18,37 @@ class StitchBottomDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
-
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container(
-        margin: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+        margin: const EdgeInsets.only(left: 16, right: 16, bottom: 14),
         constraints: const BoxConstraints(maxWidth: 396),
-        height: 64,
+        height: 62,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(36),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: dark
-                  ? const Color(0x99000000)
-                  : const Color(0x40000000),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
+              color: Color(0x140F172A),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
             ),
           ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(36),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
               decoration: BoxDecoration(
-                color: dark ? const Color(0xE0060E20) : const Color(0xF20F172A),
+                color: Colors.white.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(36),
                 border: Border.all(
-                  color: dark ? const Color(0x38FFFFFF) : const Color(0x55FFFFFF),
+                  color: const Color(0xFFA5F3FC),
                   width: 1.2,
                 ),
               ),
@@ -58,9 +59,9 @@ class StitchBottomDock extends StatelessWidget {
 
                   return Stack(
                     children: [
-                      // Conical Spotlight Beam
+                      // Conical Spotlight Beam (Vibrant Transit Cyan)
                       AnimatedPositioned(
-                        duration: const Duration(milliseconds: 300),
+                        duration: const Duration(milliseconds: 280),
                         curve: Curves.easeOutCubic,
                         left: beamLeft,
                         top: 0,
@@ -90,16 +91,8 @@ class StitchBottomDock extends StatelessWidget {
                                         : FontWeight.w600,
                                     letterSpacing: 0.3,
                                     color: isSelected
-                                        ? Colors.white
-                                        : const Color(0xFF94A3B8),
-                                    shadows: isSelected
-                                        ? const [
-                                            Shadow(
-                                              color: Color(0xFF38BDF8),
-                                              blurRadius: 10,
-                                            ),
-                                          ]
-                                        : null,
+                                        ? const Color(0xFF0891B2)
+                                        : const Color(0xFF64748B),
                                   ),
                                 ),
                               ),
@@ -124,30 +117,30 @@ class _ConicalSpotlightPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Spotlight Cone Path (Trapezoid expanding downwards)
     final path = Path();
-    path.moveTo(size.width * 0.32, 0);
-    path.lineTo(size.width * 0.68, 0);
-    path.lineTo(size.width * 0.98, size.height);
-    path.lineTo(size.width * 0.02, size.height);
+    path.moveTo(size.width * 0.28, 0);
+    path.lineTo(size.width * 0.72, 0);
+    path.lineTo(size.width * 0.96, size.height);
+    path.lineTo(size.width * 0.04, size.height);
     path.close();
 
-    // Spotlight Gradient Fill
+    // Spotlight Gradient Fill (Cyan glow)
     final paint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Colors.white.withValues(alpha: 0.75),
-          const Color(0xFF22D3EE).withValues(alpha: 0.45),
-          const Color(0xFF06B6D4).withValues(alpha: 0.15),
+          const Color(0xFFCFFAFE).withValues(alpha: 0.85),
+          const Color(0xFFA5F3FC).withValues(alpha: 0.40),
+          const Color(0xFF06B6D4).withValues(alpha: 0.12),
           Colors.transparent,
         ],
-        stops: const [0.0, 0.25, 0.70, 1.0],
+        stops: const [0.0, 0.30, 0.70, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
     canvas.drawPath(path, paint);
 
     // Emitter Light Bar at the top
-    final emitterWidth = size.width * 0.34;
+    final emitterWidth = size.width * 0.36;
     final emitterLeft = (size.width - emitterWidth) / 2;
     final emitterRRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(emitterLeft, 0, emitterWidth, 3.5),
@@ -156,12 +149,12 @@ class _ConicalSpotlightPainter extends CustomPainter {
 
     // Emitter Glow
     final glowPaint = Paint()
-      ..color = const Color(0xFF38BDF8)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      ..color = const Color(0xFF0891B2)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
     canvas.drawRRect(emitterRRect, glowPaint);
 
     // Emitter Core
-    final corePaint = Paint()..color = Colors.white;
+    final corePaint = Paint()..color = const Color(0xFF0891B2);
     canvas.drawRRect(emitterRRect, corePaint);
   }
 

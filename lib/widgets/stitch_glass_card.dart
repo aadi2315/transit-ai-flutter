@@ -29,15 +29,8 @@ class StitchGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
-
-    final defaultBg = dark
-        ? const Color(0xB30F172A)
-        : const Color(0xEBFFFFFF);
-
-    final defaultBorder = dark
-        ? const Color(0x2EFFFFFF)
-        : const Color(0x80FFFFFF);
+    const defaultBg = Colors.white;
+    const defaultBorder = Color(0xFFE2E8F0);
 
     Widget card = Container(
       margin: margin,
@@ -45,15 +38,20 @@ class StitchGlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           if (hasCyanGlow)
-            BoxShadow(
-              color: dark ? const Color(0x3338BDF8) : const Color(0x400284C7),
-              blurRadius: 24,
-              offset: const Offset(0, 4),
+            const BoxShadow(
+              color: Color(0x2806B6D4),
+              blurRadius: 20,
+              offset: Offset(0, 4),
             ),
-          BoxShadow(
-            color: dark ? const Color(0x66000000) : const Color(0x25000000),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+          const BoxShadow(
+            color: Color(0x0A0F172A),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+          const BoxShadow(
+            color: Color(0x05000000),
+            blurRadius: 2,
+            offset: Offset(0, 1),
           ),
         ],
       ),

@@ -26,23 +26,17 @@ class StitchProfileButton extends StatelessWidget {
             width: size,
             height: size,
             decoration: BoxDecoration(
-              color: isDarkMode
-                  ? const Color(0xB30F172A)
-                  : const Color(0xE6FFFFFF),
+              color: Colors.white,
               shape: BoxShape.circle,
               border: Border.all(
-                color: isDarkMode
-                    ? const Color(0x38FFFFFF)
-                    : const Color(0x66FFFFFF),
+                color: const Color(0xFFA5F3FC),
                 width: 1.2,
               ),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                  color: isDarkMode
-                      ? Colors.black.withValues(alpha: 0.25)
-                      : Colors.black.withValues(alpha: 0.08),
+                  color: Color(0x140F172A),
                   blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
@@ -51,10 +45,8 @@ class StitchProfileButton extends StatelessWidget {
               children: [
                 Icon(
                   Icons.person_rounded,
-                  color: isDarkMode
-                      ? const Color(0xFF38BDF8)
-                      : const Color(0xFF0284C7),
-                  size: size * 0.50,
+                  color: const Color(0xFF0891B2),
+                  size: size * 0.52,
                 ),
                 Positioned(
                   top: 7,

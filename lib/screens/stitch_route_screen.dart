@@ -565,10 +565,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = widget.isDarkMode;
-
     return StitchBackground(
-      isDarkMode: dark,
+      isDarkMode: false,
       child: Stack(
         children: [
           // Scrollable Content
@@ -589,7 +587,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Top Bar
-                      _buildTopBar(dark),
+                      _buildTopBar(false),
 
                       if (widget.focusLocation != null) ...[
                         const SizedBox(height: 10),
@@ -599,7 +597,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       const SizedBox(height: 12),
 
                       // Dynamic Route Search Card (Trigger live Google Maps Driving Route)
-                      _buildRouteSearchCard(dark),
+                      _buildRouteSearchCard(false),
 
                       const SizedBox(height: 12),
 
@@ -610,24 +608,24 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
                       if (_isRouteLegs) ...[
                         // 1. Interactive Google Maps & Street Polyline Canvas
-                        _buildCorridorPolylineCard(dark),
+                        _buildCorridorPolylineCard(false),
 
                         const SizedBox(height: 12),
 
                         // 2. Real Route Summary Card (Dynamic Distance, Time, Fare)
-                        _buildRouteSummaryCard(dark),
+                        _buildRouteSummaryCard(false),
 
                         const SizedBox(height: 12),
 
                         // 3. Dynamic Route Legs & Street Navigation Steps
-                        _buildRouteLegsBreakdownCard(dark),
+                        _buildRouteLegsBreakdownCard(false),
 
                         const SizedBox(height: 12),
 
                         // 4. CTA Button: Book Instant Ticket
                         _buildBookTicketCta(),
                       ] else ...[
-                        _buildExploreMapView(dark),
+                        _buildExploreMapView(false),
                       ],
                     ],
                   ),
@@ -639,7 +637,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           // Bottom Dock (ROUTE tab active - Index 1)
           StitchBottomDock(
             activeIndex: 1,
-            isDarkMode: dark,
+            isDarkMode: false,
             onTabSelected: (index) {
               if (index == 0) {
                 widget.onNavigateToHome();
@@ -664,17 +662,15 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: dark ? const Color(0xB30F172A) : const Color(0xE6FFFFFF),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: dark ? const Color(0x38FFFFFF) : const Color(0x40FFFFFF),
+              color: const Color(0xFFA5F3FC),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: dark
-                    ? Colors.black.withValues(alpha: 0.25)
-                    : Colors.black.withValues(alpha: 0.08),
+                color: const Color(0xFF0891B2).withValues(alpha: 0.08),
                 blurRadius: 10,
               ),
             ],
@@ -690,7 +686,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                      color: const Color(0xFF0891B2).withValues(alpha: 0.25),
                       blurRadius: 6,
                     ),
                   ],
@@ -712,7 +708,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
-                      color: dark ? Colors.white : const Color(0xFF0F172A),
+                      color: const Color(0xFF0F172A),
                       height: 1.1,
                     ),
                   ),
@@ -722,16 +718,16 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         width: 4,
                         height: 4,
                         decoration: const BoxDecoration(
-                          color: Color(0xFF56E5A9),
+                          color: Color(0xFF0891B2),
                           shape: BoxShape.circle,
                         ),
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        'Google Directions • Driving Mode',
+                        'Google Directions • Live Transit',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 8,
-                          color: const Color(0xFF10B981),
+                          color: const Color(0xFF0891B2),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -746,12 +742,12 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             StitchProfileButton(
-              isDarkMode: dark,
+              isDarkMode: false,
               onTap: widget.onNavigateToProfile,
             ),
             const SizedBox(width: 8),
             StitchThemeToggleButton(
-              isDarkMode: dark,
+              isDarkMode: false,
               onToggleTheme: widget.onToggleTheme,
             ),
           ],
@@ -845,7 +841,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   /// Interactive search card that triggers Google Directions API & Supabase caching
   Widget _buildRouteSearchCard(bool dark) {
     return StitchGlassCard(
-      isDarkMode: dark,
+      isDarkMode: false,
       borderRadius: 20,
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -859,10 +855,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
+                        color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                          color: const Color(0xFFE2E8F0),
                         ),
                       ),
                       child: Row(
@@ -877,7 +873,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: dark ? Colors.white : const Color(0xFF0F172A),
+                                color: const Color(0xFF0F172A),
                               ),
                               decoration: const InputDecoration(
                                 isDense: true,
@@ -895,7 +891,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                                   _showOriginDropdown = false;
                                 });
                               },
-                              child: const Icon(Icons.close_rounded, size: 14, color: Colors.white60),
+                              child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
                             ),
                         ],
                       ),
@@ -905,7 +901,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     if (_showOriginDropdown && _originSuggestions.isNotEmpty)
                       StitchPlaceAutocompleteDropdown(
                         suggestions: _originSuggestions,
-                        isDarkMode: dark,
+                        isDarkMode: false,
                         onSelect: (s) {
                           setState(() {
                             _originController.text = s.name;
@@ -922,10 +918,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
+                        color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: const Color(0xFFF43F5E).withValues(alpha: 0.3),
+                          color: const Color(0xFFE2E8F0),
                         ),
                       ),
                       child: Row(
@@ -940,7 +936,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: dark ? Colors.white : const Color(0xFF0F172A),
+                                color: const Color(0xFF0F172A),
                               ),
                               decoration: const InputDecoration(
                                 isDense: true,
@@ -958,7 +954,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                                   _showDestDropdown = false;
                                 });
                               },
-                              child: const Icon(Icons.close_rounded, size: 14, color: Colors.white60),
+                              child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
                             ),
                         ],
                       ),
@@ -968,7 +964,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     if (_showDestDropdown && _destSuggestions.isNotEmpty)
                       StitchPlaceAutocompleteDropdown(
                         suggestions: _destSuggestions,
-                        isDarkMode: dark,
+                        isDarkMode: false,
                         onSelect: (s) {
                           setState(() {
                             _destController.text = s.name;
@@ -991,14 +987,20 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                    color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF38BDF8)),
+                    border: Border.all(color: const Color(0xFF0891B2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0891B2).withValues(alpha: 0.15),
+                        blurRadius: 6,
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.swap_vert_rounded,
                     size: 18,
-                    color: Color(0xFF38BDF8),
+                    color: Color(0xFF0891B2),
                   ),
                 ),
               ),
@@ -1011,13 +1013,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF38BDF8), Color(0xFF0284C7)],
+                      colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
                     ),
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: const [
                       BoxShadow(
-                        color: Color(0x3338BDF8),
+                        color: Color(0x33FF6B00),
                         blurRadius: 8,
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
@@ -1063,7 +1066,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         ? Icons.check_circle_rounded
                         : Icons.alt_route_rounded,
                     size: 12,
-                    color: const Color(0xFF38BDF8),
+                    color: const Color(0xFF0891B2),
                   ),
                   const SizedBox(width: 5),
                   Text(
@@ -1073,7 +1076,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF38BDF8),
+                      color: const Color(0xFF0891B2),
                     ),
                   ),
                 ],
@@ -1083,7 +1086,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   '${_currentRoute!.distanceText} • ${_currentRoute!.durationText}',
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 9,
-                    color: const Color(0xFF94A3B8),
+                    color: const Color(0xFF64748B),
                   ),
                 ),
             ],
@@ -1098,10 +1101,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       height: 42,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
+        color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0x26FFFFFF),
+          color: const Color(0xFFE2E8F0),
           width: 1,
         ),
       ),
@@ -1119,23 +1122,31 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: _isRouteLegs ? const Color(0x4D38BDF8) : Colors.transparent,
+                  color: _isRouteLegs ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                   border: _isRouteLegs
                       ? Border.all(
-                          color: const Color(0xFF38BDF8),
+                          color: const Color(0xFF0891B2),
                           width: 1,
                         )
+                      : null,
+                  boxShadow: _isRouteLegs
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF0891B2).withValues(alpha: 0.12),
+                            blurRadius: 6,
+                          ),
+                        ]
                       : null,
                 ),
                 alignment: Alignment.center,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.alt_route_rounded,
                       size: 14,
-                      color: Color(0xFF38BDF8),
+                      color: _isRouteLegs ? const Color(0xFF0891B2) : const Color(0xFF64748B),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -1143,7 +1154,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: _isRouteLegs ? const Color(0xFF0891B2) : const Color(0xFF64748B),
                       ),
                     ),
                   ],
@@ -1162,14 +1173,32 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                 }
               },
               child: Container(
+                decoration: BoxDecoration(
+                  color: !_isRouteLegs ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: !_isRouteLegs
+                      ? Border.all(
+                          color: const Color(0xFF0891B2),
+                          width: 1,
+                        )
+                      : null,
+                  boxShadow: !_isRouteLegs
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF0891B2).withValues(alpha: 0.12),
+                            blurRadius: 6,
+                          ),
+                        ]
+                      : null,
+                ),
                 alignment: Alignment.center,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.map_outlined,
                       size: 14,
-                      color: Color(0xFF94A3B8),
+                      color: !_isRouteLegs ? const Color(0xFF0891B2) : const Color(0xFF64748B),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -1177,7 +1206,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF94A3B8),
+                        color: !_isRouteLegs ? const Color(0xFF0891B2) : const Color(0xFF64748B),
                       ),
                     ),
                   ],
@@ -1195,7 +1224,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     final route = _currentRoute;
 
     return StitchGlassCard(
-      isDarkMode: dark,
+      isDarkMode: false,
       borderRadius: 22,
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -1210,7 +1239,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     const Icon(
                       Icons.show_chart_rounded,
                       size: 16,
-                      color: Color(0xFF38BDF8),
+                      color: Color(0xFF0891B2),
                     ),
                     const SizedBox(width: 6),
                     Flexible(
@@ -1219,7 +1248,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: dark ? Colors.white : const Color(0xFF0F172A),
+                          color: const Color(0xFF0F172A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1235,9 +1264,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0x2238BDF8),
+                      color: const Color(0xFFECFEFF),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0x3338BDF8), width: 0.8),
+                      border: Border.all(color: const Color(0xFFA5F3FC), width: 0.8),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1254,11 +1283,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
                         color: _satelliteMode
-                            ? const Color(0xFF38BDF8).withValues(alpha: 0.3)
-                            : const Color(0x3306B6D4),
+                            ? const Color(0xFFA5F3FC)
+                            : const Color(0xFFECFEFF),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: const Color(0xFF06B6D4),
+                          color: const Color(0xFFA5F3FC),
                           width: 0.8,
                         ),
                       ),
@@ -1268,7 +1297,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                           Icon(
                             _satelliteMode ? Icons.satellite_alt_rounded : Icons.layers_rounded,
                             size: 11,
-                            color: const Color(0xFF38BDF8),
+                            color: const Color(0xFF0891B2),
                           ),
                           const SizedBox(width: 3),
                           Text(
@@ -1276,7 +1305,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF38BDF8),
+                              color: const Color(0xFF0891B2),
                             ),
                           ),
                         ],
@@ -1290,9 +1319,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0x2600E5FF),
+                        color: const Color(0xFFECFEFF),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0x5500E5FF), width: 0.8),
+                        border: Border.all(color: const Color(0xFFA5F3FC), width: 0.8),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1301,10 +1330,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             width: 5,
                             height: 5,
                             decoration: const BoxDecoration(
-                              color: Color(0xFF00E5FF),
+                              color: Color(0xFF0891B2),
                               shape: BoxShape.circle,
                               boxShadow: [
-                                BoxShadow(color: Color(0xFF00E5FF), blurRadius: 4, spreadRadius: 1),
+                                BoxShadow(color: Color(0xFF0891B2), blurRadius: 4, spreadRadius: 1),
                               ],
                             ),
                           ),
@@ -1314,7 +1343,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF00E5FF),
+                              color: const Color(0xFF0891B2),
                             ),
                           ),
                         ],
@@ -1333,10 +1362,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             height: 220,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF060E20),
+              color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0x26FFFFFF),
+                color: const Color(0xFFE2E8F0),
                 width: 1,
               ),
             ),
@@ -1353,7 +1382,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         isSatellite: _satelliteMode,
                         scope: _mapScope,
                         gpsLocation: _currentGps,
-                        isDarkMode: dark,
+                        isDarkMode: false,
                         transitResultJson: _transitLegsJson,
                         transformationController: _corridorMapController,
                       ),
@@ -1366,14 +1395,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                           Icon(
                             Icons.map_outlined,
                             size: 36,
-                            color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
+                            color: const Color(0xFF0891B2).withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Enter origin and destination above to view map corridor',
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 12,
-                              color: const Color(0xFF94A3B8),
+                              color: const Color(0xFF64748B),
                             ),
                           ),
                         ],
@@ -1388,12 +1417,12 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: const Color(0xDD0F172A),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0x4438BDF8)),
+                          border: Border.all(color: const Color(0xFFA5F3FC)),
                           boxShadow: const [
                             BoxShadow(
-                              color: Colors.black26,
+                              color: Color(0x14000000),
                               blurRadius: 8,
                               offset: Offset(0, 2),
                             ),
@@ -1407,7 +1436,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                               height: 12,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0891B2)),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1416,7 +1445,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFFE2E8F0),
+                                color: const Color(0xFF0F172A),
                               ),
                             ),
                           ],
@@ -1432,17 +1461,20 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       children: [
                         // Full Screen Map CTA
                         GestureDetector(
-                          onTap: () => _openFullScreenMap(context, dark),
+                          onTap: () => _openFullScreenMap(context, false),
                           child: Container(
                             width: 28,
                             height: 28,
                             margin: const EdgeInsets.only(bottom: 6),
                             decoration: BoxDecoration(
-                              color: const Color(0xCC0F172A),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0x4438BDF8), width: 1),
+                              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x14000000), blurRadius: 4),
+                              ],
                             ),
-                            child: const Icon(Icons.fullscreen_rounded, size: 18, color: Color(0xFF38BDF8)),
+                            child: const Icon(Icons.fullscreen_rounded, size: 18, color: Color(0xFF0891B2)),
                           ),
                         ),
                         // Zoom In (+)
@@ -1452,10 +1484,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: const Color(0xB30F172A),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x14000000), blurRadius: 4),
+                              ],
                             ),
-                            child: const Icon(Icons.add, size: 16, color: Colors.white),
+                            child: const Icon(Icons.add, size: 16, color: Color(0xFF0F172A)),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -1466,10 +1502,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: const Color(0xB30F172A),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x14000000), blurRadius: 4),
+                              ],
                             ),
-                            child: const Icon(Icons.remove, size: 16, color: Colors.white),
+                            child: const Icon(Icons.remove, size: 16, color: Color(0xFF0F172A)),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -1480,17 +1520,20 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: const Color(0xB30F172A),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: _currentGps != null ? const Color(0xFF00E5FF) : Colors.transparent,
-                                width: 0.8,
+                                color: _currentGps != null ? const Color(0xFF0891B2) : const Color(0xFFE2E8F0),
+                                width: 1,
                               ),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x14000000), blurRadius: 4),
+                              ],
                             ),
-                            child: Icon(
+                            child: const Icon(
                               Icons.my_location_rounded,
                               size: 15,
-                              color: _currentGps != null ? const Color(0xFF00E5FF) : Colors.white70,
+                              color: Color(0xFF0891B2),
                             ),
                           ),
                         ),
@@ -1502,10 +1545,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: const Color(0xB30F172A),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x14000000), blurRadius: 4),
+                              ],
                             ),
-                            child: const Icon(Icons.center_focus_strong_rounded, size: 14, color: Color(0xFF94A3B8)),
+                            child: const Icon(Icons.center_focus_strong_rounded, size: 14, color: Color(0xFF64748B)),
                           ),
                         ),
                       ],
@@ -1535,7 +1582,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF38BDF8) : Colors.transparent,
+          color: isSelected ? const Color(0xFF0891B2) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -1543,7 +1590,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           style: GoogleFonts.jetBrainsMono(
             fontSize: 7.5,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: isSelected ? const Color(0xFF060E20) : const Color(0xFF94A3B8),
+            color: isSelected ? Colors.white : const Color(0xFF64748B),
           ),
         ),
       ),
@@ -1568,7 +1615,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     }
 
     return StitchGlassCard(
-      isDarkMode: dark,
+      isDarkMode: false,
       borderRadius: 22,
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1580,9 +1627,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: transit != null
-                      ? const Color(0xFF1A73E8).withValues(alpha: 0.2)
-                      : const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                  color: const Color(0xFFECFEFF),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -1590,10 +1635,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     Container(
                       width: 5,
                       height: 5,
-                      decoration: BoxDecoration(
-                        color: transit != null
-                            ? const Color(0xFF1A73E8)
-                            : const Color(0xFF38BDF8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF0891B2),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -1603,9 +1646,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: transit != null
-                            ? const Color(0xFF4DA3FF)
-                            : const Color(0xFF38BDF8),
+                        color: const Color(0xFF0891B2),
                       ),
                     ),
                   ],
@@ -1617,7 +1658,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF56E5A9),
+                    color: const Color(0xFF0891B2),
                   ),
                 ),
             ],
@@ -1634,7 +1675,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             style: GoogleFonts.spaceGrotesk(
               fontSize: 14.5,
               fontWeight: FontWeight.w700,
-              color: dark ? Colors.white : const Color(0xFF0F172A),
+              color: const Color(0xFF0F172A),
             ),
           ),
 
@@ -1662,7 +1703,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     // --- TRANSIT BUS LEGS VIEW ---
     if (transit != null && transit.legs.isNotEmpty) {
       return StitchGlassCard(
-        isDarkMode: dark,
+        isDarkMode: false,
         borderRadius: 22,
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -1674,14 +1715,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.directions_bus_rounded, size: 16, color: Color(0xFF1A73E8)),
+                    const Icon(Icons.directions_bus_rounded, size: 16, color: Color(0xFF0891B2)),
                     const SizedBox(width: 6),
                     Text(
                       'Bus Route Itinerary',
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: dark ? Colors.white : const Color(0xFF0F172A),
+                        color: const Color(0xFF0F172A),
                       ),
                     ),
                   ],
@@ -1689,7 +1730,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0x331A73E8),
+                    color: const Color(0xFFECFEFF),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -1699,7 +1740,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF4DA3FF),
+                      color: const Color(0xFF0891B2),
                     ),
                   ),
                 ),
@@ -1712,10 +1753,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             ...List.generate(transit.legs.length, (i) {
               final leg = transit.legs[i];
               const legColors = [
-                Color(0xFF1A73E8),
-                Color(0xFFEA4335),
-                Color(0xFF34A853),
-                Color(0xFFFBBC05),
+                Color(0xFF0891B2),
+                Color(0xFFEA580C),
+                Color(0xFF06B6D4),
+                Color(0xFFD97706),
               ];
               final color = legColors[i % legColors.length];
               final isLast = i == transit.legs.length - 1;
@@ -1743,7 +1784,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     // --- DRIVING STEPS FALLBACK ---
     final steps = route?.steps ?? [];
     return StitchGlassCard(
-      isDarkMode: dark,
+      isDarkMode: false,
       borderRadius: 22,
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1753,14 +1794,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.alt_route_rounded, size: 16, color: Color(0xFF38BDF8)),
+                  const Icon(Icons.alt_route_rounded, size: 16, color: Color(0xFF0891B2)),
                   const SizedBox(width: 6),
                   Text(
                     'Corridor Navigation Steps',
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: dark ? Colors.white : const Color(0xFF0F172A),
+                      color: const Color(0xFF0F172A),
                     ),
                   ),
                 ],
@@ -1768,7 +1809,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0x3338BDF8),
+                  color: const Color(0xFFECFEFF),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1776,7 +1817,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF38BDF8),
+                    color: const Color(0xFF0891B2),
                   ),
                 ),
               ),
@@ -1790,11 +1831,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               final idx = entry.key;
               final step = entry.value;
               final colors = [
-                const Color(0xFF38BDF8),
-                const Color(0xFFFFB95F),
-                const Color(0xFF3B82F6),
-                const Color(0xFF56E5A9),
-                const Color(0xFFEC4899),
+                const Color(0xFF0891B2),
+                const Color(0xFFEA580C),
+                const Color(0xFF06B6D4),
+                const Color(0xFFD97706),
+                const Color(0xFFC2410C),
               ];
               final color = colors[idx % colors.length];
 
@@ -1813,7 +1854,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           else
             _buildLegCard(
               badge: 'L1',
-              badgeColor: const Color(0xFF38BDF8),
+              badgeColor: const Color(0xFF0891B2),
               title: 'Corridor Transit: ${route?.origin ?? "Origin"} ➔ ${route?.destination ?? "Destination"}',
               routeTag: 'BRTS / AMTS Direct',
               distance: route?.distanceText ?? '11.4 km',
@@ -1837,9 +1878,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.35), width: 1.2),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
       ),
       child: Row(
         children: [
@@ -1851,7 +1892,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               color: color,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3)),
+                BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3)),
               ],
             ),
             alignment: Alignment.center,
@@ -1883,7 +1924,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: const Color(0xFF0F172A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1896,7 +1937,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   child: Container(
                     width: 1,
                     height: 16,
-                    color: color.withValues(alpha: 0.4),
+                    color: const Color(0xFFE2E8F0),
                     margin: const EdgeInsets.symmetric(vertical: 2),
                   ),
                 ),
@@ -1918,7 +1959,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white70,
+                          color: const Color(0xFF475569),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1934,7 +1975,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: const Color(0xFFECFEFF),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -1942,7 +1983,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: color,
+                color: const Color(0xFF0891B2),
               ),
             ),
           ),
@@ -1961,21 +2002,21 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0x33FF8C00),
+              color: const Color(0xFFECFEFF),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFFF8C00).withValues(alpha: 0.5), width: 1),
+              border: Border.all(color: const Color(0xFFA5F3FC), width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.swap_horiz_rounded, size: 13, color: Color(0xFFFF8C00)),
+                const Icon(Icons.swap_horiz_rounded, size: 13, color: Color(0xFF0891B2)),
                 const SizedBox(width: 4),
                 Text(
                   'Transfer at $atStop',
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFFF8C00),
+                    color: const Color(0xFF0891B2),
                   ),
                 ),
               ],
@@ -1997,10 +2038,10 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0x26FFFFFF),
+          color: const Color(0xFFE2E8F0),
           width: 1,
         ),
       ),
@@ -2011,7 +2052,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.25),
+              color: badgeColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             alignment: Alignment.center,
@@ -2034,7 +2075,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: const Color(0xFF0F172A),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -2046,14 +2087,14 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                       '$distance • $duration',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
-                        color: const Color(0xFFCBD5E1),
+                        color: const Color(0xFF64748B),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                       decoration: BoxDecoration(
-                        color: badgeColor.withValues(alpha: 0.15),
+                        color: const Color(0xFFECFEFF),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -2061,7 +2102,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 8.5,
                           fontWeight: FontWeight.w700,
-                          color: badgeColor,
+                          color: const Color(0xFF0891B2),
                         ),
                       ),
                     ),
@@ -2088,11 +2129,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
           gradient: const LinearGradient(
-            colors: [Color(0xFF38BDF8), Color(0xFF56E5A9)],
+            colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
           ),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x5538BDF8),
+              color: Color(0x38FF6B00),
               blurRadius: 16,
               offset: Offset(0, 4),
             ),
@@ -2104,7 +2145,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
             const Icon(
               Icons.qr_code_2_rounded,
               size: 22,
-              color: Color(0xFF00354A),
+              color: Colors.white,
             ),
             const SizedBox(width: 8),
             Text(
@@ -2112,7 +2153,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF00354A),
+                color: Colors.white,
                 letterSpacing: 0.2,
               ),
             ),
@@ -2352,21 +2393,21 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 9,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF94A3B8),
+            color: const Color(0xFF64748B),
             letterSpacing: 0.5,
           ),
         ),
         const SizedBox(height: 3),
         Row(
           children: [
-            Icon(icon, size: 13, color: const Color(0xFF38BDF8)),
+            Icon(icon, size: 13, color: const Color(0xFF0891B2)),
             const SizedBox(width: 4),
             Text(
               value,
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: const Color(0xFF0F172A),
               ),
             ),
           ],

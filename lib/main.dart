@@ -15,7 +15,7 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
     ),
   );
 
@@ -39,7 +39,7 @@ class StitchTransitApp extends StatefulWidget {
 }
 
 class _StitchTransitAppState extends State<StitchTransitApp> {
-  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode _themeMode = ThemeMode.light;
   late bool _showSplash;
 
   @override
@@ -58,8 +58,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
 
   void _toggleTheme() {
     setState(() {
-      _themeMode =
-          _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+      _themeMode = ThemeMode.light;
     });
   }
 
@@ -112,7 +111,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = _themeMode == ThemeMode.dark;
+    const isDark = false;
 
     Widget currentScreen;
     switch (_currentScreenIndex) {

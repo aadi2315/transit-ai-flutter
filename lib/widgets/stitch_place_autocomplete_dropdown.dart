@@ -18,14 +18,10 @@ class StitchPlaceAutocompleteDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     if (suggestions.isEmpty) return const SizedBox.shrink();
 
-    final bg = isDarkMode
-        ? const Color(0xF00B132B)
-        : const Color(0xF8FFFFFF);
-    final border = isDarkMode
-        ? const Color(0x4038BDF8)
-        : const Color(0xFFBAE6FD);
-    final primaryTextColor = isDarkMode ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    const bg = Colors.white;
+    const border = Color(0xFFA5F3FC);
+    const primaryTextColor = Color(0xFF0F172A);
+    const subTextColor = Color(0xFF64748B);
 
     return Container(
       margin: const EdgeInsets.only(top: 4),
@@ -35,7 +31,7 @@ class StitchPlaceAutocompleteDropdown extends StatelessWidget {
         border: Border.all(color: border, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDarkMode ? 0.4 : 0.12),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -52,26 +48,26 @@ class StitchPlaceAutocompleteDropdown extends StatelessWidget {
               padding: const EdgeInsets.only(left: 12, right: 12, top: 8, bottom: 4),
               child: Row(
                 children: [
-                  const Icon(Icons.near_me_rounded, size: 12, color: Color(0xFF38BDF8)),
+                  const Icon(Icons.near_me_rounded, size: 12, color: Color(0xFF0891B2)),
                   const SizedBox(width: 5),
                   Text(
                     'SUGGESTED TRANSIT STOPS',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 8.5,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF38BDF8),
+                      color: const Color(0xFF0891B2),
                       letterSpacing: 0.5,
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0x1FFFFFFF)),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
             // Items
             ...suggestions.map((item) {
               return InkWell(
                 onTap: () => onSelect(item),
-                hoverColor: const Color(0x1A38BDF8),
+                hoverColor: const Color(0x1A0891B2),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(

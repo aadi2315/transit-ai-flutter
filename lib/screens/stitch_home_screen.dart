@@ -152,22 +152,17 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = widget.isDarkMode;
+    const dark = false;
 
-    final primaryTextColor = dark ? Colors.white : const Color(0xFF0F172A);
-    final secondaryTextColor =
-        dark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
-    final brandPillBg =
-        dark ? const Color(0xB30F172A) : const Color(0xE6FFFFFF);
-    final brandPillBorder =
-        dark ? const Color(0x38FFFFFF) : const Color(0x40FFFFFF);
-    final inputBg =
-        dark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9);
-    final inputBorder =
-        dark ? const Color(0x38FFFFFF) : const Color(0xFFCBD5E1);
+    const primaryTextColor = Color(0xFF0F172A);
+    const secondaryTextColor = Color(0xFF64748B);
+    const brandPillBg = Colors.white;
+    const brandPillBorder = Color(0xFFA5F3FC);
+    const inputBg = Color(0xFFF8FAFC);
+    const inputBorder = Color(0xFFE2E8F0);
 
     return StitchBackground(
-      isDarkMode: dark,
+      isDarkMode: false,
       child: Stack(
         children: [
           // Scrollable Content
@@ -202,9 +197,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: dark
-                                        ? Colors.black.withValues(alpha: 0.25)
-                                        : Colors.black.withValues(alpha: 0.08),
+                                    color: const Color(0xFF0891B2).withValues(alpha: 0.10),
                                     blurRadius: 10,
                                   ),
                                 ],
@@ -298,7 +291,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                 const Icon(
                                   Icons.alt_route_rounded,
                                   size: 18,
-                                  color: Color(0xFF0284C7),
+                                  color: Color(0xFF0891B2),
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
@@ -332,7 +325,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                           borderRadius: BorderRadius.circular(16),
                                           border: Border.all(
                                             color: _originFocusNode.hasFocus
-                                                ? const Color(0xFF38BDF8)
+                                                ? const Color(0xFF0891B2)
                                                 : inputBorder,
                                             width: _originFocusNode.hasFocus ? 1.5 : 1,
                                           ),
@@ -416,8 +409,8 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                     _showOriginDropdown = false;
                                                   });
                                                 },
-                                                child: Padding(
-                                                  padding: const EdgeInsets.only(right: 6),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.only(right: 6),
                                                   child: Icon(
                                                     Icons.cancel_rounded,
                                                     size: 16,
@@ -433,7 +426,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                 child: const Icon(
                                                   Icons.my_location_rounded,
                                                   size: 18,
-                                                  color: Color(0xFF0284C7),
+                                                  color: Color(0xFF0891B2),
                                                 ),
                                               ),
                                             ),
@@ -472,7 +465,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                           borderRadius: BorderRadius.circular(16),
                                           border: Border.all(
                                             color: _destFocusNode.hasFocus
-                                                ? const Color(0xFF38BDF8)
+                                                ? const Color(0xFF0891B2)
                                                 : inputBorder,
                                             width: _destFocusNode.hasFocus ? 1.5 : 1,
                                           ),
@@ -553,8 +546,8 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                                     _showDestDropdown = false;
                                                   });
                                                 },
-                                                child: Padding(
-                                                  padding: const EdgeInsets.only(right: 6),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.only(right: 6),
                                                   child: Icon(
                                                     Icons.cancel_rounded,
                                                     size: 16,
@@ -594,18 +587,16 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                       width: 36,
                                       height: 36,
                                       decoration: BoxDecoration(
-                                        color: dark
-                                            ? const Color(0xFF0F172A)
-                                            : Colors.white,
+                                        color: Colors.white,
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: const Color(0xFF0284C7),
+                                          color: const Color(0xFF0891B2),
                                           width: 1.5,
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black
-                                                .withValues(alpha: 0.25),
+                                            color: const Color(0xFF0891B2)
+                                                .withValues(alpha: 0.15),
                                             blurRadius: 10,
                                           ),
                                         ],
@@ -613,7 +604,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                       child: const Icon(
                                         Icons.swap_vert_rounded,
                                         size: 20,
-                                        color: Color(0xFF0284C7),
+                                        color: Color(0xFF0891B2),
                                       ),
                                     ),
                                   ),
@@ -632,13 +623,9 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                     padding: const EdgeInsets.only(right: 6),
                                     child: ActionChip(
                                       visualDensity: VisualDensity.compact,
-                                      backgroundColor: dark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : const Color(0xFFE2E8F0),
-                                      side: BorderSide(
-                                        color: dark
-                                            ? const Color(0x2EFFFFFF)
-                                            : const Color(0xFFCBD5E1),
+                                      backgroundColor: const Color(0xFFF1F5F9),
+                                      side: const BorderSide(
+                                        color: Color(0xFFE2E8F0),
                                         width: 0.8,
                                       ),
                                       label: Text(
@@ -675,50 +662,40 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                 }
                               },
                               child: Container(
-                                height: 44,
+                                height: 46,
                                 decoration: BoxDecoration(
-                                  color: dark
-                                      ? const Color(0xFF0F172A)
-                                      : const Color(0xFF0284C7),
-                                  borderRadius: BorderRadius.circular(22),
-                                  border: Border.all(
-                                    color: const Color(0xFF38BDF8),
-                                    width: 1.2,
-                                  ),
+                                  color: const Color(0xFF0891B2),
+                                  borderRadius: BorderRadius.circular(23),
                                   boxShadow: const [
                                     BoxShadow(
-                                      color: Color(0x3338BDF8),
+                                      color: Color(0x33FF6B00),
                                       blurRadius: 12,
-                                      offset: Offset(0, 2),
+                                      offset: Offset(0, 3),
                                     ),
                                   ],
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.search_rounded,
                                       size: 18,
-                                      color: dark
-                                          ? const Color(0xFF38BDF8)
-                                          : Colors.white,
+                                      color: Colors.white,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Search Routes',
                                       style: GoogleFonts.spaceGrotesk(
-                                        fontSize: 13,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                         color: Colors.white,
                                       ),
                                     ),
                                     const SizedBox(width: 6),
-                                    Icon(
+                                    const Icon(
                                       Icons.arrow_forward_rounded,
                                       size: 16,
-                                      color: dark
-                                          ? const Color(0xFF38BDF8)
-                                          : Colors.white,
+                                      color: Colors.white,
                                     ),
                                   ],
                                 ),
@@ -739,11 +716,11 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(26),
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF38BDF8), Color(0xFF56E5A9)],
+                              colors: [Color(0xFF0891B2), Color(0xFF06B6D4)],
                             ),
                             boxShadow: const [
                               BoxShadow(
-                                color: Color(0x5538BDF8),
+                                color: Color(0x38FF6B00),
                                 blurRadius: 16,
                                 offset: Offset(0, 4),
                               ),
@@ -755,7 +732,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                               const Icon(
                                 Icons.qr_code_2_rounded,
                                 size: 22,
-                                color: Color(0xFF00354A),
+                                color: Colors.white,
                               ),
                               const SizedBox(width: 8),
                               Flexible(
@@ -766,7 +743,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
-                                      color: const Color(0xFF00354A),
+                                      color: Colors.white,
                                       letterSpacing: 0.2,
                                     ),
                                   ),
@@ -797,7 +774,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                       const Icon(
                                         Icons.receipt_long_outlined,
                                         size: 18,
-                                        color: Color(0xFF0284C7),
+                                        color: Color(0xFF0891B2),
                                       ),
                                       const SizedBox(width: 8),
                                       Flexible(
@@ -820,9 +797,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: dark
-                                        ? const Color(0x26FFFFFF)
-                                        : const Color(0xFFE2E8F0),
+                                    color: const Color(0xFFECFEFF),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
@@ -830,7 +805,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                     style: GoogleFonts.jetBrainsMono(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w600,
-                                      color: secondaryTextColor,
+                                      color: const Color(0xFF0891B2),
                                     ),
                                   ),
                                 ),
@@ -844,9 +819,9 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12),
                                   child: _buildJourneyItem(
-                                    dark: dark,
+                                    dark: false,
                                     icon: Icons.directions_bus_rounded,
-                                    iconBg: const Color(0xFF0284C7),
+                                    iconBg: const Color(0xFF0891B2),
                                     title: j['title'] ?? 'Corridor Commute',
                                     fare: j['fare'] ?? '₹9.00',
                                     badgeText: j['badgeText'] ?? 'Completed',
@@ -860,14 +835,10 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 18, horizontal: 16),
                                 decoration: BoxDecoration(
-                                  color: dark
-                                      ? Colors.white.withValues(alpha: 0.03)
-                                      : const Color(0xFFF8FAFC),
+                                  color: const Color(0xFFF8FAFC),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: dark
-                                        ? const Color(0x1FFFFFFF)
-                                        : const Color(0xFFE2E8F0),
+                                    color: const Color(0xFFE2E8F0),
                                   ),
                                 ),
                                 child: Column(
@@ -876,13 +847,13 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                       width: 42,
                                       height: 42,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF38BDF8)
-                                            .withValues(alpha: 0.15),
+                                        color: const Color(0xFF0891B2)
+                                            .withValues(alpha: 0.12),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
                                         Icons.departure_board_rounded,
-                                        color: Color(0xFF38BDF8),
+                                        color: Color(0xFF0891B2),
                                         size: 20,
                                       ),
                                     ),
@@ -914,19 +885,19 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                           'Sola ➔ Iskcon',
                                           'Sola Bhagwat',
                                           'Iskcon Cross Road',
-                                          dark,
+                                          false,
                                         ),
                                         _buildPopularRoutePill(
                                           'Gota ➔ Shivranjani',
                                           'Gota Cross Road',
                                           'Shivranjani',
-                                          dark,
+                                          false,
                                         ),
                                         _buildPopularRoutePill(
                                           'Kalupur ➔ Vastrapur',
                                           'Kalupur Railway Station',
                                           'Vastrapur Lake',
-                                          dark,
+                                          false,
                                         ),
                                       ],
                                     ),
@@ -946,7 +917,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
           // BOTTOM DOCK (SEARCH tab active - Index 0)
           StitchBottomDock(
             activeIndex: 0,
-            isDarkMode: dark,
+            isDarkMode: false,
             onTabSelected: (index) {
               if (index == 1) {
                 widget.onNavigateToRouteDetails();
@@ -980,24 +951,31 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: dark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+            color: const Color(0xFFA5F3FC),
             width: 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0891B2).withValues(alpha: 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.flash_on_rounded, size: 12, color: Color(0xFF38BDF8)),
+            const Icon(Icons.flash_on_rounded, size: 12, color: Color(0xFF0891B2)),
             const SizedBox(width: 4),
             Text(
               label,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: dark ? Colors.white : const Color(0xFF0F172A),
+                color: const Color(0xFF0F172A),
               ),
             ),
           ],
@@ -1016,14 +994,10 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
     required String timeText,
     required VoidCallback onRebook,
   }) {
-    final itemBg = dark
-        ? Colors.white.withValues(alpha: 0.05)
-        : const Color(0xFFF8FAFC);
-    final itemBorder =
-        dark ? const Color(0x26FFFFFF) : const Color(0xFFE2E8F0);
-    final itemTitleColor = dark ? Colors.white : const Color(0xFF0F172A);
-    final itemSubColor =
-        dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    const itemBg = Color(0xFFF8FAFC);
+    const itemBorder = Color(0xFFE2E8F0);
+    const itemTitleColor = Color(0xFF0F172A);
+    const itemSubColor = Color(0xFF64748B);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1044,7 +1018,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: iconBg.withValues(alpha: 0.25),
+                  color: iconBg.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: iconBg, width: 1),
                 ),
@@ -1069,7 +1043,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                 style: GoogleFonts.jetBrainsMono(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0284C7),
+                  color: const Color(0xFF0891B2),
                 ),
               ),
             ],
@@ -1088,9 +1062,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: dark
-                              ? const Color(0x33FFFFFF)
-                              : const Color(0xFFE2E8F0),
+                          color: const Color(0xFFECFEFF),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -1098,8 +1070,7 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 9,
                             fontWeight: FontWeight.w600,
-                            color:
-                                dark ? Colors.white : const Color(0xFF334155),
+                            color: const Color(0xFF0891B2),
                           ),
                         ),
                       ),
@@ -1144,14 +1115,14 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0284C7),
+                        color: const Color(0xFF0891B2),
                       ),
                     ),
                     const SizedBox(width: 2),
                     const Icon(
                       Icons.arrow_forward_rounded,
                       size: 13,
-                      color: Color(0xFF0284C7),
+                      color: Color(0xFF0891B2),
                     ),
                   ],
                 ),
