@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:transit_app/main.dart';
 import 'package:transit_app/config/supabase_config.dart';
 import 'package:transit_app/services/supabase_service.dart';
@@ -98,6 +99,9 @@ void main() {
   });
 
   test('SupabaseConfig holds user project credentials and SupabaseService registers locality', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+
     // Verify user credentials in config
     expect(SupabaseConfig.supabaseUrl, 'https://your-project-id.supabase.co');
     expect(SupabaseConfig.supabaseAnonKey, 'your_supabase_anon_public_key_here');

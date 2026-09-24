@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/storage/local_transit_vault.dart';
@@ -43,6 +45,7 @@ class SupabaseService {
       );
       _isInitialized = true;
       debugPrint('[SupabaseService] Connected successfully to ${SupabaseConfig.supabaseUrl}');
+      await loadPersistedProfile();
       return true;
     } catch (e) {
       debugPrint('[SupabaseService] Initialization notice: $e');
@@ -50,10 +53,119 @@ class SupabaseService {
       try {
         Supabase.instance.client;
         _isInitialized = true;
+        await loadPersistedProfile();
         return true;
       } catch (_) {}
+      await loadPersistedProfile();
       return false;
     }
+  }
+
+  static const String _keyUserProfile = 'transit_ai_user_profile_v2';
+
+  /// Check if a commuter profile is currently authenticated
+  bool get isLoggedIn =>
+      currentUserProfile != null &&
+      ((currentUserProfile!['phone'] != null &&
+              currentUserProfile!['phone'].toString().isNotEmpty) ||
+          (currentUserProfile!['full_name'] != null &&
+              currentUserProfile!['full_name'].toString().isNotEmpty));
+
+  /// Save profile locally in offline preferences
+  Future<void> saveUserProfileLocally(Map<String, dynamic> profile) async {
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(milliseconds: 600),
+      );
+      await prefs.setString(_keyUserProfile, jsonEncode(profile));
+    } catch (e) {
+      debugPrint('[SupabaseService] save profile notice: $e');
+    }
+  }
+
+  /// Load persisted profile from local storage
+  Future<Map<String, dynamic>?> loadPersistedProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(milliseconds: 600),
+      );
+      final raw = prefs.getString(_keyUserProfile);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw) as Map<String, dynamic>;
+        currentUserProfile = decoded;
+        return decoded;
+      }
+    } catch (e) {
+      debugPrint('[SupabaseService] load profile notice: $e');
+    }
+    return null;
+  }
+
+  /// Logout current commuter and clear stored profile session
+  Future<void> logoutUser() async {
+    currentUserProfile = null;
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(milliseconds: 600),
+      );
+      await prefs.remove(_keyUserProfile);
+    } catch (_) {}
+    try {
+      final cl = client;
+      if (cl != null) {
+        await cl.auth.signOut();
+      }
+    } catch (_) {}
+  }
+
+  /// Update user profile details (Name, Phone, Locality, Emergency Contact, Transit Mode)
+  Future<Map<String, dynamic>> updateUserProfile({
+    String? fullName,
+    String? phone,
+    String? locality,
+    String? emergencyContact,
+    String? preferredTransit,
+  }) async {
+    final current = Map<String, dynamic>.from(currentUserProfile ?? {});
+    if (fullName != null && fullName.trim().isNotEmpty) {
+      current['full_name'] = fullName.trim();
+    }
+    if (phone != null && phone.trim().isNotEmpty) {
+      current['phone'] = phone.trim();
+    }
+    if (locality != null && locality.trim().isNotEmpty) {
+      current['locality'] = locality.trim();
+    }
+    if (emergencyContact != null) {
+      current['emergency_contact'] = emergencyContact.trim();
+    }
+    if (preferredTransit != null) {
+      current['preferred_transit'] = preferredTransit.trim();
+    }
+    current['updated_at'] = DateTime.now().toIso8601String();
+
+    currentUserProfile = current;
+    await saveUserProfileLocally(current);
+
+    final cl = client;
+    if (cl != null && current['phone'] != null) {
+      try {
+        await cl.from('profiles').upsert(
+          {
+            'phone': current['phone'],
+            'full_name': current['full_name'],
+            'locality': current['locality'],
+            'emergency_contact': current['emergency_contact'],
+            'preferred_transit': current['preferred_transit'],
+            'updated_at': current['updated_at'],
+          },
+          onConflict: 'phone',
+        );
+      } catch (e) {
+        debugPrint('[SupabaseService] updateUserProfile cloud sync notice: $e');
+      }
+    }
+    return {'success': true, 'profile': currentUserProfile};
   }
 
   // ==========================================
@@ -80,6 +192,7 @@ class SupabaseService {
       ...profileData,
       'id': 'user_${DateTime.now().millisecondsSinceEpoch}',
     };
+    await saveUserProfileLocally(currentUserProfile!);
 
     final cl = client;
     if (cl == null) {
@@ -104,6 +217,7 @@ class SupabaseService {
 
       if (response != null) {
         currentUserProfile = response;
+        await saveUserProfileLocally(currentUserProfile!);
       }
       return {'success': true, 'source': 'supabase', 'profile': currentUserProfile};
     } catch (e) {
@@ -130,6 +244,7 @@ class SupabaseService {
 
         if (profile != null) {
           currentUserProfile = profile;
+          await saveUserProfileLocally(currentUserProfile!);
           return {'success': true, 'profile': profile};
         }
       } catch (e) {
@@ -141,9 +256,10 @@ class SupabaseService {
     currentUserProfile = {
       'id': 'user_${cleanPhone.isNotEmpty ? cleanPhone : 'guest'}',
       'full_name': 'Aarav Patel',
-      'phone': cleanPhone,
+      'phone': cleanPhone.isNotEmpty ? cleanPhone : '9879044120',
       'locality': 'SG Highway, Ahmedabad',
     };
+    await saveUserProfileLocally(currentUserProfile!);
     return {'success': true, 'profile': currentUserProfile};
   }
 

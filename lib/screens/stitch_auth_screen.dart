@@ -7,6 +7,7 @@ import '../services/supabase_service.dart';
 class StitchAuthScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
   final VoidCallback onNavigateToWallet;
+  final VoidCallback? onNavigateToProfile;
   final VoidCallback? onToggleTheme;
   final VoidCallback onBack;
   final bool isDarkMode;
@@ -15,6 +16,7 @@ class StitchAuthScreen extends StatefulWidget {
     super.key,
     required this.onNavigateToHome,
     required this.onNavigateToWallet,
+    this.onNavigateToProfile,
     this.onToggleTheme,
     required this.onBack,
     required this.isDarkMode,
@@ -109,11 +111,21 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
             duration: const Duration(seconds: 3),
           ),
         );
-        widget.onNavigateToHome();
+        if (widget.onNavigateToProfile != null) {
+          widget.onNavigateToProfile!();
+        } else {
+          widget.onNavigateToHome();
+        }
       }
     } catch (e) {
       debugPrint('[AuthScreen] signup notice: $e');
-      if (mounted) widget.onNavigateToHome();
+      if (mounted) {
+        if (widget.onNavigateToProfile != null) {
+          widget.onNavigateToProfile!();
+        } else {
+          widget.onNavigateToHome();
+        }
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -132,11 +144,49 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
         password: password,
       );
       if (mounted) {
-        widget.onNavigateToWallet();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF0F172A),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFF10B981), width: 1),
+            ),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    color: Color(0xFF10B981), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Welcome back, ${SupabaseService.instance.currentUserProfile?['full_name'] ?? 'Commuter'}!',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        if (widget.onNavigateToProfile != null) {
+          widget.onNavigateToProfile!();
+        } else {
+          widget.onNavigateToWallet();
+        }
       }
     } catch (e) {
       debugPrint('[AuthScreen] login notice: $e');
-      if (mounted) widget.onNavigateToWallet();
+      if (mounted) {
+        if (widget.onNavigateToProfile != null) {
+          widget.onNavigateToProfile!();
+        } else {
+          widget.onNavigateToWallet();
+        }
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -288,6 +338,77 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                   ),
 
                   const SizedBox(height: 16),
+
+                  // If already logged in, show connected Profile banner
+                  if (SupabaseService.instance.isLoggedIn && widget.onNavigateToProfile != null) ...[
+                    GestureDetector(
+                      onTap: widget.onNavigateToProfile,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECFEFF),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFFA5F3FC),
+                            width: 1.2,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x100891B2),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF0891B2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.person_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Logged in as ${SupabaseService.instance.currentUserProfile?['full_name'] ?? 'Commuter'}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryTextColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Tap to view your Commuter Profile',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10.5,
+                                      color: const Color(0xFF0891B2),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 14,
+                              color: Color(0xFF0891B2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
 
                   // MAIN CRYSTAL GLASS AUTH CARD
                   StitchGlassCard(

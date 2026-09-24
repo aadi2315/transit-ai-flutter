@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'theme/stitch_theme.dart';
 import 'screens/stitch_auth_screen.dart';
+import 'screens/stitch_profile_screen.dart';
 import 'screens/stitch_home_screen.dart';
 import 'screens/stitch_route_screen.dart';
 import 'screens/stitch_ask_route_screen.dart';
@@ -48,7 +49,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
     _showSplash = widget.enableSplash;
   }
 
-  // 0: Search (Home), 1: Route, 2: Ask Route (Q&A), 3: Passes (Concessions), 4: Wallet (Fare & QR Ticket), 5: Auth / Profile
+  // 0: Search (Home), 1: Route, 2: Ask Route (Q&A), 3: Passes (Concessions), 4: Wallet (Fare & QR Ticket), 5: Auth (Sign In/Up), 6: Profile
   int _currentScreenIndex = 0;
   int _previousScreenIndex = 0;
   String? _focusedLocation;
@@ -64,7 +65,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
 
   void _setScreen(int index) {
     setState(() {
-      if (_currentScreenIndex != 5) {
+      if (_currentScreenIndex != 5 && _currentScreenIndex != 6) {
         _previousScreenIndex = _currentScreenIndex;
       }
       _currentScreenIndex = index;
@@ -75,7 +76,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
     setState(() {
       _searchedOrigin = origin;
       _searchedDestination = destination;
-      if (_currentScreenIndex != 5) {
+      if (_currentScreenIndex != 5 && _currentScreenIndex != 6) {
         _previousScreenIndex = _currentScreenIndex;
       }
       _currentScreenIndex = 1;
@@ -86,7 +87,7 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
     setState(() {
       _focusedLocation = location;
       _focusedIncident = incident;
-      if (_currentScreenIndex != 5) {
+      if (_currentScreenIndex != 5 && _currentScreenIndex != 6) {
         _previousScreenIndex = _currentScreenIndex;
       }
       _currentScreenIndex = 1;
@@ -102,10 +103,14 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
 
   void _openProfile() {
     setState(() {
-      if (_currentScreenIndex != 5) {
+      if (_currentScreenIndex != 5 && _currentScreenIndex != 6) {
         _previousScreenIndex = _currentScreenIndex;
       }
-      _currentScreenIndex = 5;
+      if (SupabaseService.instance.isLoggedIn) {
+        _currentScreenIndex = 6;
+      } else {
+        _currentScreenIndex = 5;
+      }
     });
   }
 
@@ -182,14 +187,44 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
         );
         break;
       case 5:
-      default:
-        // AUTH / PROFILE: Dedicated screen accessed via the Profile button
+        // AUTH / LOGIN: Screen accessed when not logged in or switching accounts
         currentScreen = StitchAuthScreen(
           onNavigateToHome: () => _setScreen(0),
           onNavigateToWallet: () => _setScreen(4),
+          onNavigateToProfile: () => _setScreen(6),
           onToggleTheme: _toggleTheme,
           onBack: () => _setScreen(_previousScreenIndex),
           isDarkMode: isDark,
+        );
+        break;
+      case 6:
+        // COMMUTER PROFILE: Dedicated profile screen accessed when logged in
+        currentScreen = StitchProfileScreen(
+          onBack: () => _setScreen(_previousScreenIndex),
+          onNavigateToHome: () => _setScreen(0),
+          onNavigateToWallet: () => _setScreen(4),
+          onNavigateToPasses: () => _setScreen(3),
+          onNavigateToLogin: () => _setScreen(5),
+          onLoggedOut: () {
+            setState(() {
+              _currentScreenIndex = 5;
+            });
+          },
+          onToggleTheme: _toggleTheme,
+          isDarkMode: isDark,
+        );
+        break;
+      default:
+        currentScreen = StitchHomeScreen(
+          onNavigateToRouteDetails: () => _setScreen(1),
+          onSearchRoute: _navigateToRouteWithSearch,
+          onNavigateToAskRoute: () => _setScreen(2),
+          onNavigateToPasses: () => _setScreen(3),
+          onNavigateToWallet: () => _setScreen(4),
+          onNavigateToProfile: _openProfile,
+          onToggleTheme: _toggleTheme,
+          isDarkMode: isDark,
+          onReplaySplash: () => setState(() => _showSplash = true),
         );
         break;
     }
