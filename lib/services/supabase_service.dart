@@ -478,16 +478,26 @@ class SupabaseService {
     return record;
   }
 
-  /// Save approved student concession pass
+  /// Save approved student concession pass or commuter pass
   Future<bool> saveConcessionPass({
     required String passNumber,
     required String institutionName,
     required String rollNumber,
     int subsidyPercent = 80,
     double monthlyFare = 60.0,
+    String? passTitle,
+    String? operator,
+    String? category,
+    String? duration,
+    double? cost,
   }) async {
     final record = {
       'pass_number': passNumber,
+      'pass_title': passTitle ?? 'Transit Pass',
+      'operator': operator ?? 'BRTS',
+      'category': category ?? 'Commuter',
+      'duration': duration ?? '30 Days',
+      'cost': cost ?? monthlyFare,
       'institution_name': institutionName,
       'roll_number': rollNumber,
       'subsidy_discount_percent': subsidyPercent,

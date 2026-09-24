@@ -57,6 +57,11 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   final String _terminalId = 'BRTS-SOLA-GATE-02';
   String _paymentMethodUsed = 'Razorpay UPI';
 
+  // Active Transit Pass State
+  Map<String, dynamic>? _activePass;
+  bool get _hasActivePass =>
+      _activePass != null && _activePass!['status'] == 'active';
+
   @override
   void initState() {
     super.initState();
@@ -114,17 +119,59 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   }
 
   Future<void> _loadOfflineActiveTicket() async {
+    final activePass = await LocalTransitVault.instance.getActivePass();
     final cached = await LocalTransitVault.instance.getActiveTicket();
-    if (cached != null && mounted) {
+    if (mounted) {
       setState(() {
-        _hasPaid = true;
-        _isTicketView = true;
-        if (cached['ticket_id'] != null) {
-          _paymentId = cached['ticket_id'].toString().replaceAll('TKT-', '').toLowerCase();
+        _activePass = activePass;
+        if (cached != null) {
+          _hasPaid = true;
+          _isTicketView = true;
+          if (cached['ticket_id'] != null) {
+            _paymentId = cached['ticket_id'].toString().replaceAll('TKT-', '').toLowerCase();
+          }
+          if (cached['payment_method'] != null) {
+            _paymentMethodUsed = cached['payment_method'].toString();
+          }
         }
       });
       _updateDynamicPayload();
     }
+  }
+
+  Future<void> _issueTicketWithActivePass() async {
+    final passNum = _activePass?['pass_number'] ?? 'PASS-BRTS';
+    final op = _activePass?['operator'] ?? 'BRTS';
+    final passTitle = _activePass?['pass_title'] ?? 'Corridor Pass';
+    final tktId =
+        'pass_${op.toLowerCase()}_${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}';
+
+    setState(() {
+      _paymentId = tktId;
+      _hasPaid = true;
+      _isTicketView = true;
+      _paymentMethodUsed = '$op Pass ($passTitle)';
+    });
+
+    _updateDynamicPayload();
+
+    await LocalTransitVault.instance.saveActiveTicket({
+      'ticket_id': 'TKT-${_paymentId.toUpperCase()}',
+      'origin': 'Sola Bhagwat',
+      'destination': 'Iskcon Cross Rd',
+      'fare': 0.0,
+      'line_info': '$op Corridor Pass Journey',
+      'created_at': DateTime.now().toIso8601String(),
+      'pass_number': passNum,
+      'payment_method': _paymentMethodUsed,
+    });
+
+    _syncTicketToSupabase();
+
+    _showPaymentSnackbar(
+      'Active Pass Applied! Free Boarding Ticket Generated.',
+      isSuccess: true,
+    );
   }
 
   void _updateDynamicPayload() {
@@ -132,7 +179,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
       ticketId: 'TKT-${_paymentId.toUpperCase()}',
       origin: 'Sola Bhagwat',
       destination: 'Iskcon Cross Rd',
-      fare: 9.0,
+      fare: _paymentMethodUsed.contains('Pass') ? 0.0 : 9.0,
       lineInfo: 'BRTS 9U + Feeder 8D',
     );
   }
@@ -143,7 +190,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
         ticketId: 'TKT-${_paymentId.toUpperCase()}',
         origin: 'Sola Bhagwat',
         destination: 'Iskcon Cross Rd',
-        fare: 9.0,
+        fare: _paymentMethodUsed.contains('Pass') ? 0.0 : 9.0,
         lineInfo: 'BRTS 9U + Feeder 8D',
         qrPayload: _dynamicPayload,
         hmacSignature: _dynamicPayload.split('|').last,
@@ -574,14 +621,40 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    '₹9.00',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF0891B2),
+                  if (_hasActivePass) ...[
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '₹9.00',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.lineThrough,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'FREE',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF16A34A),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ] else ...[
+                    Text(
+                      '₹9.00',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF0891B2),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -644,6 +717,103 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   ),
                 ],
               ),
+
+              // Active Transit Pass Applied Banner
+              if (_hasActivePass) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF86EFAC),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF16A34A).withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        ),
+                        child: const Icon(
+                          Icons.verified_user_rounded,
+                          color: Color(0xFF16A34A),
+                          size: 19,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF16A34A),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '${_activePass!['operator'] ?? 'TRANSIT'} PASS APPLIED',
+                                    style: GoogleFonts.jetBrainsMono(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '100% FARE WAIVER',
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF16A34A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _activePass!['pass_title'] ?? 'Transit Pass',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F172A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${_activePass!['pass_number'] ?? 'ACTIVE'} • Zero fare on this corridor',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 9,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 14),
 
@@ -829,34 +999,187 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
                     const Divider(color: Color(0xFFE2E8F0), height: 18),
 
-                    // Total
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        Text(
-                          'Unified Total Fare',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF0F172A),
+                    if (_hasActivePass) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Standard Combined Fare',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: const Color(0xFF64748B),
+                            ),
                           ),
-                        ),
-                        Text(
-                          'INR ₹9.00',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: const Color(0xFF0891B2),
+                          Text(
+                            '₹9.00',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.lineThrough,
+                              color: const Color(0xFF94A3B8),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.check_circle_rounded,
+                                  size: 12, color: Color(0xFF16A34A)),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${_activePass!['operator'] ?? 'Transit'} Pass Subsidy (100%)',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF16A34A),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '-₹9.00',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF16A34A),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(color: Color(0xFFE2E8F0), height: 14),
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          Text(
+                            'Unified Total Fare',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDCFCE7),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'FREE WITH PASS',
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF16A34A),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'INR ₹0.00',
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: const Color(0xFF16A34A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      // Total
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          Text(
+                            'Unified Total Fare',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          Text(
+                            'INR ₹9.00',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: const Color(0xFF0891B2),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
+
+              // Highlighted Pass Holder Quick Booking CTA
+              if (_hasActivePass) ...[
+                const SizedBox(height: 14),
+                GestureDetector(
+                  onTap: _issueTicketWithActivePass,
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF16A34A), Color(0xFF059669)],
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x3316A34A),
+                          blurRadius: 14,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.confirmation_number_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Issue Ticket with Active Pass (FREE • ₹0.00)',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 14),
 
@@ -1413,6 +1736,52 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
           const SizedBox(height: 22),
 
+          if (_hasActivePass) ...[
+            GestureDetector(
+              onTap: _issueTicketWithActivePass,
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF16A34A), Color(0xFF059669)],
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x3316A34A),
+                      blurRadius: 14,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.confirmation_number_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Claim Free Ticket with Pass (₹0.00)',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+
           // Big Proceed to Payment Button
           GestureDetector(
             onTap: () => setState(() => _isTicketView = false),
@@ -1521,35 +1890,67 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFF86EFAC),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      size: 12,
-                      color: Color(0xFF16A34A),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'CONFIRMED',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF16A34A),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_paymentMethodUsed.contains('Pass')) ...[
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFEFF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFA5F3FC)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.card_membership_rounded,
+                              size: 11, color: Color(0xFF0891B2)),
+                          const SizedBox(width: 3),
+                          Text(
+                            'PASS HOLDER',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0891B2),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF86EFAC),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 12,
+                          color: Color(0xFF16A34A),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'CONFIRMED',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF16A34A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1633,11 +2034,15 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       ),
                     ),
                     Text(
-                      '₹9.00 Paid',
+                      _paymentMethodUsed.contains('Pass')
+                          ? 'Covered by Pass • ₹0.00'
+                          : '₹9.00 Paid',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0891B2),
+                        color: _paymentMethodUsed.contains('Pass')
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFF0891B2),
                       ),
                     ),
                   ],
@@ -1913,8 +2318,16 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         const Divider(
                             color: Color(0xFFE2E8F0), height: 12),
                         _buildReceiptRow('Base Transit Fare', '₹9.00'),
-                        _buildReceiptRow('SGST / CGST (0%)', '₹0.00'),
-                        _buildReceiptRow('Razorpay Ref ID', _paymentId),
+                        if (_paymentMethodUsed.contains('Pass')) ...[
+                          _buildReceiptRow(
+                              'Pass Holder Subsidy', '-₹9.00 (100% Waiver)'),
+                          _buildReceiptRow('Net Fare Charged', '₹0.00 (Free)'),
+                          _buildReceiptRow('Pass Reference',
+                              _activePass?['pass_number'] ?? 'PASS-ACTIVE'),
+                        ] else ...[
+                          _buildReceiptRow('SGST / CGST (0%)', '₹0.00'),
+                        ],
+                        _buildReceiptRow('Reference ID', _paymentId),
                         _buildReceiptRow('Payment Method', _paymentMethodUsed),
                         _buildReceiptRow('Gateway Account', 'PRAVHA (${RazorpayConfig.keyId.substring(0, 8)}...)'),
                         _buildReceiptRow('AFC Turnstile Gate', _terminalId),

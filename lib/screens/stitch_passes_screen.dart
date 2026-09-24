@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
 import '../widgets/stitch_background.dart';
@@ -9,6 +10,7 @@ import '../widgets/stitch_profile_button.dart';
 import '../services/razorpay_service.dart';
 import '../services/gemini_service.dart';
 import '../services/supabase_service.dart';
+import '../core/storage/local_transit_vault.dart';
 import '../utils/device_file_picker.dart';
 import '../config/razorpay_config.dart';
 
@@ -269,6 +271,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
   // Selected Pass ID
   String _selectedPassId = 'brts_monthly';
 
+  // Active pass state stored in vault
+  Map<String, dynamic>? _activePass;
+  bool _showPassCatalog = false;
+
   // Verification method: 'digilocker' | 'manual'
   String _selectedMethod = 'digilocker';
 
@@ -322,6 +328,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
   @override
   void initState() {
     super.initState();
+    _loadActivePass();
     _razorpayService.initialize(
       onSuccess: (response) {
         if (!mounted) return;
@@ -334,6 +341,17 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
         _showToast('Payment Failed: $errorMessage');
       },
     );
+  }
+
+  Future<void> _loadActivePass() async {
+    try {
+      final pass = await LocalTransitVault.instance.getActivePass();
+      if (pass != null && mounted) {
+        setState(() {
+          _activePass = pass;
+        });
+      }
+    } catch (_) {}
   }
 
   void _onOperatorSelected(String op) {
@@ -378,7 +396,6 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
   Future<void> _activatePassSuccess(String refId) async {
     final pass = _selectedPass;
-    _showToast('${pass.operator} Pass Activated! Ref: $refId');
     final profile = SupabaseService.instance.currentUserProfile;
     final phone = profile?['phone'] ?? '9876543210';
 
@@ -388,23 +405,52 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             ? (((pass.originalCost! - pass.cost) / pass.originalCost!) * 100).round()
             : 0);
 
-    await SupabaseService.instance.saveConcessionPass(
-      passNumber: 'PASS-${pass.operator}-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
-      institutionName: pass.category == 'Student'
+    final passRecord = {
+      'pass_number': 'PASS-${pass.operator}-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
+      'pass_title': pass.title,
+      'operator': pass.operator,
+      'category': pass.category,
+      'duration': pass.duration,
+      'billing_period': pass.billingPeriod,
+      'subtitle': pass.subtitle,
+      'cost': pass.cost,
+      'original_cost': pass.originalCost ?? pass.cost,
+      'institution_name': pass.category == 'Student'
           ? (_extractionResult?.institutionName ?? 'Gujarat University')
           : '${pass.operator} Transit Authority',
-      rollNumber: pass.category == 'Student'
+      'roll_number': pass.category == 'Student'
           ? (_extractionResult?.rollNumber ?? '22012011048')
           : 'CITIZEN-${phone.length > 4 ? phone.substring(phone.length - 4) : 'USER'}',
+      'subsidy_discount_percent': calculatedSubsidy,
+      'monthly_fare': pass.cost.toDouble(),
+      'valid_from': DateTime.now().toIso8601String(),
+      'valid_until': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+      'status': 'active',
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    // Save locally and in Supabase
+    await LocalTransitVault.instance.saveActivePass(passRecord);
+    await SupabaseService.instance.saveConcessionPass(
+      passNumber: passRecord['pass_number'] as String,
+      institutionName: passRecord['institution_name'] as String,
+      rollNumber: passRecord['roll_number'] as String,
       subsidyPercent: calculatedSubsidy,
       monthlyFare: pass.cost.toDouble(),
+      passTitle: pass.title,
+      operator: pass.operator,
+      category: pass.category,
+      duration: pass.duration,
+      cost: pass.cost.toDouble(),
     );
 
-    Future.delayed(const Duration(milliseconds: 700), () {
-      if (mounted) {
-        widget.onNavigateToWallet();
-      }
-    });
+    if (mounted) {
+      setState(() {
+        _activePass = passRecord;
+        _showPassCatalog = false;
+      });
+      _showToast('${pass.operator} Pass Activated! ${passRecord['pass_number']}');
+    }
   }
 
   void _showToast(String message) {
@@ -553,6 +599,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
     final pass = _selectedPass;
     final operatorColor = _getOperatorColor(pass.operator);
     final availablePasses = _availablePasses;
+    final bool hasActivePass = _activePass != null && _activePass!['status'] == 'active';
 
     return StitchBackground(
       isDarkMode: dark,
@@ -643,653 +690,710 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
                       const SizedBox(height: 14),
 
-                      // 1. PASS SELECTOR HERO CARD (Dropdown Menu + Dynamic Cost)
-                      StitchGlassCard(
-                        isDarkMode: dark,
-                        borderRadius: 24,
-                        padding: const EdgeInsets.all(18),
-                        hasCyanGlow: true,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Card Header
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // VIEW MODE: Show Active Pass Card vs Pass Catalog
+                      if (hasActivePass && !_showPassCatalog) ...[
+                        _buildActivePassCard(dark, primaryTextColor, secondaryTextColor),
+                      ] else ...[
+                        // If active pass exists, show a quick top toggle banner
+                        if (hasActivePass) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFA7F3D0)),
+                            ),
+                            child: Row(
                               children: [
+                                const Icon(Icons.verified_rounded, color: Color(0xFF047857), size: 16),
+                                const SizedBox(width: 8),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Select Transit Pass',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          color: primaryTextColor,
-                                          letterSpacing: -0.3,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'AMTS • BRTS • GSRTC Corridors',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w500,
-                                          color: secondaryTextColor,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                  child: Text(
+                                    'Active: ${_activePass!['pass_title']}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF047857),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: operatorColor.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: operatorColor.withValues(alpha: 0.35),
+                                GestureDetector(
+                                  onTap: () => setState(() => _showPassCatalog = false),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0891B2),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                  ),
-                                  child: Text(
-                                    pass.operator,
-                                    style: GoogleFonts.jetBrainsMono(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      color: operatorColor,
+                                    child: Text(
+                                      'View Card',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ],
                             ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
 
-                            const SizedBox(height: 12),
-
-                            // Operator Filter Chips Row
-                            Row(
-                              children: ['All', 'BRTS', 'AMTS', 'GSRTC'].map((op) {
-                                final isSelected = _selectedOperator == op;
-                                final opColor = op == 'All' ? const Color(0xFF0891B2) : _getOperatorColor(op);
-                                return Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 2.5),
-                                    child: GestureDetector(
-                                      onTap: () => _onOperatorSelected(op),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 200),
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? opColor.withValues(alpha: 0.15)
-                                              : Colors.white,
-                                          borderRadius: BorderRadius.circular(14),
-                                          border: Border.all(
-                                            color: isSelected
-                                                ? opColor
-                                                : const Color(0xFFE2E8F0),
-                                            width: 1.2,
+                        // 1. PASS SELECTOR HERO CARD (Dropdown Menu + Dynamic Cost)
+                        StitchGlassCard(
+                          isDarkMode: dark,
+                          borderRadius: 24,
+                          padding: const EdgeInsets.all(18),
+                          hasCyanGlow: true,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Card Header
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Select Transit Pass',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w800,
+                                            color: primaryTextColor,
+                                            letterSpacing: -0.3,
                                           ),
                                         ),
-                                        child: Text(
-                                          op,
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'AMTS • BRTS • GSRTC Corridors',
                                           style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 11,
-                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                            color: isSelected ? opColor : secondaryTextColor,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w500,
+                                            color: secondaryTextColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: operatorColor.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: operatorColor.withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      pass.operator,
+                                      style: GoogleFonts.jetBrainsMono(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: operatorColor,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Operator Filter Chips Row
+                              Row(
+                                children: ['All', 'BRTS', 'AMTS', 'GSRTC'].map((op) {
+                                  final isSelected = _selectedOperator == op;
+                                  final opColor = op == 'All' ? const Color(0xFF0891B2) : _getOperatorColor(op);
+                                  return Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                                      child: GestureDetector(
+                                        onTap: () => _onOperatorSelected(op),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          padding: const EdgeInsets.symmetric(vertical: 6),
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? opColor.withValues(alpha: 0.15)
+                                                : Colors.white,
+                                            borderRadius: BorderRadius.circular(14),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? opColor
+                                                  : const Color(0xFFE2E8F0),
+                                              width: 1.2,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            op,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                              color: isSelected ? opColor : secondaryTextColor,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // PASS SELECTION DROPDOWN MENU
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: operatorColor.withValues(alpha: 0.5),
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: operatorColor.withValues(alpha: 0.08),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
+                                  );
+                                }).toList(),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _selectedPassId,
-                                  isExpanded: true,
-                                  icon: Icon(
-                                    Icons.arrow_drop_down_circle_rounded,
-                                    color: operatorColor,
-                                    size: 22,
-                                  ),
-                                  dropdownColor: Colors.white,
+
+                              const SizedBox(height: 12),
+
+                              // PASS SELECTION DROPDOWN MENU
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  selectedItemBuilder: (BuildContext context) {
-                                    return availablePasses.map((p) {
+                                  border: Border.all(
+                                    color: operatorColor.withValues(alpha: 0.5),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: operatorColor.withValues(alpha: 0.08),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedPassId,
+                                    isExpanded: true,
+                                    icon: Icon(
+                                      Icons.arrow_drop_down_circle_rounded,
+                                      color: operatorColor,
+                                      size: 22,
+                                    ),
+                                    dropdownColor: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    selectedItemBuilder: (BuildContext context) {
+                                      return availablePasses.map((p) {
+                                        final opCol = _getOperatorColor(p.operator);
+                                        return Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: opCol.withValues(alpha: 0.12),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  p.operator,
+                                                  style: GoogleFonts.jetBrainsMono(
+                                                    fontSize: 9.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: opCol,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  p.title,
+                                                  style: GoogleFonts.plusJakartaSans(
+                                                    fontSize: 12.5,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: primaryTextColor,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                p.cost == 0 ? 'FREE' : '₹${p.cost}',
+                                                style: GoogleFonts.spaceGrotesk(
+                                                  fontSize: 13.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: opCol,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList();
+                                    },
+                                    items: availablePasses.map((p) {
+                                      final isSelected = p.id == _selectedPassId;
                                       final opCol = _getOperatorColor(p.operator);
-                                      return Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: opCol.withValues(alpha: 0.12),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                p.operator,
-                                                style: GoogleFonts.jetBrainsMono(
-                                                  fontSize: 9.5,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: opCol,
+                                      return DropdownMenuItem<String>(
+                                        value: p.id,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 4),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: opCol.withValues(alpha: 0.12),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  p.operator,
+                                                  style: GoogleFonts.jetBrainsMono(
+                                                    fontSize: 9.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: opCol,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                p.title,
-                                                style: GoogleFonts.plusJakartaSans(
-                                                  fontSize: 12.5,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: primaryTextColor,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              p.cost == 0 ? 'FREE' : '₹${p.cost}',
-                                              style: GoogleFonts.spaceGrotesk(
-                                                fontSize: 13.5,
-                                                fontWeight: FontWeight.w800,
-                                                color: opCol,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }).toList();
-                                  },
-                                  items: availablePasses.map((p) {
-                                    final isSelected = p.id == _selectedPassId;
-                                    final opCol = _getOperatorColor(p.operator);
-                                    return DropdownMenuItem<String>(
-                                      value: p.id,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 4),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: opCol.withValues(alpha: 0.12),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                p.operator,
-                                                style: GoogleFonts.jetBrainsMono(
-                                                  fontSize: 9.5,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: opCol,
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      p.title,
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontSize: 12,
+                                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                                        color: isSelected ? opCol : primaryTextColor,
+                                                      ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    Text(
+                                                      '${p.category} • ${p.duration}',
+                                                      style: GoogleFonts.jetBrainsMono(
+                                                        fontSize: 9,
+                                                        color: secondaryTextColor,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                              const SizedBox(width: 6),
+                                              Column(
+                                                crossAxisAlignment: CrossAxisAlignment.end,
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   Text(
-                                                    p.title,
-                                                    style: GoogleFonts.plusJakartaSans(
-                                                      fontSize: 12,
-                                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                                      color: isSelected ? opCol : primaryTextColor,
+                                                    p.cost == 0 ? 'FREE' : '₹${p.cost}',
+                                                    style: GoogleFonts.spaceGrotesk(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: opCol,
                                                     ),
-                                                    overflow: TextOverflow.ellipsis,
                                                   ),
                                                   Text(
-                                                    '${p.category} • ${p.duration}',
+                                                    p.billingPeriod,
                                                     style: GoogleFonts.jetBrainsMono(
-                                                      fontSize: 9,
+                                                      fontSize: 8,
                                                       color: secondaryTextColor,
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  p.cost == 0 ? 'FREE' : '₹${p.cost}',
-                                                  style: GoogleFonts.spaceGrotesk(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: opCol,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  p.billingPeriod,
-                                                  style: GoogleFonts.jetBrainsMono(
-                                                    fontSize: 8,
-                                                    color: secondaryTextColor,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: _onPassSelected,
+                                      );
+                                    }).toList(),
+                                    onChanged: _onPassSelected,
+                                  ),
                                 ),
                               ),
-                            ),
 
-                            const SizedBox(height: 12),
+                              const SizedBox(height: 12),
 
-                            // DYNAMIC COST & PASS DETAILS CARD
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: operatorColor.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: operatorColor.withValues(alpha: 0.25),
-                                  width: 1.2,
+                              // DYNAMIC COST & PASS DETAILS CARD
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 14,
                                 ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Left: Badges & Description
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Wrap(
-                                              spacing: 5,
-                                              runSpacing: 4,
-                                              children: [
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFFF1F5F9),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                decoration: BoxDecoration(
+                                  color: operatorColor.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: operatorColor.withValues(alpha: 0.25),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Left: Badges & Description
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Wrap(
+                                                spacing: 5,
+                                                runSpacing: 4,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFF1F5F9),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                                    ),
+                                                    child: Text(
+                                                      pass.category,
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontSize: 9.5,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: secondaryTextColor,
+                                                      ),
+                                                    ),
                                                   ),
-                                                  child: Text(
-                                                    pass.category,
-                                                    style: GoogleFonts.plusJakartaSans(
-                                                      fontSize: 9.5,
-                                                      fontWeight: FontWeight.w700,
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFECFDF5),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                                                    ),
+                                                    child: Text(
+                                                      pass.tag,
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontSize: 9.5,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: const Color(0xFF047857),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                pass.subtitle,
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 11,
+                                                  color: secondaryTextColor,
+                                                  height: 1.3,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        const SizedBox(width: 8),
+
+                                        // Right: Cost Display
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                                              textBaseline: TextBaseline.alphabetic,
+                                              children: [
+                                                Text(
+                                                  pass.cost == 0 ? 'FREE' : '₹${pass.cost}',
+                                                  style: GoogleFonts.spaceGrotesk(
+                                                    fontSize: 24,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: operatorColor,
+                                                  ),
+                                                ),
+                                                if (pass.cost > 0) ...[
+                                                  const SizedBox(width: 2),
+                                                  Text(
+                                                    pass.billingPeriod,
+                                                    style: GoogleFonts.jetBrainsMono(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
                                                       color: secondaryTextColor,
                                                     ),
                                                   ),
-                                                ),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFFECFDF5),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                    border: Border.all(color: const Color(0xFFA7F3D0)),
-                                                  ),
-                                                  child: Text(
-                                                    pass.tag,
-                                                    style: GoogleFonts.plusJakartaSans(
-                                                      fontSize: 9.5,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: const Color(0xFF047857),
-                                                    ),
-                                                  ),
-                                                ),
+                                                ],
                                               ],
                                             ),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              pass.subtitle,
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 11,
-                                                color: secondaryTextColor,
-                                                height: 1.3,
+                                            if (pass.originalCost != null)
+                                              Text(
+                                                'Was ₹${pass.originalCost}',
+                                                style: GoogleFonts.jetBrainsMono(
+                                                  fontSize: 9.5,
+                                                  decoration: TextDecoration.lineThrough,
+                                                  color: const Color(0xFF94A3B8),
+                                                ),
                                               ),
-                                            ),
                                           ],
                                         ),
-                                      ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
-                                      const SizedBox(width: 8),
+                        const SizedBox(height: 12),
 
-                                      // Right: Cost Display
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: [
-                                          Row(
-                                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                                            textBaseline: TextBaseline.alphabetic,
-                                            children: [
-                                              Text(
-                                                pass.cost == 0 ? 'FREE' : '₹${pass.cost}',
-                                                style: GoogleFonts.spaceGrotesk(
-                                                  fontSize: 24,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: operatorColor,
-                                                ),
-                                              ),
-                                              if (pass.cost > 0) ...[
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  pass.billingPeriod,
-                                                  style: GoogleFonts.jetBrainsMono(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: secondaryTextColor,
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                          if (pass.originalCost != null)
-                                            Text(
-                                              'Was ₹${pass.originalCost}',
-                                              style: GoogleFonts.jetBrainsMono(
-                                                fontSize: 9.5,
-                                                decoration: TextDecoration.lineThrough,
-                                                color: const Color(0xFF94A3B8),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ],
+                        // 2. VERIFICATION CARD (Contextual to pass type)
+                        _buildVerificationCard(pass, dark, primaryTextColor, secondaryTextColor),
+
+                        const SizedBox(height: 12),
+
+                        // 3. FARE SUMMARY & CHECKOUT CARD
+                        StitchGlassCard(
+                          isDarkMode: dark,
+                          borderRadius: 24,
+                          padding: const EdgeInsets.all(18),
+                          hasCyanGlow: true,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.receipt_long_rounded,
+                                    size: 17,
+                                    color: operatorColor,
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    'Fare Summary',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryTextColor,
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
 
-                      const SizedBox(height: 12),
+                              const SizedBox(height: 12),
 
-                      // 2. VERIFICATION CARD (Contextual to pass type)
-                      _buildVerificationCard(pass, dark, primaryTextColor, secondaryTextColor),
-
-                      const SizedBox(height: 12),
-
-                      // 3. FARE SUMMARY & CHECKOUT CARD
-                      StitchGlassCard(
-                        isDarkMode: dark,
-                        borderRadius: 24,
-                        padding: const EdgeInsets.all(18),
-                        hasCyanGlow: true,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.receipt_long_rounded,
-                                  size: 17,
-                                  color: operatorColor,
-                                ),
-                                const SizedBox(width: 7),
-                                Text(
-                                  'Fare Summary',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: primaryTextColor,
+                              // Summary Box
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                    width: 1,
                                   ),
                                 ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // Summary Box
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Pass Tariff (${pass.duration})',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11.5,
-                                          color: secondaryTextColor,
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            'Pass Tariff (${pass.duration})',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11.5,
+                                              color: secondaryTextColor,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                      ),
-                                      Text(
-                                        '₹${pass.originalCost ?? pass.cost}',
-                                        style: GoogleFonts.jetBrainsMono(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: primaryTextColor,
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '₹${pass.originalCost ?? pass.cost}',
+                                          style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: primaryTextColor,
+                                          ),
                                         ),
+                                      ],
+                                    ),
+                                    if (pass.originalCost != null || pass.cost == 0) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Concession / Subsidy',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF047857),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              pass.cost == 0
+                                                  ? '-100% (FREE)'
+                                                  : '-₹${pass.originalCost! - pass.cost} (${pass.tag})',
+                                              style: GoogleFonts.jetBrainsMono(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: const Color(0xFF047857),
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.end,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
-                                  ),
-                                  if (pass.originalCost != null || pass.cost == 0) ...[
-                                    const SizedBox(height: 6),
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 8),
+                                      child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                                    ),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                          'Concession / Subsidy',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF047857),
+                                          'Payable Amount',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                            color: primaryTextColor,
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: Text(
-                                            pass.cost == 0
-                                                ? '-100% (FREE)'
-                                                : '-₹${pass.originalCost! - pass.cost} (${pass.tag})',
-                                            style: GoogleFonts.jetBrainsMono(
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: const Color(0xFF047857),
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                            textAlign: TextAlign.end,
+                                        Text(
+                                          pass.cost == 0 ? '₹0 (FREE)' : '₹${pass.cost}',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w800,
+                                            color: operatorColor,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ],
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8),
-                                    child: Divider(height: 1, color: Color(0xFFE2E8F0)),
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Payable Amount',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w800,
-                                          color: primaryTextColor,
-                                        ),
-                                      ),
-                                      Text(
-                                        pass.cost == 0 ? '₹0 (FREE)' : '₹${pass.cost}',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w800,
-                                          color: operatorColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 14),
-
-                            // CTA BUTTON
-                            Container(
-                              height: 50,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: _isEligibleForPayment
-                                    ? LinearGradient(
-                                        colors: [
-                                          operatorColor,
-                                          operatorColor.withValues(alpha: 0.85),
-                                        ],
-                                      )
-                                    : null,
-                                color: _isEligibleForPayment
-                                    ? null
-                                    : const Color(0xFFE2E8F0),
-                                boxShadow: _isEligibleForPayment
-                                    ? [
-                                        BoxShadow(
-                                          color: operatorColor.withValues(alpha: 0.25),
-                                          blurRadius: 14,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ]
-                                    : null,
-                                border: _isEligibleForPayment
-                                    ? null
-                                    : Border.all(
-                                        color: const Color(0xFFCBD5E1),
-                                        width: 1,
-                                      ),
-                              ),
-                              child: ElevatedButton(
-                                onPressed: (_isEligibleForPayment && !_isProcessingPayment)
-                                    ? _payForPass
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  disabledForegroundColor: const Color(0xFF94A3B8),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (_isProcessingPayment) ...[
-                                      const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
+                              ),
+
+                              const SizedBox(height: 14),
+
+                              // CTA BUTTON (Creates pass on Passes page)
+                              Container(
+                                height: 50,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  gradient: _isEligibleForPayment
+                                      ? LinearGradient(
+                                          colors: [
+                                            operatorColor,
+                                            operatorColor.withValues(alpha: 0.85),
+                                          ],
+                                        )
+                                      : null,
+                                  color: _isEligibleForPayment
+                                      ? null
+                                      : const Color(0xFFE2E8F0),
+                                  boxShadow: _isEligibleForPayment
+                                      ? [
+                                          BoxShadow(
+                                            color: operatorColor.withValues(alpha: 0.25),
+                                            blurRadius: 14,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                      : null,
+                                  border: _isEligibleForPayment
+                                      ? null
+                                      : Border.all(
+                                          color: const Color(0xFFCBD5E1),
+                                          width: 1,
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Opening Gateway...',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          color: Colors.white,
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w800,
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: (_isEligibleForPayment && !_isProcessingPayment)
+                                      ? _payForPass
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    disabledForegroundColor: const Color(0xFF94A3B8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (_isProcessingPayment) ...[
+                                        const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
                                         ),
-                                      ),
-                                    ] else if (_isEligibleForPayment) ...[
-                                      Icon(
-                                        pass.cost == 0 ? Icons.verified_rounded : Icons.account_balance_wallet_rounded,
-                                        color: Colors.white,
-                                        size: 19,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                          _ctaButtonText,
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Opening Gateway...',
                                           style: GoogleFonts.spaceGrotesk(
                                             color: Colors.white,
                                             fontSize: 13.5,
                                             fontWeight: FontWeight.w800,
-                                            letterSpacing: 0.2,
                                           ),
-                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Icon(
-                                        Icons.arrow_forward_rounded,
-                                        color: Colors.white,
-                                        size: 17,
-                                      ),
-                                    ] else ...[
-                                      const Icon(
-                                        Icons.lock_outline_rounded,
-                                        color: Color(0xFF94A3B8),
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                          _ctaButtonText,
-                                          style: GoogleFonts.spaceGrotesk(
-                                            color: const Color(0xFF94A3B8),
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w700,
+                                      ] else if (_isEligibleForPayment) ...[
+                                        Icon(
+                                          pass.cost == 0 ? Icons.verified_rounded : Icons.account_balance_wallet_rounded,
+                                          color: Colors.white,
+                                          size: 19,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            _ctaButtonText,
+                                            style: GoogleFonts.spaceGrotesk(
+                                              color: Colors.white,
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 0.2,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.arrow_forward_rounded,
+                                          color: Colors.white,
+                                          size: 17,
+                                        ),
+                                      ] else ...[
+                                        const Icon(
+                                          Icons.lock_outline_rounded,
+                                          color: Color(0xFF94A3B8),
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            _ctaButtonText,
+                                            style: GoogleFonts.spaceGrotesk(
+                                              color: const Color(0xFF94A3B8),
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -1370,6 +1474,333 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  // --- Active Transit Pass Card (Shown right on Passes page when a pass is active) ---
+  Widget _buildActivePassCard(
+    bool dark,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+  ) {
+    final operator = _activePass?['operator']?.toString() ?? 'BRTS';
+    final operatorColor = _getOperatorColor(operator);
+    final passTitle = _activePass?['pass_title']?.toString() ?? 'Active Transit Pass';
+    final passNumber = _activePass?['pass_number']?.toString() ?? 'PASS-BRTS-849201';
+    final category = _activePass?['category']?.toString() ?? 'Commuter';
+    final duration = _activePass?['duration']?.toString() ?? '30 Days';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StitchGlassCard(
+          isDarkMode: dark,
+          borderRadius: 26,
+          padding: const EdgeInsets.all(20),
+          hasCyanGlow: true,
+          borderColor: operatorColor.withValues(alpha: 0.4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Operator Badge & Glowing Active Pill
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: operatorColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: operatorColor.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.directions_bus_rounded, color: operatorColor, size: 14),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              operator == 'BRTS'
+                                  ? 'Ahmedabad Janmarg BRTS'
+                                  : operator == 'AMTS'
+                                      ? 'AMTS City Bus'
+                                      : 'GSRTC State Transport',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: operatorColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF86EFAC)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF16A34A),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'ACTIVE PASS',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF16A34A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Pass Title & Category
+              Text(
+                passTitle,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: primaryTextColor,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$category Pass • $duration Unlimited Access',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: secondaryTextColor,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Digital Pass Token & QR Strip
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: operatorColor.withValues(alpha: 0.25),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: operatorColor.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      padding: const EdgeInsets.all(3),
+                      child: QrImageView(
+                        data: 'PRAVHA-PASS|$passNumber|$operator',
+                        version: QrVersions.auto,
+                        size: 52,
+                        backgroundColor: Colors.white,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Color(0xFF0F172A),
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'DIGITAL PASS ID',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF94A3B8),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            passNumber,
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: operatorColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Scan QR at Turnstiles or Boarding Gates',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: secondaryTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Benefits Summary Box
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: Color(0xFF047857), size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '100% Ride Discount on $operator Network',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF047857),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.confirmation_number_rounded, color: Color(0xFF0891B2), size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Zero-fare ticket booking unlocked in Wallet',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF0E7490),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              // Primary Action: Book Discounted Ticket in Wallet
+              Container(
+                height: 48,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [operatorColor, operatorColor.withValues(alpha: 0.85)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: operatorColor.withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: widget.onNavigateToWallet,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.qr_code_rounded, color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Book Discounted Ticket in Wallet',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // Secondary Action: Browse / Buy Another Pass
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _showPassCatalog = true),
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 16, color: Color(0xFF0891B2)),
+                  label: Text(
+                    'Browse Pass Catalog / Buy Another Pass',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0891B2),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
