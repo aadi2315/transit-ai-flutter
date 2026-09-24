@@ -148,21 +148,6 @@ class _PravhaSplashScreenState extends State<PravhaSplashScreen>
           curve: Curves.easeInOut,
           child: Stack(
             children: [
-              // Ambient crystal cyan light glow
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.center,
-                      radius: 0.85,
-                      colors: [
-                        Color(0x180891B2),
-                        Colors.white,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
               // Center Logo with exact drive-in and gloss shimmer animations
               Center(
                 child: AnimatedBuilder(
