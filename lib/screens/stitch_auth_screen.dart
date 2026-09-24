@@ -959,7 +959,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                       border: InputBorder.none,
                                       isDense: true,
                                       contentPadding: EdgeInsets.zero,
-                                      hintText: 'e.g. Aarav Patel',
+                                      hintText: 'Aarav Patel',
                                       hintStyle: GoogleFonts.plusJakartaSans(
                                         color: const Color(0xFF94A3B8),
                                         fontSize: 13,
@@ -1065,7 +1065,7 @@ class _StitchAuthScreenState extends State<StitchAuthScreen> {
                                       isDense: true,
                                       contentPadding: EdgeInsets.zero,
                                       hintText:
-                                          'e.g. SG Highway, Vastrapur, Kalupur...',
+                                          'SG Highway, Vastrapur, Kalupur...',
                                       hintStyle: GoogleFonts.plusJakartaSans(
                                         color: const Color(0xFF94A3B8),
                                         fontSize: 13,

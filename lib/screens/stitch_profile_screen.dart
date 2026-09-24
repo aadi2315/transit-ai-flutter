@@ -87,7 +87,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
     final nameCtrl = TextEditingController(text: _getName());
     final phoneCtrl = TextEditingController(text: _getPhone());
     final localityCtrl = TextEditingController(text: _getLocality());
-    final emergencyCtrl = TextEditingController(text: _getEmergencyContact());
 
     showModalBottomSheet(
       context: context,
@@ -153,9 +152,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                 const SizedBox(height: 14),
                 _buildModalField('HOME LOCALITY / CITY HUB', localityCtrl,
                     Icons.location_on_rounded),
-                const SizedBox(height: 14),
-                _buildModalField('EMERGENCY CONTACT', emergencyCtrl,
-                    Icons.contact_phone_rounded),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
@@ -167,7 +163,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                         name: nameCtrl.text.trim(),
                         phone: phoneCtrl.text.trim(),
                         locality: localityCtrl.text.trim(),
-                        emergency: emergencyCtrl.text.trim(),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -252,7 +247,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
     required String name,
     required String phone,
     required String locality,
-    required String emergency,
   }) async {
     setState(() => _isLoading = true);
     try {
@@ -260,7 +254,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
         fullName: name.isNotEmpty ? name : 'Aarav Patel',
         phone: phone.isNotEmpty ? phone : '9879044120',
         locality: locality.isNotEmpty ? locality : 'Ahmedabad',
-        emergencyContact: emergency.isNotEmpty ? emergency : 'Pooja Patel',
         preferredTransit: _preferredModes.join(', '),
       );
       if (mounted) {
@@ -300,20 +293,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
     }
   }
 
-  Future<void> _toggleMode(String mode) async {
-    setState(() {
-      if (_preferredModes.contains(mode)) {
-        if (_preferredModes.length > 1) {
-          _preferredModes.remove(mode);
-        }
-      } else {
-        _preferredModes.add(mode);
-      }
-    });
-    await SupabaseService.instance.updateUserProfile(
-      preferredTransit: _preferredModes.join(', '),
-    );
-  }
 
   void _confirmLogout() {
     showDialog(
@@ -407,10 +386,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
           ? _profile!['locality']
           : 'SG Highway, Ahmedabad';
 
-  String _getEmergencyContact() =>
-      _profile?['emergency_contact']?.toString().isNotEmpty == true
-          ? _profile!['emergency_contact']
-          : 'Pooja Patel (+91 98790 12345)';
 
   String _getCommuterUid() {
     final rawId = _profile?['id']?.toString() ?? 'PRV20268841AHM';
@@ -528,21 +503,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: emeraldGreen,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0x6610B981),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
                                   'PRAVHA PROFILE',
@@ -859,9 +819,9 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
 
                   const SizedBox(height: 16),
 
-                  // 3. COMMUTER IMPACT & GREEN STATS
+                  // 3. COMMUTER IMPACT & STATS
                   Text(
-                    'COMMUTER GREEN STATS',
+                    'COMMUTER STATS',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
@@ -885,30 +845,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: _buildStatCard(
-                          icon: Icons.eco_rounded,
-                          iconColor: emeraldGreen,
-                          title: 'CO₂ Saved',
-                          value: '24.6 kg',
-                          subText: 'Clean Transit',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.savings_rounded,
-                          iconColor: const Color(0xFFF59E0B),
-                          title: 'Money Saved',
-                          value: '₹680',
-                          subText: 'vs Cabs & Fuel',
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildStatCard(
                           icon: Icons.stars_rounded,
                           iconColor: const Color(0xFF8B5CF6),
                           title: 'Green Points',
@@ -921,9 +857,9 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
 
                   const SizedBox(height: 20),
 
-                  // 4. TRANSIT PASS & CONCESSION STATUS
+                  // 4. TRANSIT PASS STATUS (Active or Not Taken)
                   Text(
-                    'CONCESSION & SMART PASS',
+                    'SMART TRANSIT PASS',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
@@ -943,16 +879,26 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                         Row(
                           children: [
                             Container(
-                              width: 36,
-                              height: 36,
+                              width: 38,
+                              height: 38,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFECFEFF),
+                                color: _activePass != null
+                                    ? const Color(0xFFECFDF5)
+                                    : const Color(0xFFFEF2F2),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFA5F3FC)),
+                                border: Border.all(
+                                  color: _activePass != null
+                                      ? const Color(0xFFA7F3D0)
+                                      : const Color(0xFFFECACA),
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.card_membership_rounded,
-                                color: brandCyan,
+                              child: Icon(
+                                _activePass != null
+                                    ? Icons.check_circle_rounded
+                                    : Icons.cancel_rounded,
+                                color: _activePass != null
+                                    ? emeraldGreen
+                                    : const Color(0xFFEF4444),
                                 size: 20,
                               ),
                             ),
@@ -963,8 +909,8 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                                 children: [
                                   Text(
                                     _activePass != null
-                                        ? (_activePass!['pass_title'] ?? 'Active Student Pass')
-                                        : 'Student Concession Pass',
+                                        ? (_activePass!['pass_title'] ?? 'Active Transit Pass')
+                                        : 'Transit Pass',
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
@@ -973,8 +919,8 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                                   ),
                                   Text(
                                     _activePass != null
-                                        ? '50% Concession • Verified via AI KYC'
-                                        : 'Eligible for 50% discount on BRTS & Metro',
+                                        ? 'Active & verified for transit'
+                                        : 'Not Taken',
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 11,
                                       color: secondaryTextColor,
@@ -985,21 +931,42 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFECFDF5),
-                                borderRadius: BorderRadius.circular(6),
+                                color: _activePass != null
+                                    ? const Color(0xFFECFDF5)
+                                    : const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: const Color(0xFFA7F3D0),
+                                  color: _activePass != null
+                                      ? const Color(0xFFA7F3D0)
+                                      : const Color(0xFFFECACA),
                                 ),
                               ),
-                              child: Text(
-                                _activePass != null ? 'ACTIVE' : 'READY',
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: emeraldGreen,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _activePass != null
+                                        ? Icons.check_circle_rounded
+                                        : Icons.cancel_rounded,
+                                    size: 13,
+                                    color: _activePass != null
+                                        ? emeraldGreen
+                                        : const Color(0xFFEF4444),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _activePass != null ? 'Active' : 'Not Taken',
+                                    style: GoogleFonts.jetBrainsMono(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: _activePass != null
+                                          ? emeraldGreen
+                                          : const Color(0xFFEF4444),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -1014,8 +981,8 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
                               Expanded(
                                 child: Text(
                                   _activePass != null
-                                      ? 'View Digital Pass & Concessions'
-                                      : 'Apply for Concession Pass',
+                                      ? 'View Digital Pass'
+                                      : 'Get or Buy Pass',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
@@ -1039,219 +1006,7 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
 
                   const SizedBox(height: 20),
 
-                  // 5. ACTIVE TICKET & WALLET
-                  Text(
-                    'TRANSIT WALLET & TICKETS',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  StitchGlassCard(
-                    borderRadius: 22,
-                    padding: const EdgeInsets.all(16),
-                    borderColor: const Color(0xFFE2E8F0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEF3C7),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFFDE68A)),
-                              ),
-                              child: const Icon(
-                                Icons.qr_code_2_rounded,
-                                color: Color(0xFFD97706),
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _activeTicket != null
-                                        ? '${_activeTicket!['origin'] ?? 'Origin'} → ${_activeTicket!['destination'] ?? 'Dest'}'
-                                        : 'Dynamic QR Fare Checkout',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: primaryTextColor,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    _activeTicket != null
-                                        ? 'Active Ticket • Offline TOTP Validated'
-                                        : 'Instant single-tap multimodal ticketing',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11,
-                                      color: secondaryTextColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (_activeTicket != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFECFEFF),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: const Color(0xFFA5F3FC),
-                                  ),
-                                ),
-                                child: Text(
-                                  'VALID',
-                                  style: GoogleFonts.jetBrainsMono(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: brandCyan,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                        const SizedBox(height: 10),
-                        GestureDetector(
-                          onTap: widget.onNavigateToWallet,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _activeTicket != null
-                                      ? 'Show Full Dynamic QR Pass'
-                                      : 'Open Wallet & Fare Calculator',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: brandCyan,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 12,
-                                color: brandCyan,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // 6. PREFERENCES & MODES
-                  Text(
-                    'TRANSIT PREFERENCES',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  StitchGlassCard(
-                    borderRadius: 22,
-                    padding: const EdgeInsets.all(16),
-                    borderColor: const Color(0xFFE2E8F0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Preferred Commute Modes',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF334155),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _buildModeChip('Metro', Icons.subway_rounded),
-                            _buildModeChip('BRTS', Icons.directions_bus_rounded),
-                            _buildModeChip('AMTS', Icons.airport_shuttle_rounded),
-                            _buildModeChip('Auto', Icons.electric_rickshaw_rounded),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.emergency_share_rounded,
-                              size: 16,
-                              color: Color(0xFFEF4444),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Emergency SOS Contact',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                  Text(
-                                    _getEmergencyContact(),
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: primaryTextColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: _showEditProfileDialog,
-                              child: Text(
-                                'Change',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: brandCyan,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // 7. ACCOUNT ACTIONS
+                  // ACCOUNT ACTIONS
                   Text(
                     'ACCOUNT & SECURITY',
                     style: GoogleFonts.jetBrainsMono(
@@ -1388,42 +1143,6 @@ class _StitchProfileScreenState extends State<StitchProfileScreen> {
     );
   }
 
-  Widget _buildModeChip(String mode, IconData icon) {
-    final isSelected = _preferredModes.contains(mode);
-    return GestureDetector(
-      onTap: () => _toggleMode(mode),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFECFEFF) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF0891B2) : const Color(0xFFE2E8F0),
-            width: isSelected ? 1.4 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: isSelected ? const Color(0xFF0891B2) : const Color(0xFF64748B),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              mode,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                color: isSelected ? const Color(0xFF0891B2) : const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildAccountActionTile({
     required IconData icon,
