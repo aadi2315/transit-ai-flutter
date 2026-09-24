@@ -12,6 +12,39 @@ import '../services/supabase_service.dart';
 import '../utils/device_file_picker.dart';
 import '../config/razorpay_config.dart';
 
+/// Pass Model representing transit passes across AMTS, BRTS, and GSRTC
+class TransitPassOption {
+  final String id;
+  final String operator; // 'BRTS' | 'AMTS' | 'GSRTC'
+  final String category; // 'Commuter' | 'Student' | 'Senior'
+  final String title;
+  final int cost; // 0 = Free
+  final int? originalCost;
+  final String duration;
+  final String billingPeriod;
+  final String subtitle;
+  final String tag;
+  final bool requiresStudentVerification;
+  final bool requiresSeniorVerification;
+  final IconData icon;
+
+  const TransitPassOption({
+    required this.id,
+    required this.operator,
+    required this.category,
+    required this.title,
+    required this.cost,
+    this.originalCost,
+    required this.duration,
+    required this.billingPeriod,
+    required this.subtitle,
+    required this.tag,
+    this.requiresStudentVerification = false,
+    this.requiresSeniorVerification = false,
+    required this.icon,
+  });
+}
+
 class StitchPassesScreen extends StatefulWidget {
   final VoidCallback onNavigateToHome;
   final VoidCallback onNavigateToRouteDetails;
@@ -37,6 +70,205 @@ class StitchPassesScreen extends StatefulWidget {
 }
 
 class _StitchPassesScreenState extends State<StitchPassesScreen> {
+  // All pass options from AMTS, BRTS, and GSRTC Transit Guide
+  static const List<TransitPassOption> _allPasses = [
+    // --- BRTS (Ahmedabad Janmarg Dedicated Corridor) ---
+    TransitPassOption(
+      id: 'brts_monthly',
+      operator: 'BRTS',
+      category: 'Commuter',
+      title: 'Monthly Corridor Pass',
+      cost: 750,
+      duration: '30 Days',
+      billingPeriod: '/ mo',
+      subtitle: 'Unlimited access across dedicated BRTS corridors',
+      tag: 'Regular Pass',
+      icon: Icons.directions_bus_rounded,
+    ),
+    TransitPassOption(
+      id: 'brts_quarterly',
+      operator: 'BRTS',
+      category: 'Commuter',
+      title: 'Quarterly Corridor Pass',
+      cost: 2000,
+      originalCost: 2250,
+      duration: '90 Days',
+      billingPeriod: '/ 90d',
+      subtitle: 'Unlimited BRTS corridor access for 3 months',
+      tag: 'Save ₹250',
+      icon: Icons.calendar_month_rounded,
+    ),
+    TransitPassOption(
+      id: 'brts_student',
+      operator: 'BRTS',
+      category: 'Student',
+      title: 'Student Concession Pass',
+      cost: 450,
+      originalCost: 750,
+      duration: 'Session / Semester',
+      billingPeriod: '/ mo',
+      subtitle: '40% discount for school and college students',
+      tag: '40% Subsidy',
+      requiresStudentVerification: true,
+      icon: Icons.school_rounded,
+    ),
+    TransitPassOption(
+      id: 'brts_senior_60_75',
+      operator: 'BRTS',
+      category: 'Senior',
+      title: 'Senior Citizen Pass (60–75)',
+      cost: 450,
+      originalCost: 750,
+      duration: '30 Days',
+      billingPeriod: '/ mo',
+      subtitle: '40% concession for seniors aged 60 to 75',
+      tag: '40% Off',
+      requiresSeniorVerification: true,
+      icon: Icons.elderly_rounded,
+    ),
+    TransitPassOption(
+      id: 'brts_senior_75_plus',
+      operator: 'BRTS',
+      category: 'Senior',
+      title: 'Senior Super Pass (75+)',
+      cost: 0,
+      originalCost: 750,
+      duration: 'Annual Free Pass',
+      billingPeriod: 'Free',
+      subtitle: '100% free travel across all Janmarg corridors',
+      tag: '100% Free',
+      requiresSeniorVerification: true,
+      icon: Icons.volunteer_activism_rounded,
+    ),
+
+    // --- AMTS (Ahmedabad Municipal Transport Service) ---
+    TransitPassOption(
+      id: 'amts_monthly',
+      operator: 'AMTS',
+      category: 'Commuter',
+      title: 'Monthly "Travel as You Like"',
+      cost: 900,
+      duration: '30 Days',
+      billingPeriod: '/ mo',
+      subtitle: 'Unlimited rides on all AMTS city routes',
+      tag: 'City Routes',
+      icon: Icons.directions_bus_filled_rounded,
+    ),
+    TransitPassOption(
+      id: 'amts_quarterly',
+      operator: 'AMTS',
+      category: 'Commuter',
+      title: 'Quarterly "Travel as You Like"',
+      cost: 2400,
+      originalCost: 2700,
+      duration: '90 Days',
+      billingPeriod: '/ 90d',
+      subtitle: 'Unlimited AMTS city bus rides for 3 months',
+      tag: 'Save ₹300',
+      icon: Icons.calendar_month_rounded,
+    ),
+    TransitPassOption(
+      id: 'amts_student',
+      operator: 'AMTS',
+      category: 'Student',
+      title: 'Student Concession Pass',
+      cost: 180,
+      originalCost: 900,
+      duration: 'Monthly / Term',
+      billingPeriod: '/ mo',
+      subtitle: 'Up to 85% discount for verified academic students',
+      tag: '80% Subsidy',
+      requiresStudentVerification: true,
+      icon: Icons.school_rounded,
+    ),
+    TransitPassOption(
+      id: 'amts_senior',
+      operator: 'AMTS',
+      category: 'Senior',
+      title: 'Senior Citizen Weekend Pass',
+      cost: 0,
+      duration: 'Civic / Weekend',
+      billingPeriod: 'Free',
+      subtitle: 'Designated free weekend travel on civic/religious routes',
+      tag: 'Weekend Free',
+      requiresSeniorVerification: true,
+      icon: Icons.elderly_rounded,
+    ),
+
+    // --- GSRTC (Gujarat State Road Transport Corporation) ---
+    TransitPassOption(
+      id: 'gsrtc_point_to_point',
+      operator: 'GSRTC',
+      category: 'Commuter',
+      title: 'Point-to-Point Commuter Pass',
+      cost: 800,
+      originalCost: 1600,
+      duration: 'Monthly',
+      billingPeriod: '/ mo',
+      subtitle: 'Fixed-route daily commute pass (~50% discount)',
+      tag: '50% Subsidy',
+      icon: Icons.alt_route_rounded,
+    ),
+    TransitPassOption(
+      id: 'gsrtc_all_gujarat',
+      operator: 'GSRTC',
+      category: 'Commuter',
+      title: 'All-Gujarat Unlimited 30-Day',
+      cost: 3900,
+      duration: '30 Days',
+      billingPeriod: '/ 30d',
+      subtitle: 'Unrestricted access across state transport network',
+      tag: 'Statewide',
+      icon: Icons.map_rounded,
+    ),
+    TransitPassOption(
+      id: 'gsrtc_student',
+      operator: 'GSRTC',
+      category: 'Student',
+      title: 'Student Monthly Pass',
+      cost: 250,
+      originalCost: 800,
+      duration: 'Monthly',
+      billingPeriod: '/ mo',
+      subtitle: 'Institutional subsidy for intercity student commuters',
+      tag: 'Subsidized',
+      requiresStudentVerification: true,
+      icon: Icons.school_rounded,
+    ),
+    TransitPassOption(
+      id: 'gsrtc_senior_permanent',
+      operator: 'GSRTC',
+      category: 'Senior',
+      title: 'Senior Permanent Pass (5 Years)',
+      cost: 30,
+      duration: '5 Years',
+      billingPeriod: '/ 5 yrs',
+      subtitle: 'Statewide concessional travel (₹30 administrative fee)',
+      tag: '5-Year Card',
+      requiresSeniorVerification: true,
+      icon: Icons.verified_user_rounded,
+    ),
+    TransitPassOption(
+      id: 'gsrtc_senior_temporary',
+      operator: 'GSRTC',
+      category: 'Senior',
+      title: 'Senior Temporary Pass (3 Months)',
+      cost: 20,
+      duration: '3 Months',
+      billingPeriod: '/ 3 mos',
+      subtitle: 'Concessional travel across GSRTC state routes',
+      tag: '3-Month Card',
+      requiresSeniorVerification: true,
+      icon: Icons.timer_rounded,
+    ),
+  ];
+
+  // Operator filter: 'All', 'BRTS', 'AMTS', 'GSRTC'
+  String _selectedOperator = 'All';
+
+  // Selected Pass ID
+  String _selectedPassId = 'brts_monthly';
+
   // Verification method: 'digilocker' | 'manual'
   String _selectedMethod = 'digilocker';
 
@@ -60,6 +292,33 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
   final RazorpayService _razorpayService = RazorpayService();
   bool _isProcessingPayment = false;
 
+  TransitPassOption get _selectedPass {
+    return _allPasses.firstWhere(
+      (p) => p.id == _selectedPassId,
+      orElse: () => _allPasses.first,
+    );
+  }
+
+  List<TransitPassOption> get _availablePasses {
+    if (_selectedOperator == 'All') {
+      return _allPasses;
+    }
+    return _allPasses.where((p) => p.operator == _selectedOperator).toList();
+  }
+
+  Color _getOperatorColor(String operator) {
+    switch (operator) {
+      case 'BRTS':
+        return const Color(0xFF0891B2); // Cyan / Teal
+      case 'AMTS':
+        return const Color(0xFF4F46E5); // Indigo
+      case 'GSRTC':
+        return const Color(0xFF059669); // Emerald
+      default:
+        return const Color(0xFF0891B2);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -67,12 +326,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
       onSuccess: (response) {
         if (!mounted) return;
         setState(() => _isProcessingPayment = false);
-        _showToast('Pass Activated! ID: ${response.paymentId ?? "Confirmed"}');
-        Future.delayed(const Duration(milliseconds: 700), () {
-          if (mounted) {
-            widget.onNavigateToWallet();
-          }
-        });
+        _activatePassSuccess(response.paymentId ?? 'Confirmed');
       },
       onError: (errorMessage) {
         if (!mounted) return;
@@ -82,25 +336,75 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
     );
   }
 
+  void _onOperatorSelected(String op) {
+    setState(() {
+      _selectedOperator = op;
+      final available = _availablePasses;
+      if (!available.any((p) => p.id == _selectedPassId)) {
+        _selectedPassId = available.first.id;
+      }
+    });
+  }
+
+  void _onPassSelected(String? newId) {
+    if (newId == null) return;
+    setState(() {
+      _selectedPassId = newId;
+    });
+  }
+
   void _payForPass() {
+    final pass = _selectedPass;
+    if (pass.cost == 0) {
+      // Free concession pass
+      _activatePassSuccess('FREE_${pass.operator}_${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}');
+      return;
+    }
+
     setState(() => _isProcessingPayment = true);
     _razorpayService.openPayment(
-      amount: 300,
+      amount: pass.cost,
       keyId: RazorpayConfig.keyId,
-      description: RazorpayConfig.passBookingDescription,
+      description: '${pass.operator} ${pass.title}',
       onDesktopFallbackSimulateSuccess: () {
         if (!mounted) return;
         setState(() => _isProcessingPayment = false);
         final simId =
             'pay_pass_${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}';
-        _showToast('Pass Activated! Ref: $simId');
-        Future.delayed(const Duration(milliseconds: 700), () {
-          if (mounted) {
-            widget.onNavigateToWallet();
-          }
-        });
+        _activatePassSuccess(simId);
       },
     );
+  }
+
+  Future<void> _activatePassSuccess(String refId) async {
+    final pass = _selectedPass;
+    _showToast('${pass.operator} Pass Activated! Ref: $refId');
+    final profile = SupabaseService.instance.currentUserProfile;
+    final phone = profile?['phone'] ?? '9876543210';
+
+    final int calculatedSubsidy = pass.cost == 0
+        ? 100
+        : (pass.originalCost != null
+            ? (((pass.originalCost! - pass.cost) / pass.originalCost!) * 100).round()
+            : 0);
+
+    await SupabaseService.instance.saveConcessionPass(
+      passNumber: 'PASS-${pass.operator}-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
+      institutionName: pass.category == 'Student'
+          ? (_extractionResult?.institutionName ?? 'Gujarat University')
+          : '${pass.operator} Transit Authority',
+      rollNumber: pass.category == 'Student'
+          ? (_extractionResult?.rollNumber ?? '22012011048')
+          : 'CITIZEN-${phone.length > 4 ? phone.substring(phone.length - 4) : 'USER'}',
+      subsidyPercent: calculatedSubsidy,
+      monthlyFare: pass.cost.toDouble(),
+    );
+
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) {
+        widget.onNavigateToWallet();
+      }
+    });
   }
 
   void _showToast(String message) {
@@ -131,7 +435,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
           _extractionResult = null;
           _isVerifying = false;
         });
-        _showToast('Document Selected: ${picked.fileName} (${picked.formattedSize})');
+        _showToast('Document Selected: ${picked.fileName}');
       } else {
         setState(() {
           _selectedDocumentName = 'GTU_Bonafide_Certificate_2026.pdf';
@@ -178,25 +482,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
       });
 
       if (result.isVerified) {
-        _showToast('Document Verified by Gemini Vision AI! 80% Subsidy Applied.');
-        // Save to Supabase and offline vault
-        final profile = SupabaseService.instance.currentUserProfile;
-        final phone = profile?['phone'] ?? '9876543210';
-        await SupabaseService.instance.submitKycApplication(
-          phone: phone,
-          studentName: result.studentName,
-          institutionName: result.institutionName,
-          rollNumber: result.rollNumber,
-          ocrData: result.toJson(),
-          isApproved: true,
-        );
-        await SupabaseService.instance.saveConcessionPass(
-          passNumber: 'PASS-AMD-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
-          institutionName: result.institutionName,
-          rollNumber: result.rollNumber,
-          subsidyPercent: 80,
-          monthlyFare: 60.0,
-        );
+        _showToast('Document Verified by Gemini Vision AI! Subsidy Unlocked.');
       } else {
         _showToast(result.remarks);
       }
@@ -217,41 +503,56 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
     super.dispose();
   }
 
+  bool get _isEligibleForPayment {
+    final pass = _selectedPass;
+    if (pass.category == 'Commuter') {
+      return true; // General commuters do not require academic bonafide
+    } else if (pass.category == 'Senior') {
+      return _selectedMethod == 'digilocker'
+          ? _isDigiLockerLinked
+          : (_verificationStatus == 'verified' || _selectedDocumentName != null);
+    } else {
+      // Student category
+      if (_selectedMethod == 'digilocker') {
+        return _isDigiLockerLinked;
+      } else {
+        return _verificationStatus == 'verified';
+      }
+    }
+  }
+
+  String get _ctaButtonText {
+    final pass = _selectedPass;
+    if (_isProcessingPayment) {
+      return 'Processing Payment...';
+    }
+    if (!_isEligibleForPayment) {
+      if (pass.category == 'Student') {
+        if (_isVerifying) return 'Verifying Student Bonafide...';
+        if (_verificationStatus == 'rejected') return 'Verification Failed (Upload Bonafide)';
+        return 'Verify Student Bonafide to Activate';
+      } else if (pass.category == 'Senior') {
+        return 'Verify Senior Age to Activate';
+      }
+      return 'Complete Verification';
+    }
+    if (pass.cost == 0) {
+      return 'Activate Free ${pass.operator} Pass';
+    }
+    return 'Pay ₹${pass.cost} via UPI & Activate Pass';
+  }
+
   @override
   Widget build(BuildContext context) {
     const dark = false;
-
     const primaryTextColor = Color(0xFF0F172A);
     const secondaryTextColor = Color(0xFF475569);
     const brandPillBg = Colors.white;
     const brandPillBorder = Color(0xFFA5F3FC);
 
-    final bool isEligibleForPayment;
-    final String ctaText;
-
-    if (_selectedMethod == 'digilocker') {
-      isEligibleForPayment = _isDigiLockerLinked;
-      ctaText = _isDigiLockerLinked
-          ? 'Pay ₹300 via UPI & Activate Pass'
-          : 'Connect DigiLocker to Activate Pass';
-    } else {
-      if (_verificationStatus == 'verified') {
-        isEligibleForPayment = true;
-        ctaText = 'Pay ₹300 via UPI & Activate Subsidized Pass';
-      } else if (_isVerifying) {
-        isEligibleForPayment = false;
-        ctaText = 'Running On-Device Gemini OCR...';
-      } else if (_verificationStatus == 'rejected') {
-        isEligibleForPayment = false;
-        ctaText = 'Verification Failed (Pass Blocked)';
-      } else if (_selectedDocumentName == null) {
-        isEligibleForPayment = false;
-        ctaText = 'Select Document to Activate Subsidized Pass';
-      } else {
-        isEligibleForPayment = false;
-        ctaText = 'Verify Document to Activate Subsidized Pass';
-      }
-    }
+    final pass = _selectedPass;
+    final operatorColor = _getOperatorColor(pass.operator);
+    final availablePasses = _availablePasses;
 
     return StitchBackground(
       isDarkMode: dark,
@@ -274,11 +575,10 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // TOP BAR: Passes & Concessions Badge + Theme + Profile Button
+                      // TOP BAR: Passes & Concessions Badge + Profile Button
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Passes & Concessions Title Pill
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -334,7 +634,6 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                             ),
                           ),
 
-                          // Top Right Actions: Profile Button (leading to Auth)
                           StitchProfileButton(
                             isDarkMode: dark,
                             onTap: widget.onNavigateToProfile,
@@ -344,7 +643,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
                       const SizedBox(height: 14),
 
-                      // 1. HERO CARD (Student & Commuter Passes + Concession Subsidy)
+                      // 1. PASS SELECTOR HERO CARD (Dropdown Menu + Dynamic Cost)
                       StitchGlassCard(
                         isDarkMode: dark,
                         borderRadius: 24,
@@ -353,92 +652,385 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Heading
-                            Text(
-                              'Student & Commuter Passes',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: primaryTextColor,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Verify your academic status for an automatic BRTS & Metro student pass discount.',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: secondaryTextColor,
-                                height: 1.35,
-                              ),
-                            ),
-
-                            const SizedBox(height: 14),
-
-                            // Aligned Monthly Pass Rate Section
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFECFEFF),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: const Color(0xFFA5F3FC),
-                                  width: 1.2,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                            // Card Header
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'YOUR MONTHLY PASS',
-                                        style: GoogleFonts.jetBrainsMono(
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF0891B2),
-                                          letterSpacing: 0.5,
+                                        'Select Transit Pass',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          color: primaryTextColor,
+                                          letterSpacing: -0.3,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Unlimited BRTS & Metro Corridors',
+                                        'AMTS • BRTS • GSRTC Corridors',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w500,
                                           color: secondaryTextColor,
                                         ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.baseline,
-                                    textBaseline: TextBaseline.alphabetic,
-                                    children: [
-                                      Text(
-                                        '₹300',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF0891B2),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: operatorColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: operatorColor.withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    pass.operator,
+                                    style: GoogleFonts.jetBrainsMono(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: operatorColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Operator Filter Chips Row
+                            Row(
+                              children: ['All', 'BRTS', 'AMTS', 'GSRTC'].map((op) {
+                                final isSelected = _selectedOperator == op;
+                                final opColor = op == 'All' ? const Color(0xFF0891B2) : _getOperatorColor(op);
+                                return Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                                    child: GestureDetector(
+                                      onTap: () => _onOperatorSelected(op),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? opColor.withValues(alpha: 0.15)
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? opColor
+                                                : const Color(0xFFE2E8F0),
+                                            width: 1.2,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          op,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                            color: isSelected ? opColor : secondaryTextColor,
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        '/mo',
-                                        style: GoogleFonts.jetBrainsMono(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: secondaryTextColor,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // PASS SELECTION DROPDOWN MENU
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: operatorColor.withValues(alpha: 0.5),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: operatorColor.withValues(alpha: 0.08),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _selectedPassId,
+                                  isExpanded: true,
+                                  icon: Icon(
+                                    Icons.arrow_drop_down_circle_rounded,
+                                    color: operatorColor,
+                                    size: 22,
+                                  ),
+                                  dropdownColor: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  selectedItemBuilder: (BuildContext context) {
+                                    return availablePasses.map((p) {
+                                      final opCol = _getOperatorColor(p.operator);
+                                      return Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: opCol.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                p.operator,
+                                                style: GoogleFonts.jetBrainsMono(
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: opCol,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                p.title,
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: primaryTextColor,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              p.cost == 0 ? 'FREE' : '₹${p.cost}',
+                                              style: GoogleFonts.spaceGrotesk(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: opCol,
+                                              ),
+                                            ),
+                                          ],
                                         ),
+                                      );
+                                    }).toList();
+                                  },
+                                  items: availablePasses.map((p) {
+                                    final isSelected = p.id == _selectedPassId;
+                                    final opCol = _getOperatorColor(p.operator);
+                                    return DropdownMenuItem<String>(
+                                      value: p.id,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: opCol.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                p.operator,
+                                                style: GoogleFonts.jetBrainsMono(
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: opCol,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    p.title,
+                                                    style: GoogleFonts.plusJakartaSans(
+                                                      fontSize: 12,
+                                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                                      color: isSelected ? opCol : primaryTextColor,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  Text(
+                                                    '${p.category} • ${p.duration}',
+                                                    style: GoogleFonts.jetBrainsMono(
+                                                      fontSize: 9,
+                                                      color: secondaryTextColor,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  p.cost == 0 ? 'FREE' : '₹${p.cost}',
+                                                  style: GoogleFonts.spaceGrotesk(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: opCol,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  p.billingPeriod,
+                                                  style: GoogleFonts.jetBrainsMono(
+                                                    fontSize: 8,
+                                                    color: secondaryTextColor,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: _onPassSelected,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // DYNAMIC COST & PASS DETAILS CARD
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: operatorColor.withValues(alpha: 0.06),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: operatorColor.withValues(alpha: 0.25),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Left: Badges & Description
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Wrap(
+                                              spacing: 5,
+                                              runSpacing: 4,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFF1F5F9),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                                  ),
+                                                  child: Text(
+                                                    pass.category,
+                                                    style: GoogleFonts.plusJakartaSans(
+                                                      fontSize: 9.5,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: secondaryTextColor,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFECFDF5),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                                                  ),
+                                                  child: Text(
+                                                    pass.tag,
+                                                    style: GoogleFonts.plusJakartaSans(
+                                                      fontSize: 9.5,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: const Color(0xFF047857),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              pass.subtitle,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 11,
+                                                color: secondaryTextColor,
+                                                height: 1.3,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      const SizedBox(width: 8),
+
+                                      // Right: Cost Display
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                                            textBaseline: TextBaseline.alphabetic,
+                                            children: [
+                                              Text(
+                                                pass.cost == 0 ? 'FREE' : '₹${pass.cost}',
+                                                style: GoogleFonts.spaceGrotesk(
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: operatorColor,
+                                                ),
+                                              ),
+                                              if (pass.cost > 0) ...[
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  pass.billingPeriod,
+                                                  style: GoogleFonts.jetBrainsMono(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: secondaryTextColor,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                          if (pass.originalCost != null)
+                                            Text(
+                                              'Was ₹${pass.originalCost}',
+                                              style: GoogleFonts.jetBrainsMono(
+                                                fontSize: 9.5,
+                                                decoration: TextDecoration.lineThrough,
+                                                color: const Color(0xFF94A3B8),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -451,138 +1043,12 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
                       const SizedBox(height: 12),
 
-                      // 2. VERIFICATION METHOD SWITCHER (Segmented Glass Pill)
-                      Container(
-                        height: 44,
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: const Color(0xFFA5F3FC),
-                            width: 1.2,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x14FF6B00),
-                              blurRadius: 12,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            // Instant via DigiLocker Tab
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() => _selectedMethod = 'digilocker');
-                                  _showToast('DigiLocker Fast-Track selected');
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: _selectedMethod == 'digilocker'
-                                        ? const Color(0xFFECFEFF)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: _selectedMethod == 'digilocker'
-                                        ? Border.all(
-                                            color: const Color(0xFF0891B2),
-                                            width: 1.2,
-                                          )
-                                        : null,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.bolt_rounded,
-                                        size: 15,
-                                        color: _selectedMethod == 'digilocker'
-                                            ? const Color(0xFF0891B2)
-                                            : const Color(0xFF64748B),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        'Instant via DigiLocker',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: _selectedMethod == 'digilocker'
-                                              ? const Color(0xFF0891B2)
-                                              : const Color(0xFF64748B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Upload Manually Tab
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() => _selectedMethod = 'manual');
-                                  _showToast('Manual Document Upload selected');
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: _selectedMethod == 'manual'
-                                        ? const Color(0xFFECFEFF)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: _selectedMethod == 'manual'
-                                        ? Border.all(
-                                            color: const Color(0xFF0891B2),
-                                            width: 1.2,
-                                          )
-                                        : null,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.upload_file_rounded,
-                                        size: 15,
-                                        color: _selectedMethod == 'manual'
-                                            ? const Color(0xFF0891B2)
-                                            : const Color(0xFF64748B),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        'Upload Manually',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: _selectedMethod == 'manual'
-                                              ? const Color(0xFF0891B2)
-                                              : const Color(0xFF64748B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // 2. VERIFICATION CARD (Contextual to pass type)
+                      _buildVerificationCard(pass, dark, primaryTextColor, secondaryTextColor),
 
                       const SizedBox(height: 12),
 
-                      // 3. TAB CONTENT: DIGILOCKER or MANUAL
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 250),
-                        child: _selectedMethod == 'digilocker'
-                            ? _buildDigiLockerSection(dark, primaryTextColor, secondaryTextColor)
-                            : _buildManualSection(dark, primaryTextColor, secondaryTextColor),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // 4. REAL-TIME STATUS & PRICE CARD (Concession Fare Summary)
+                      // 3. FARE SUMMARY & CHECKOUT CARD
                       StitchGlassCard(
                         isDarkMode: dark,
                         borderRadius: 24,
@@ -591,17 +1057,16 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.payments_rounded,
+                                Icon(
+                                  Icons.receipt_long_rounded,
                                   size: 17,
-                                  color: Color(0xFF0891B2),
+                                  color: operatorColor,
                                 ),
                                 const SizedBox(width: 7),
                                 Text(
-                                  'Concession Fare Summary',
+                                  'Fare Summary',
                                   style: GoogleFonts.spaceGrotesk(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -613,9 +1078,9 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
                             const SizedBox(height: 12),
 
-                            // Inner Pricing Box
+                            // Summary Box
                             Container(
-                              padding: const EdgeInsets.all(14),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(16),
@@ -624,64 +1089,83 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                   width: 1,
                                 ),
                               ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                              child: Column(
                                 children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.baseline,
-                                        textBaseline: TextBaseline.alphabetic,
-                                        children: [
-                                          Text(
-                                            '₹300',
-                                            style: GoogleFonts.spaceGrotesk(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w800,
-                                              color: const Color(0xFF0891B2),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '/ month',
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 11.5,
-                                              color: secondaryTextColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 3),
                                       Text(
-                                        'Includes Govt Concession Subsidy',
+                                        'Pass Tariff (${pass.duration})',
                                         style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 10.5,
+                                          fontSize: 11.5,
+                                          color: secondaryTextColor,
+                                        ),
+                                      ),
+                                      Text(
+                                        '₹${pass.originalCost ?? pass.cost}',
+                                        style: GoogleFonts.jetBrainsMono(
+                                          fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF047857),
+                                          color: primaryTextColor,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFECFEFF),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: const Color(0xFFA5F3FC),
-                                        width: 1,
+                                  if (pass.originalCost != null || pass.cost == 0) ...[
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Concession / Subsidy',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF047857),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            pass.cost == 0
+                                                ? '-100% (FREE)'
+                                                : '-₹${pass.originalCost! - pass.cost} (${pass.tag})',
+                                            style: GoogleFonts.jetBrainsMono(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF047857),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.end,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 8),
+                                    child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Payable Amount',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                          color: primaryTextColor,
+                                        ),
                                       ),
-                                    ),
-                                    child: const Icon(
-                                      Icons.verified_rounded,
-                                      color: Color(0xFF0891B2),
-                                      size: 20,
-                                    ),
+                                      Text(
+                                        pass.cost == 0 ? '₹0 (FREE)' : '₹${pass.cost}',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                          color: operatorColor,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -689,33 +1173,33 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
                             const SizedBox(height: 14),
 
-                            // Pay ₹300 via UPI & Activate Pass Button
+                            // CTA BUTTON
                             Container(
                               height: 50,
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                gradient: isEligibleForPayment
-                                    ? const LinearGradient(
+                                gradient: _isEligibleForPayment
+                                    ? LinearGradient(
                                         colors: [
-                                          Color(0xFF0891B2),
-                                          Color(0xFF06B6D4),
+                                          operatorColor,
+                                          operatorColor.withValues(alpha: 0.85),
                                         ],
                                       )
                                     : null,
-                                color: isEligibleForPayment
+                                color: _isEligibleForPayment
                                     ? null
                                     : const Color(0xFFE2E8F0),
-                                boxShadow: isEligibleForPayment
-                                    ? const [
+                                boxShadow: _isEligibleForPayment
+                                    ? [
                                         BoxShadow(
-                                          color: Color(0x33FF6B00),
+                                          color: operatorColor.withValues(alpha: 0.25),
                                           blurRadius: 14,
-                                          offset: Offset(0, 4),
+                                          offset: const Offset(0, 4),
                                         ),
                                       ]
                                     : null,
-                                border: isEligibleForPayment
+                                border: _isEligibleForPayment
                                     ? null
                                     : Border.all(
                                         color: const Color(0xFFCBD5E1),
@@ -723,8 +1207,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                       ),
                               ),
                               child: ElevatedButton(
-                                onPressed: (isEligibleForPayment &&
-                                        !_isProcessingPayment)
+                                onPressed: (_isEligibleForPayment && !_isProcessingPayment)
                                     ? _payForPass
                                     : null,
                                 style: ElevatedButton.styleFrom(
@@ -749,24 +1232,23 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        'Opening Razorpay...',
+                                        'Opening Gateway...',
                                         style: GoogleFonts.spaceGrotesk(
                                           color: Colors.white,
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.w800,
-                                          letterSpacing: 0.2,
                                         ),
                                       ),
-                                    ] else if (isEligibleForPayment) ...[
-                                      const Icon(
-                                        Icons.account_balance_wallet_rounded,
+                                    ] else if (_isEligibleForPayment) ...[
+                                      Icon(
+                                        pass.cost == 0 ? Icons.verified_rounded : Icons.account_balance_wallet_rounded,
                                         color: Colors.white,
                                         size: 19,
                                       ),
                                       const SizedBox(width: 8),
                                       Flexible(
                                         child: Text(
-                                          ctaText,
+                                          _ctaButtonText,
                                           style: GoogleFonts.spaceGrotesk(
                                             color: Colors.white,
                                             fontSize: 13.5,
@@ -783,23 +1265,19 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                                         size: 17,
                                       ),
                                     ] else ...[
-                                      Icon(
-                                        _selectedMethod == 'manual' &&
-                                                _verificationStatus == 'rejected'
-                                            ? Icons.block_rounded
-                                            : Icons.lock_outline_rounded,
-                                        color: const Color(0xFF94A3B8),
+                                      const Icon(
+                                        Icons.lock_outline_rounded,
+                                        color: Color(0xFF94A3B8),
                                         size: 18,
                                       ),
                                       const SizedBox(width: 8),
                                       Flexible(
                                         child: Text(
-                                          ctaText,
+                                          _ctaButtonText,
                                           style: GoogleFonts.spaceGrotesk(
                                             color: const Color(0xFF94A3B8),
-                                            fontSize: 13,
+                                            fontSize: 12.5,
                                             fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.2,
                                           ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -819,7 +1297,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             ),
           ),
 
-          // BOTTOM DOCK (PASSES tab active - Index 3)
+          // BOTTOM DOCK
           StitchBottomDock(
             activeIndex: 3,
             isDarkMode: dark,
@@ -838,7 +1316,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
             },
           ),
 
-          // FLOATING TOAST NOTIFICATION (matching Stitch)
+          // FLOATING TOAST NOTIFICATION
           if (_toastMessage != null)
             Positioned(
               bottom: 84,
@@ -859,7 +1337,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                     ),
                     boxShadow: const [
                       BoxShadow(
-                        color: Color(0x28FF6B00),
+                        color: Color(0x28000000),
                         blurRadius: 14,
                         offset: Offset(0, 4),
                       ),
@@ -895,17 +1373,201 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
     );
   }
 
-  // --- DigiLocker Section Widget ---
-  Widget _buildDigiLockerSection(
+  // --- Dynamic Verification Section ---
+  Widget _buildVerificationCard(
+    TransitPassOption pass,
     bool dark,
     Color primaryTextColor,
     Color secondaryTextColor,
   ) {
+    if (pass.category == 'Commuter') {
+      // General Commuters: Instant Aadhaar / DigiLocker photo ID
+      return StitchGlassCard(
+        isDarkMode: false,
+        borderRadius: 24,
+        padding: const EdgeInsets.all(16),
+        hasCyanGlow: false,
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFDF5),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFA7F3D0)),
+              ),
+              child: const Icon(
+                Icons.verified_user_rounded,
+                color: Color(0xFF047857),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Instant KYC Verified',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: primaryTextColor,
+                    ),
+                  ),
+                  Text(
+                    'Government ID linked via DigiLocker • Ready for immediate pass issuance',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10.5,
+                      color: secondaryTextColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Student or Senior Verification
+    final isStudent = pass.category == 'Student';
+    return Column(
+      children: [
+        // Method Switcher Pill
+        Container(
+          height: 42,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(21),
+            border: Border.all(
+              color: const Color(0xFFA5F3FC),
+              width: 1.2,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0C000000),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedMethod = 'digilocker');
+                    _showToast('DigiLocker Fast-Track selected');
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _selectedMethod == 'digilocker'
+                          ? const Color(0xFFECFEFF)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(18),
+                      border: _selectedMethod == 'digilocker'
+                          ? Border.all(color: const Color(0xFF0891B2), width: 1.2)
+                          : null,
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.bolt_rounded,
+                          size: 14,
+                          color: _selectedMethod == 'digilocker'
+                              ? const Color(0xFF0891B2)
+                              : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'DigiLocker Fast-Track',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _selectedMethod == 'digilocker'
+                                ? const Color(0xFF0891B2)
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedMethod = 'manual');
+                    _showToast('Document Upload selected');
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _selectedMethod == 'manual'
+                          ? const Color(0xFFECFEFF)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(18),
+                      border: _selectedMethod == 'manual'
+                          ? Border.all(color: const Color(0xFF0891B2), width: 1.2)
+                          : null,
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.upload_file_rounded,
+                          size: 14,
+                          color: _selectedMethod == 'manual'
+                              ? const Color(0xFF0891B2)
+                              : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Upload Document',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _selectedMethod == 'manual'
+                                ? const Color(0xFF0891B2)
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // Method Content
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: _selectedMethod == 'digilocker'
+              ? _buildDigiLockerSection(isStudent, primaryTextColor, secondaryTextColor)
+              : _buildManualSection(isStudent, primaryTextColor, secondaryTextColor),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDigiLockerSection(
+    bool isStudent,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+  ) {
     return StitchGlassCard(
-      key: const ValueKey('digilocker'),
+      key: ValueKey('digilocker_$isStudent'),
       isDarkMode: false,
-      borderRadius: 24,
-      padding: const EdgeInsets.all(18),
+      borderRadius: 20,
+      padding: const EdgeInsets.all(16),
       hasCyanGlow: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -918,10 +1580,7 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFECFEFF),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFFA5F3FC),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFA5F3FC)),
                 ),
                 child: const Icon(
                   Icons.lock_rounded,
@@ -930,112 +1589,40 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Fast-Track with DigiLocker',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: primaryTextColor,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isStudent ? 'DigiLocker Academic Verification' : 'DigiLocker Age Verification (60+)',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: primaryTextColor,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'GOV.IN • NeGD Certified Portal',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 9,
-                      color: const Color(0xFF94A3B8),
+                    Text(
+                      'GOV.IN • NeGD Certified Portal',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 9,
+                        color: const Color(0xFF94A3B8),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          Text(
-            'Instantly fetch and verify your government-issued Student Identity / Bonafide directly from API Setu with zero paperwork.',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              color: secondaryTextColor,
-              height: 1.4,
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Connect DigiLocker CTA Button
-          Container(
-            height: 46,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF0891B2),
-                  Color(0xFF06B6D4),
-                ],
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x33FF6B00),
-                  blurRadius: 10,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: InkWell(
-              onTap: () {
-                setState(() => _isDigiLockerLinked = true);
-                _showToast('DigiLocker API Handshake Completed! 1 Document Verified.');
-              },
-              borderRadius: BorderRadius.circular(14),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.verified_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Connect DigiLocker Account',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Connected Status Banner
+          const SizedBox(height: 10),
           if (_isDigiLockerLinked)
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: const Color(0xFFECFDF5),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: const Color(0xFFA7F3D0),
-                  width: 1,
-                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFA7F3D0)),
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(
                     Icons.check_circle_rounded,
@@ -1044,145 +1631,85 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'DigiLocker Linked: GEC/GTU Enrollment Verified',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF047857),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Certificate Authenticated via Digital Signature (SHA-256)',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            color: secondaryTextColor,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      isStudent
+                          ? 'DigiLocker Linked: GTU / Student Bonafide Verified'
+                          : 'DigiLocker Linked: Age 65 Verified for Concession',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF047857),
+                      ),
                     ),
                   ),
                 ],
               ),
+            )
+          else
+            ElevatedButton(
+              onPressed: () {
+                setState(() => _isDigiLockerLinked = true);
+                _showToast('DigiLocker Connected & Verified');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0891B2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Connect DigiLocker Account', style: TextStyle(color: Colors.white)),
             ),
         ],
       ),
     );
   }
 
-  // --- Manual Upload Section Widget ---
   Widget _buildManualSection(
-    bool dark,
+    bool isStudent,
     Color primaryTextColor,
     Color secondaryTextColor,
   ) {
-    final bool hasFile = _selectedDocumentName != null;
-    final bool canVerify = hasFile && !_isVerifying;
+    final hasFile = _selectedDocumentName != null;
+    final canVerify = hasFile && !_isVerifying;
 
     return StitchGlassCard(
-      key: const ValueKey('manual'),
+      key: ValueKey('manual_$isStudent'),
       isDarkMode: false,
-      borderRadius: 24,
-      padding: const EdgeInsets.all(18),
+      borderRadius: 20,
+      padding: const EdgeInsets.all(16),
       hasCyanGlow: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFECFEFF),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: const Color(0xFFA5F3FC),
-                          width: 1,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.document_scanner_rounded,
-                        color: Color(0xFF0891B2),
-                        size: 17,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Upload Manually',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: primaryTextColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              Text(
+                isStudent ? 'Upload Student Bonafide' : 'Upload Proof of Age',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: primaryTextColor,
                 ),
               ),
-              const SizedBox(width: 8),
-              // Status Pill Badge
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: _verificationStatus == 'verified'
                       ? const Color(0xFFECFDF5)
-                      : _verificationStatus == 'rejected'
-                          ? const Color(0xFFFEF2F2)
-                          : _isVerifying
-                              ? const Color(0xFFECFEFF)
-                              : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: _verificationStatus == 'verified'
-                        ? const Color(0xFFA7F3D0)
-                        : _verificationStatus == 'rejected'
-                            ? const Color(0xFFFECACA)
-                            : _isVerifying
-                                ? const Color(0xFFA5F3FC)
-                                : const Color(0xFFE2E8F0),
-                    width: 1,
-                  ),
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   _verificationStatus == 'verified'
                       ? 'Verified ✓'
-                      : _verificationStatus == 'rejected'
-                          ? 'Rejected ✕'
-                          : _isVerifying
-                              ? 'Analyzing...'
-                              : hasFile
-                                  ? '1 Doc Ready'
-                                  : 'Awaiting Doc',
+                      : hasFile
+                          ? 'Ready'
+                          : 'Required',
                   style: GoogleFonts.jetBrainsMono(
-                    fontSize: 9.5,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                     color: _verificationStatus == 'verified'
                         ? const Color(0xFF047857)
-                        : _verificationStatus == 'rejected'
-                            ? const Color(0xFFDC2626)
-                            : _isVerifying
-                                ? const Color(0xFF0891B2)
-                                : secondaryTextColor,
+                        : secondaryTextColor,
                   ),
                 ),
               ),
@@ -1191,53 +1718,27 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
 
           const SizedBox(height: 10),
 
-          Text(
-            'Upload institutional bonafide certificate to qualify for subsidized student transit fare concession.',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              color: secondaryTextColor,
-              height: 1.4,
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // a. File Selection: Interactive Card
           if (!hasFile)
             InkWell(
               onTap: _pickDocument,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFECFEFF),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFA5F3FC),
-                    width: 1.2,
-                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFA5F3FC)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFA5F3FC),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.file_upload_rounded,
-                        color: Color(0xFF0891B2),
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
+                    const Icon(Icons.file_upload_rounded, color: Color(0xFF0891B2), size: 18),
+                    const SizedBox(width: 8),
                     Text(
-                      'Select Document (PDF/JPG)',
+                      'Select Document (PDF / Image)',
                       style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13.5,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFF0891B2),
                       ),
@@ -1247,516 +1748,75 @@ class _StitchPassesScreenState extends State<StitchPassesScreen> {
               ),
             )
           else
-            // Display selected file name in a pill with file icon and clear (X) button
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFECFEFF),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: const Color(0xFFA5F3FC),
-                  width: 1.2,
-                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFA5F3FC)),
               ),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFA5F3FC),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.picture_as_pdf_rounded,
-                      color: Color(0xFF0891B2),
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _selectedDocumentName!,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: primaryTextColor,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          '1.2 MB • Ready for AI OCR Analysis',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 9.5,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const Icon(Icons.description_rounded, color: Color(0xFF0891B2), size: 18),
                   const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _selectedDocumentName!,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: primaryTextColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () {
                       setState(() {
                         _selectedDocumentName = null;
                         _verificationStatus = 'idle';
-                        _isVerifying = false;
                       });
-                      _showToast('Document cleared');
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.close_rounded,
-                        size: 15,
-                        color: secondaryTextColor,
-                      ),
-                    ),
+                    child: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF64748B)),
                   ),
                 ],
               ),
             ),
 
-          const SizedBox(height: 12),
-
-          // b. Demo Toggle: Subtle switch to simulate verification failure
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _simulateFailure
-                    ? const Color(0xFFEF4444).withValues(alpha: 0.45)
-                    : const Color(0xFFCBD5E1),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.tune_rounded,
-                        size: 16,
-                        color: _simulateFailure
-                            ? const Color(0xFFF87171)
-                            : const Color(0xFF94A3B8),
+          if (hasFile && _verificationStatus != 'verified') ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 40,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: canVerify ? _verifyDocument : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0891B2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isVerifying) ...[
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Simulate Verification Failure',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: primaryTextColor,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              'Showcase rejection handling for demo',
-                              style: GoogleFonts.jetBrainsMono(
-                                fontSize: 8.5,
-                                color: const Color(0xFF94A3B8),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
+                      Text('Running Gemini OCR...', style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white)),
+                    ] else ...[
+                      const Icon(Icons.auto_awesome_rounded, size: 15, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text('Verify via Gemini AI OCR', style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Transform.scale(
-                  scale: 0.8,
-                  child: Switch(
-                    value: _simulateFailure,
-                    activeThumbColor: const Color(0xFFEF4444),
-                    activeTrackColor:
-                        const Color(0xFFEF4444).withValues(alpha: 0.35),
-                    inactiveThumbColor: const Color(0xFF94A3B8),
-                    inactiveTrackColor: const Color(0xFFE2E8F0),
-                    onChanged: (val) {
-                      setState(() {
-                        _simulateFailure = val;
-                        if (_verificationStatus != 'idle') {
-                          _verificationStatus = 'idle';
-                        }
-                      });
-                      _showToast(_simulateFailure
-                          ? 'Demo Mode: Simulating Verification Failure'
-                          : 'Demo Mode: Normal Verification Flow');
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // c. Verify Action: "Verify Document (AI OCR Engine)"
-          Container(
-            height: 46,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: canVerify
-                  ? const LinearGradient(
-                      colors: [
-                        Color(0xFF0891B2),
-                        Color(0xFF06B6D4),
-                      ],
-                    )
-                  : null,
-              color: canVerify
-                  ? null
-                  : const Color(0xFFE2E8F0),
-              boxShadow: canVerify
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x33FF6B00),
-                        blurRadius: 10,
-                        offset: Offset(0, 3),
-                      ),
-                    ]
-                  : null,
-              border: canVerify
-                  ? null
-                  : Border.all(
-                      color: const Color(0xFFCBD5E1),
-                      width: 1,
-                    ),
-            ),
-            child: ElevatedButton(
-              onPressed: canVerify ? _verifyDocument : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                disabledForegroundColor: const Color(0xFF94A3B8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 16,
-                    color: canVerify
-                        ? Colors.white
-                        : const Color(0xFF94A3B8),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Verify Document (AI OCR Engine)',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: canVerify
-                          ? Colors.white
-                          : const Color(0xFF94A3B8),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Loading Progress Panel: On-Device Gemini OCR
-          if (_isVerifying) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFECFEFF),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFFA5F3FC),
-                  width: 1.2,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x14FF6B00),
-                    blurRadius: 14,
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(
-                    width: 30,
-                    height: 30,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.8,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Color(0xFF0891B2)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Running On-Device Gemini OCR...',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Extracting institutional stamp, student ID & bonafide validity',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 9.5,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // d. Verification Result Card: Success
-          if (!_isVerifying && _verificationStatus == 'verified') ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF56E5A9).withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFF56E5A9).withValues(alpha: 0.50),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF56E5A9).withValues(alpha: 0.20),
-                    blurRadius: 16,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Green glowing glass badge
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF56E5A9).withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFF56E5A9),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          color: Color(0xFF56E5A9),
-                          size: 14,
-                        ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            'Gemini Vision AI • Bonafide Authenticated',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF56E5A9),
-                              letterSpacing: 0.1,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Extracted Fields
-                  _buildExtractedFieldRow(
-                    'Student Name',
-                    _extractionResult?.studentName ?? 'Aarav Patel',
-                    primaryTextColor,
-                  ),
-                  const SizedBox(height: 6),
-                  _buildExtractedFieldRow(
-                    'Institution',
-                    _extractionResult?.institutionName ?? 'Gujarat Technological University (GTU)',
-                    primaryTextColor,
-                  ),
-                  const SizedBox(height: 6),
-                  _buildExtractedFieldRow(
-                    'Enrollment / Roll',
-                    _extractionResult?.rollNumber ?? '22012011048',
-                    primaryTextColor,
-                  ),
-                  const SizedBox(height: 6),
-                  _buildExtractedFieldRow(
-                    'Validity Term',
-                    _extractionResult?.validUntil ?? '30-06-2026',
-                    primaryTextColor,
-                  ),
-                  const SizedBox(height: 6),
-                  _buildExtractedFieldRow(
-                    'Official Seal',
-                    'Authenticated (${((_extractionResult?.confidenceScore ?? 0.94) * 100).toInt()}% confidence)',
-                    const Color(0xFF0891B2),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildExtractedFieldRow(
-                    'Statutory Subsidy',
-                    '80% Concession Applied (₹300/mo)',
-                    const Color(0xFF56E5A9),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // d. Verification Result Card: Failure
-          if (!_isVerifying && _verificationStatus == 'rejected') ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.45),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.20),
-                    blurRadius: 16,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Red/Amber glowing glass badge
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFFEF4444),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.error_outline_rounded,
-                          color: Color(0xFFEF4444),
-                          size: 14,
-                        ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            '[DEMO ONLY] Document Verification Failed',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFFFCA5A5),
-                              letterSpacing: 0.1,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        size: 15,
-                        color: Color(0xFFF87171),
-                      ),
-                      const SizedBox(width: 7),
-                      Expanded(
-                        child: Text(
-                          'Unrecognized seal or expired academic term. Please re-upload a clear bonafide certificate.',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11.5,
-                            color: secondaryTextColor,
-                            height: 1.35,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ),
             ),
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildExtractedFieldRow(
-      String label, String value, Color valueColor) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 112,
-          child: Text(
-            label,
-            style: GoogleFonts.jetBrainsMono(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF94A3B8),
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            value,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: valueColor,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
