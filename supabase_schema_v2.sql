@@ -273,21 +273,30 @@ CREATE TABLE IF NOT EXISTS public.route_questions (
     category TEXT NOT NULL DEFAULT 'all',
     badge_text TEXT DEFAULT 'LIVE INQUIRY',
     upvotes INT DEFAULT 1,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    user_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.route_questions ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE public.route_questions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+CREATE INDEX IF NOT EXISTS idx_route_questions_user_id ON public.route_questions(user_id);
 
 ALTER TABLE public.route_questions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public read on route_questions" ON public.route_questions;
 DROP POLICY IF EXISTS "Allow public insert on route_questions" ON public.route_questions;
 DROP POLICY IF EXISTS "Allow public update on route_questions" ON public.route_questions;
+DROP POLICY IF EXISTS "Allow public delete on route_questions" ON public.route_questions;
 DROP POLICY IF EXISTS "Public read route_questions" ON public.route_questions;
 DROP POLICY IF EXISTS "Public insert route_questions" ON public.route_questions;
 DROP POLICY IF EXISTS "Public update route_questions" ON public.route_questions;
+DROP POLICY IF EXISTS "Public delete route_questions" ON public.route_questions;
 
 CREATE POLICY "Public read route_questions" ON public.route_questions FOR SELECT USING (true);
 CREATE POLICY "Public insert route_questions" ON public.route_questions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public update route_questions" ON public.route_questions FOR UPDATE USING (true);
+CREATE POLICY "Public delete route_questions" ON public.route_questions FOR DELETE USING (true);
 
 CREATE TABLE IF NOT EXISTS public.route_answers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -306,13 +315,16 @@ ALTER TABLE public.route_answers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public read on route_answers" ON public.route_answers;
 DROP POLICY IF EXISTS "Allow public insert on route_answers" ON public.route_answers;
 DROP POLICY IF EXISTS "Allow public update on route_answers" ON public.route_answers;
+DROP POLICY IF EXISTS "Allow public delete on route_answers" ON public.route_answers;
 DROP POLICY IF EXISTS "Public read route_answers" ON public.route_answers;
 DROP POLICY IF EXISTS "Public insert route_answers" ON public.route_answers;
 DROP POLICY IF EXISTS "Public update route_answers" ON public.route_answers;
+DROP POLICY IF EXISTS "Public delete route_answers" ON public.route_answers;
 
 CREATE POLICY "Public read route_answers" ON public.route_answers FOR SELECT USING (true);
 CREATE POLICY "Public insert route_answers" ON public.route_answers FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public update route_answers" ON public.route_answers FOR UPDATE USING (true);
+CREATE POLICY "Public delete route_answers" ON public.route_answers FOR DELETE USING (true);
 
 CREATE TABLE IF NOT EXISTS public.transit_reports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

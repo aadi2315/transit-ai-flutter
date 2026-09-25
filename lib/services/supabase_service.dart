@@ -62,6 +62,49 @@ class SupabaseService {
   }
 
   static const String _keyUserProfile = 'transit_ai_user_profile_v2';
+  static const String _keyMyQuestionIds = 'transit_ai_my_posted_questions_v1';
+
+  /// Get current user identifier (Auth UUID, profile ID, or phone)
+  String get currentUserId {
+    final authId = client?.auth.currentUser?.id;
+    if (authId != null && authId.isNotEmpty) return authId;
+    final profileId = currentUserProfile?['id']?.toString();
+    if (profileId != null && profileId.isNotEmpty) return profileId;
+    final phone = currentUserProfile?['phone']?.toString();
+    if (phone != null && phone.isNotEmpty) return 'phone_$phone';
+    return 'commuter_user';
+  }
+
+  /// Get list of question IDs created on this device / session
+  Future<Set<String>> getMyPostedQuestionIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_keyMyQuestionIds) ?? [];
+      return list.toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Save question ID as owned by current user locally
+  Future<void> saveMyPostedQuestionId(String questionId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final set = (prefs.getStringList(_keyMyQuestionIds) ?? []).toSet();
+      set.add(questionId);
+      await prefs.setStringList(_keyMyQuestionIds, set.toList());
+    } catch (_) {}
+  }
+
+  /// Remove question ID from locally owned questions
+  Future<void> removeMyPostedQuestionId(String questionId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final set = (prefs.getStringList(_keyMyQuestionIds) ?? []).toSet();
+      set.remove(questionId);
+      await prefs.setStringList(_keyMyQuestionIds, set.toList());
+    } catch (_) {}
+  }
 
   /// Check if a commuter profile is currently authenticated
   bool get isLoggedIn =>
@@ -310,7 +353,9 @@ class SupabaseService {
     required String routeTag,
     required String category,
     required String badgeText,
+    String? userId,
   }) async {
+    final effectiveUserId = (userId != null && userId.isNotEmpty) ? userId : currentUserId;
     final record = {
       'author': author,
       'role': role,
@@ -320,6 +365,7 @@ class SupabaseService {
       'route_tag': routeTag,
       'category': category,
       'badge_text': badgeText,
+      'user_id': effectiveUserId,
       'upvotes': 1,
       'created_at': DateTime.now().toIso8601String(),
     };
@@ -401,6 +447,69 @@ class SupabaseService {
       }).eq('id', questionId);
     } catch (e) {
       debugPrint('[SupabaseService] syncQuestionUpvote notice: $e');
+    }
+  }
+
+  /// Update an existing asking route question in Supabase
+  Future<bool> updateQuestion({
+    required String questionId,
+    required String question,
+    String? origin,
+    String? destination,
+    String? category,
+    String? routeTag,
+    String? badgeText,
+  }) async {
+    final cl = client;
+    if (cl == null) return true;
+
+    try {
+      final updateData = <String, dynamic>{
+        'question': question,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (origin != null && origin.isNotEmpty) {
+        updateData['origin'] = origin;
+      }
+      if (destination != null && destination.isNotEmpty) {
+        updateData['destination'] = destination;
+      }
+      if (category != null && category.isNotEmpty) {
+        updateData['category'] = category;
+      }
+      if (routeTag != null && routeTag.isNotEmpty) {
+        updateData['route_tag'] = routeTag;
+      }
+      if (badgeText != null && badgeText.isNotEmpty) {
+        updateData['badge_text'] = badgeText;
+      }
+
+      await cl.from('route_questions').update(updateData).eq('id', questionId);
+      debugPrint('[SupabaseService] Question $questionId updated in cloud');
+      return true;
+    } catch (e) {
+      debugPrint('[SupabaseService] updateQuestion notice: $e');
+      return false;
+    }
+  }
+
+  /// Delete an asking route question and associated answers from Supabase
+  Future<bool> deleteQuestion(String questionId) async {
+    final cl = client;
+    if (cl == null) return true;
+
+    try {
+      // First clean up answers if cascade is not present
+      try {
+        await cl.from('route_answers').delete().eq('question_id', questionId);
+      } catch (_) {}
+
+      await cl.from('route_questions').delete().eq('id', questionId);
+      debugPrint('[SupabaseService] Question $questionId deleted from cloud');
+      return true;
+    } catch (e) {
+      debugPrint('[SupabaseService] deleteQuestion notice: $e');
+      return false;
     }
   }
 

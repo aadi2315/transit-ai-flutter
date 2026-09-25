@@ -63,8 +63,8 @@ void main() {
     expect(find.text('PRAVHA PROFILE'), findsOneWidget);
     expect(find.text('Aarav Patel'), findsOneWidget);
     expect(find.text('COMMUTER TRANSIT ID'), findsOneWidget);
-    expect(find.text('COMMUTER GREEN STATS'), findsOneWidget);
-    expect(find.text('CONCESSION & SMART PASS'), findsOneWidget);
+    expect(find.text('COMMUTER STATS'), findsOneWidget);
+    expect(find.text('SMART TRANSIT PASS'), findsOneWidget);
 
     // 5. Navigate back to Home screen using top Back button
     final backBtn = find.byTooltip('Back');

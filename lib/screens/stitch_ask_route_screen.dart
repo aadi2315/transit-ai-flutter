@@ -89,20 +89,25 @@ class AnswerItem {
 }
 
 class QuestionItem {
-  final String id;
+  String id;
   final String author;
   final String role;
-  final String timeLocation;
-  final String badgeText;
-  final Color badgeColor;
-  final String question;
+  String timeLocation;
+  String badgeText;
+  Color badgeColor;
+  String question;
   int upvotes;
   bool isUpvoted;
-  final String routeTag;
-  final String category; // 'all', 'airport', 'interchange', 'night', 'student'
+  String routeTag;
+  String category; // 'all', 'airport', 'interchange', 'night', 'student'
   bool isThreadExpanded;
   final List<AnswerItem> answers;
   final AnswerItem? pinnedGuide;
+  final String? userId;
+  String? origin;
+  String? destination;
+  String? rawText;
+  final bool isUserCreated;
 
   QuestionItem({
     required this.id,
@@ -119,6 +124,11 @@ class QuestionItem {
     this.isThreadExpanded = true,
     required this.answers,
     this.pinnedGuide,
+    this.userId,
+    this.origin,
+    this.destination,
+    this.rawText,
+    this.isUserCreated = false,
   });
 }
 
@@ -190,14 +200,52 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
   late List<TransitReportItem> _reports;
   bool _isLoadingCloud = false;
   bool _isLoadingReports = false;
+  Set<String> _myPostedQuestionIds = {};
 
   @override
   void initState() {
     super.initState();
+    _loadMyPostedQuestionIds();
     _initDefaultQuestions();
     _initDefaultReports();
     _loadQuestionsFromSupabase();
     _loadReportsFromSupabase();
+  }
+
+  Future<void> _loadMyPostedQuestionIds() async {
+    final ids = await SupabaseService.instance.getMyPostedQuestionIds();
+    if (mounted) {
+      setState(() {
+        _myPostedQuestionIds = ids;
+      });
+    }
+  }
+
+  bool _isMyQuestion(QuestionItem q) {
+    if (q.isUserCreated) return true;
+    if (_myPostedQuestionIds.contains(q.id)) return true;
+    final currentId = SupabaseService.instance.currentUserId;
+    if (q.userId != null && q.userId!.isNotEmpty && q.userId == currentId) {
+      return true;
+    }
+    final phone = SupabaseService.instance.currentUserProfile?['phone']?.toString();
+    if (phone != null && phone.isNotEmpty && q.userId == 'phone_$phone') {
+      return true;
+    }
+    final profileId = SupabaseService.instance.currentUserProfile?['id']?.toString();
+    if (profileId != null && profileId.isNotEmpty && q.userId == profileId) {
+      return true;
+    }
+    final fullName = SupabaseService.instance.currentUserProfile?['full_name']?.toString();
+    if (fullName != null &&
+        fullName.trim().isNotEmpty &&
+        q.author.trim().toLowerCase() == fullName.trim().toLowerCase()) {
+      return true;
+    }
+    if (q.author == 'You' || q.author.contains('(You)')) {
+      return true;
+    }
+    return false;
   }
 
   Future<void> _loadQuestionsFromSupabase() async {
@@ -229,6 +277,14 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
             );
           }
 
+          final qText = raw['question']?.toString() ?? '';
+          final origin = raw['origin']?.toString() ?? 'Current Hub';
+          final dest = raw['destination']?.toString() ?? 'Ahmedabad';
+          String rawQ = qText;
+          if (rawQ.contains('\n\nRoute:')) {
+            rawQ = rawQ.split('\n\nRoute:').first.trim();
+          }
+
           parsed.add(
             QuestionItem(
               id: raw['id']?.toString() ??
@@ -240,12 +296,16 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                   : 'Live inquiry',
               badgeText: raw['badge_text'] ?? 'LIVE INQUIRY',
               badgeColor: const Color(0xFF00E5FF),
-              question: raw['question'] ?? '',
+              question: qText,
               upvotes: (raw['upvotes'] as num?)?.toInt() ?? 1,
               routeTag: raw['route_tag'] ?? 'Leg #LIVE',
               category: raw['category'] ?? 'all',
               isThreadExpanded: true,
               answers: answers,
+              userId: raw['user_id']?.toString(),
+              origin: origin,
+              destination: dest,
+              rawText: rawQ,
             ),
           );
         }
@@ -612,7 +672,7 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
     );
   }
 
-  void _submitQuestion() {
+  void _submitQuestion() async {
     final qText = _questionController.text.trim();
     if (qText.isEmpty) {
       _showToast('Please type your question before asking commuters');
@@ -626,9 +686,17 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
         ? 'Ahmedabad'
         : _destController.text.trim();
 
+    final profileName =
+        SupabaseService.instance.currentUserProfile?['full_name'] as String?;
+    final authorName = (profileName != null && profileName.trim().isNotEmpty)
+        ? profileName.trim()
+        : 'You';
+    final currentUserId = SupabaseService.instance.currentUserId;
+    final tempId = 'q_${DateTime.now().millisecondsSinceEpoch}';
+
     final newQ = QuestionItem(
-      id: 'q_${DateTime.now().millisecondsSinceEpoch}',
-      author: 'You',
+      id: tempId,
+      author: authorName,
       role: _posterType,
       timeLocation: 'Just now • $from',
       badgeText: _selectedTags.isNotEmpty
@@ -642,31 +710,523 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
       category: _selectedCategory,
       isThreadExpanded: true,
       answers: [],
+      userId: currentUserId,
+      origin: from,
+      destination: to,
+      rawText: qText,
+      isUserCreated: true,
     );
 
     setState(() {
+      _myPostedQuestionIds.add(tempId);
       _questions.insert(0, newQ);
       _originController.clear();
       _destController.clear();
       _questionController.clear();
     });
 
-    // Persist question to Supabase backend
-    SupabaseService.instance.postQuestion(
-      author: 'You',
-      role: _posterType,
-      question: '$qText\n\nRoute: From $from to $to',
-      origin: from,
-      destination: to,
-      routeTag: 'Leg #AMD-LIVE',
-      category: _selectedCategory,
-      badgeText: _selectedTags.isNotEmpty
-          ? _selectedTags.first.toUpperCase()
-          : 'LIVE INQUIRY',
-    );
-
+    SupabaseService.instance.saveMyPostedQuestionId(tempId);
     _showToast('Broadcasting question to 140+ active commuters!');
+
+    // Persist question to Supabase backend asynchronously
+    try {
+      final res = await SupabaseService.instance.postQuestion(
+        author: authorName,
+        role: _posterType,
+        question: '$qText\n\nRoute: From $from to $to',
+        origin: from,
+        destination: to,
+        routeTag: 'Leg #AMD-LIVE',
+        category: _selectedCategory,
+        badgeText: _selectedTags.isNotEmpty
+            ? _selectedTags.first.toUpperCase()
+            : 'LIVE INQUIRY',
+        userId: currentUserId,
+      );
+
+      if (res != null && res['id'] != null && mounted) {
+        final realId = res['id'].toString();
+        setState(() {
+          newQ.id = realId;
+          _myPostedQuestionIds.add(realId);
+        });
+        SupabaseService.instance.saveMyPostedQuestionId(realId);
+      }
+    } catch (e) {
+      debugPrint('[AskRouteScreen] Error saving question to cloud: $e');
+    }
+
     _triggerGeminiAnswerForQuestion(newQ, from, to, qText);
+  }
+
+  void _showEditQuestionDialog(QuestionItem q) {
+    String currentRawText = q.rawText ?? '';
+    if (currentRawText.isEmpty) {
+      if (q.question.contains('\n\nRoute:')) {
+        currentRawText = q.question.split('\n\nRoute:').first.trim();
+      } else {
+        currentRawText = q.question;
+      }
+    }
+
+    String currentOrigin = q.origin ?? '';
+    String currentDestination = q.destination ?? '';
+    if ((currentOrigin.isEmpty || currentDestination.isEmpty) &&
+        q.question.contains('Route: From ')) {
+      try {
+        final routePart = q.question.split('Route: From ').last;
+        final splitTo = routePart.split(' to ');
+        if (splitTo.length >= 2) {
+          if (currentOrigin.isEmpty) currentOrigin = splitTo[0].trim();
+          if (currentDestination.isEmpty) currentDestination = splitTo[1].trim();
+        }
+      } catch (_) {}
+    }
+    if (currentOrigin.isEmpty) currentOrigin = 'Current Hub';
+    if (currentDestination.isEmpty) currentDestination = 'Ahmedabad';
+
+    final editOriginCtrl = TextEditingController(text: currentOrigin);
+    final editDestCtrl = TextEditingController(text: currentDestination);
+    final editQuestionCtrl = TextEditingController(text: currentRawText);
+    String selectedEditCat = q.category;
+    String editRouteTag = q.routeTag;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x1A0891B2),
+                      blurRadius: 20,
+                      offset: Offset(0, -4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0891B2).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.edit_note_rounded,
+                                    color: Color(0xFF0891B2),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    'Edit Route Inquiry',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF0F172A),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              size: 20,
+                              color: Color(0xFF64748B),
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Origin & Destination Inputs
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'FROM / ORIGIN',
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller: editOriginCtrl,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                  decoration: InputDecoration(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 8),
+                                    hintText: 'e.g. Kalupur',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide:
+                                          const BorderSide(color: Color(0xFFE2E8F0)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                          color: Color(0xFF0891B2), width: 1.5),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'TO / DESTINATION',
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller: editDestCtrl,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                  decoration: InputDecoration(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 8),
+                                    hintText: 'e.g. SG Highway',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide:
+                                          const BorderSide(color: Color(0xFFE2E8F0)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                          color: Color(0xFF0891B2), width: 1.5),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Question text
+                      Text(
+                        'YOUR ROUTE QUESTION',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      TextField(
+                        controller: editQuestionCtrl,
+                        maxLines: 3,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: const Color(0xFF0F172A),
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.all(10),
+                          hintText:
+                              'Ask commuters for timing, stops, crowds, or transfers...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF0891B2), width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Category Selector Chips
+                      Text(
+                        'COMMUNITY CATEGORY',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          {'id': 'all', 'label': 'General'},
+                          {'id': 'airport', 'label': 'Airport / Express'},
+                          {'id': 'interchange', 'label': 'Metro Interchange'},
+                          {'id': 'night', 'label': 'Night Route'},
+                          {'id': 'student', 'label': 'Student Pass'},
+                        ].map((cat) {
+                          final isSel = selectedEditCat == cat['id'];
+                          return InkWell(
+                            onTap: () {
+                              setModalState(() {
+                                selectedEditCat = cat['id']!;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: isSel
+                                    ? const Color(0xFF0891B2)
+                                    : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                cat['label']!,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight:
+                                      isSel ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSel
+                                      ? Colors.white
+                                      : const Color(0xFF475569),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: Text(
+                                'Cancel',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                final newText = editQuestionCtrl.text.trim();
+                                if (newText.isEmpty) {
+                                  _showToast('Question text cannot be empty');
+                                  return;
+                                }
+                                final newFrom = editOriginCtrl.text.trim().isEmpty
+                                    ? 'Current Hub'
+                                    : editOriginCtrl.text.trim();
+                                final newTo = editDestCtrl.text.trim().isEmpty
+                                    ? 'Ahmedabad'
+                                    : editDestCtrl.text.trim();
+                                final assembled =
+                                    '$newText\n\nRoute: From $newFrom to $newTo';
+
+                                setState(() {
+                                  q.question = assembled;
+                                  q.origin = newFrom;
+                                  q.destination = newTo;
+                                  q.rawText = newText;
+                                  q.category = selectedEditCat;
+                                  q.timeLocation = 'Edited just now • $newFrom';
+                                });
+
+                                SupabaseService.instance.updateQuestion(
+                                  questionId: q.id,
+                                  question: assembled,
+                                  origin: newFrom,
+                                  destination: newTo,
+                                  category: selectedEditCat,
+                                  routeTag: editRouteTag,
+                                );
+
+                                Navigator.of(context).pop();
+                                _showToast('Route inquiry updated successfully!');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0891B2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Save Changes',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeleteConfirmationDialog(QuestionItem q) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Color(0xFFEF4444),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  'Delete Inquiry?',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to delete this route question? This will permanently remove it along with all replies. This action cannot be undone.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              height: 1.4,
+              color: const Color(0xFF475569),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                final targetId = q.id;
+                setState(() {
+                  _questions.removeWhere((item) => item.id == targetId);
+                  _myPostedQuestionIds.remove(targetId);
+                });
+                SupabaseService.instance.removeMyPostedQuestionId(targetId);
+                SupabaseService.instance.deleteQuestion(targetId);
+                _showToast('Route inquiry deleted');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Delete',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _addReply(QuestionItem item) {
@@ -1699,12 +2259,15 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                         size: 14,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        _toastMessage!,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF0F172A),
+                      Flexible(
+                        child: Text(
+                          _toastMessage!,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF0F172A),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -2039,6 +2602,104 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                     ),
                   ),
                 ),
+
+                if (_isMyQuestion(q)) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0891B2).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFF0891B2).withValues(alpha: 0.35),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      'YOU',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 7.5,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF0891B2),
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Route Post Options',
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      size: 17,
+                      color: Color(0xFF64748B),
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 125),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(
+                        color: Color(0xFFA5F3FC),
+                        width: 1,
+                      ),
+                    ),
+                    color: Colors.white,
+                    elevation: 6,
+                    onSelected: (val) {
+                      if (val == 'edit') {
+                        _showEditQuestionDialog(q);
+                      } else if (val == 'delete') {
+                        _showDeleteConfirmationDialog(q);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        height: 36,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.edit_note_rounded,
+                              size: 16,
+                              color: Color(0xFF0891B2),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Edit Route',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(height: 1),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        height: 36,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 16,
+                              color: Color(0xFFEF4444),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Delete',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
 
@@ -2057,9 +2718,12 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
 
             const SizedBox(height: 8),
 
-            // Middle Action Row: Upvote Button + Route Tag
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Middle Action Row: Upvote Button + Edit/Delete Quick Actions + Route Tag
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
               children: [
                 // Upvote Button
                 InkWell(
@@ -2105,35 +2769,116 @@ class _StitchAskRouteScreenState extends State<StitchAskRouteScreen> {
                   ),
                 ),
 
-                // Route tag
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECFEFF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: const Color(0xFFA5F3FC),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.route_rounded,
-                        color: Color(0xFF0891B2),
-                        size: 9,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        q.routeTag,
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF0891B2),
+                // Action Buttons / Route tag
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isMyQuestion(q)) ...[
+                      InkWell(
+                        onTap: () => _showEditQuestionDialog(q),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFFCBD5E1),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.edit_outlined,
+                                size: 10,
+                                color: Color(0xFF0891B2),
+                              ),
+                              const SizedBox(width: 2.5),
+                              Text(
+                                'Edit',
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF0891B2),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => _showDeleteConfirmationDialog(q),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFFFECACA),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 10,
+                                color: Color(0xFFEF4444),
+                              ),
+                              const SizedBox(width: 2.5),
+                              Text(
+                                'Delete',
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFEF4444),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                     ],
-                  ),
+
+                    // Route tag
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFEFF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFFA5F3FC),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.route_rounded,
+                            color: Color(0xFF0891B2),
+                            size: 9,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            q.routeTag,
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF0891B2),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
