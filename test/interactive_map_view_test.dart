@@ -71,6 +71,18 @@ void main() {
       expect(find.text('B'), findsOneWidget);
       expect(find.text('Sola Bhagwat'), findsOneWidget);
       expect(find.text('Science City'), findsOneWidget);
+
+      // Tap marker B to trigger interactive InfoWindow popup
+      await tester.tap(find.text('B'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Focus Stop'), findsOneWidget);
+      expect(find.text('Accessible entrance'), findsOneWidget);
+
+      // Close popup
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
+      expect(find.text('Focus Stop'), findsNothing);
     });
 
     testWidgets('Responds to web_maps_bridge zoom, scope, satellite and reset controls', (tester) async {
@@ -166,7 +178,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(FlutterMap), findsOneWidget);
-      expect(find.text('8D'), findsOneWidget); // Transfer bus badge
+      expect(find.text('8D'), findsWidgets); // Transfer bus badge & route midpoint badge
+      expect(find.text('9U'), findsOneWidget); // Route midpoint badge for Leg 1
     });
   });
 }
+

@@ -56,6 +56,34 @@ class _TransitLegData {
     required this.alightName,
     required this.isTransfer,
   });
+
+  LatLng get midpoint {
+    if (points.isNotEmpty) {
+      return points[points.length ~/ 2];
+    }
+    return LatLng(
+      (boardCoord.latitude + alightCoord.latitude) / 2.0,
+      (boardCoord.longitude + alightCoord.longitude) / 2.0,
+    );
+  }
+}
+
+class _SelectedPlaceInfo {
+  final String title;
+  final String subtitle;
+  final String tag;
+  final LatLng coord;
+  final Color color;
+  final IconData icon;
+
+  const _SelectedPlaceInfo({
+    required this.title,
+    required this.subtitle,
+    required this.tag,
+    required this.coord,
+    required this.color,
+    required this.icon,
+  });
 }
 
 class _NativeInteractiveMapView extends StatefulWidget {
@@ -96,6 +124,8 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
   LatLng? _destCoord;
   String _originName = '';
   String _destName = '';
+
+  _SelectedPlaceInfo? _selectedPlace;
 
   @override
   void initState() {
@@ -166,6 +196,7 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
           setState(() {
             _drivingPolylinePoints.clear();
             _transitLegs.clear();
+            _selectedPlace = null;
           });
         },
       ),
@@ -424,7 +455,9 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
       _mapController.fitCamera(
         CameraFit.bounds(
           bounds: bounds,
-          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 64),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
+          maxZoom: 16.5,
+          minZoom: 11.0,
         ),
       );
     } catch (e) {
@@ -463,47 +496,203 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _isSatellite ? const Color(0xFF060E20) : const Color(0xFFF8FAFC),
-      child: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
-          initialCenter: _initialCenter,
-          initialZoom: _initialZoom,
-          minZoom: 3.0,
-          maxZoom: 19.0,
-          interactionOptions: const InteractionOptions(
-            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-          ),
-          onMapReady: () {
-            _isMapReady = true;
-            _fitRouteBounds();
-            widget.onMapReady?.call();
-          },
-        ),
+      color: _isSatellite ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+      child: Stack(
         children: [
-          // 1. Google Maps Vector & Hybrid Tiles with OpenStreetMap fallback
-          TileLayer(
-            urlTemplate: _isSatellite
-                ? 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
-                : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-            fallbackUrl: _isSatellite
-                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            subdomains: const ['0', '1', '2', '3'],
-            userAgentPackageName: 'com.example.transit_app',
-            maxZoom: 19,
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _initialCenter,
+              initialZoom: _initialZoom,
+              minZoom: 3.0,
+              maxZoom: 19.0,
+              backgroundColor: _isSatellite ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              ),
+              onTap: (_, __) {
+                if (_selectedPlace != null) {
+                  setState(() => _selectedPlace = null);
+                }
+              },
+              onMapReady: () {
+                _isMapReady = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _fitRouteBounds();
+                });
+                widget.onMapReady?.call();
+              },
+            ),
+            children: [
+              // 1. Google Maps Vector & Hybrid Tiles with CartoDB & OSM fallback
+              TileLayer(
+                urlTemplate: _isSatellite
+                    ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+                    : 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                fallbackUrl: _isSatellite
+                    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                    : 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.pravha.transit_app',
+                maxZoom: 19,
+              ),
+
+              // 2. Polyline Layer (Driving path or colored multimodal transit legs)
+              PolylineLayer(
+                polylines: _buildPolylines(),
+              ),
+
+              // 3. Marker Layer (Origin A, Destination B, Transfer pins, Route Badges, Live GPS)
+              MarkerLayer(
+                markers: _buildMarkers(),
+              ),
+            ],
           ),
 
-          // 2. Polyline Layer (Driving path or colored multimodal transit legs)
-          PolylineLayer(
-            polylines: _buildPolylines(),
-          ),
-
-          // 3. Marker Layer (Origin A, Destination B, Transfer pins, Live GPS)
-          MarkerLayer(
-            markers: _buildMarkers(),
-          ),
+          // 4. Interactive InfoWindow Card (Matching localhost popup experience)
+          if (_selectedPlace != null)
+            _buildSelectedPlaceCard(_selectedPlace!),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedPlaceCard(_SelectedPlaceInfo place) {
+    return Positioned(
+      left: 12,
+      right: 12,
+      bottom: 12,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x28000000),
+                blurRadius: 16,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: place.color.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Icon(place.icon, color: place.color, size: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          place.title,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          place.subtitle,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: const Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => setState(() => _selectedPlace = null),
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.close_rounded, size: 18, color: Color(0xFF94A3B8)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFA7F3D0), width: 0.8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.accessible_rounded, size: 12, color: Color(0xFF059669)),
+                        const SizedBox(width: 4),
+                        Text(
+                          place.tag,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF059669),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      _mapController.move(place.coord, 16.0);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0284C7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.near_me_rounded, size: 12, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Focus Stop',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -573,54 +762,68 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
           width: 80,
           height: 60,
           alignment: Alignment.topCenter,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_originName.isNotEmpty)
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedPlace = _SelectedPlaceInfo(
+                  title: _originName.isNotEmpty ? _originName : 'Origin Point (Stop A)',
+                  subtitle: 'Boarding Station • Ahmedabad Transit Corridor',
+                  tag: 'Accessible Boarding Station',
+                  coord: _originCoord!,
+                  color: const Color(0xFF10B981),
+                  icon: Icons.trip_origin_rounded,
+                );
+              });
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_originName.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    margin: const EdgeInsets.only(bottom: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF00F172A),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF10B981), width: 0.8),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: Text(
+                      _originName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  margin: const EdgeInsets.only(bottom: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xF00F172A),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFF10B981), width: 0.8),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                  width: 26,
+                  height: 26,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF10B981),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 3)),
                     ],
                   ),
-                  child: Text(
-                    _originName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                  child: Center(
+                    child: Text(
+                      'A',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              Container(
-                width: 26,
-                height: 26,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF10B981),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 3)),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    'A',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -634,54 +837,68 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
           width: 80,
           height: 60,
           alignment: Alignment.topCenter,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_destName.isNotEmpty)
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedPlace = _SelectedPlaceInfo(
+                  title: _destName.isNotEmpty ? _destName : 'Destination (Stop B)',
+                  subtitle: 'Thaltej, Ahmedabad, Gujarat • Transit Terminus',
+                  tag: 'Accessible entrance',
+                  coord: _destCoord!,
+                  color: const Color(0xFFEF4444),
+                  icon: Icons.location_on_rounded,
+                );
+              });
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_destName.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    margin: const EdgeInsets.only(bottom: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF00F172A),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFEF4444), width: 0.8),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: Text(
+                      _destName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  margin: const EdgeInsets.only(bottom: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xF00F172A),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFEF4444), width: 0.8),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                  width: 26,
+                  height: 26,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 3)),
                     ],
                   ),
-                  child: Text(
-                    _destName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                  child: Center(
+                    child: Text(
+                      'B',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              Container(
-                width: 26,
-                height: 26,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEF4444),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 3)),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    'B',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -693,28 +910,99 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
       markers.add(
         Marker(
           point: leg.boardCoord,
-          width: 64,
+          width: 72,
           height: 48,
           alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedPlace = _SelectedPlaceInfo(
+                  title: leg.boardName,
+                  subtitle: 'Interchange Station • Transfer to Bus ${leg.busNumber}',
+                  tag: 'Transfer Station',
+                  coord: leg.boardCoord,
+                  color: const Color(0xFF0284C7),
+                  icon: Icons.transfer_within_a_station_rounded,
+                );
+              });
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xEE0F172A),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF38BDF8), width: 1),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.transfer_within_a_station_rounded, size: 10, color: Color(0xFF38BDF8)),
+                      const SizedBox(width: 3),
+                      Text(
+                        leg.busNumber,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Floating Bus Route Badges along Polyline (matching Google Maps web experience)
+    for (final leg in _transitLegs) {
+      if (leg.busNumber.isNotEmpty) {
+        markers.add(
+          Marker(
+            point: leg.midpoint,
+            width: 58,
+            height: 32,
+            alignment: Alignment.center,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedPlace = _SelectedPlaceInfo(
+                    title: 'Bus Route ${leg.busNumber}',
+                    subtitle: '${leg.boardName} → ${leg.alightName}',
+                    tag: 'Live Transit Line',
+                    coord: leg.midpoint,
+                    color: leg.color,
+                    icon: Icons.directions_bus_rounded,
+                  );
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xEE0F172A),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF38BDF8), width: 1),
+                  color: leg.color,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.transfer_within_a_station_rounded, size: 10, color: Color(0xFF38BDF8)),
+                    const Icon(Icons.directions_bus_rounded, size: 11, color: Colors.white),
                     const SizedBox(width: 3),
                     Text(
                       leg.busNumber,
                       style: GoogleFonts.spaceGrotesk(
-                        fontSize: 9,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -722,10 +1010,10 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
 
     // Live GPS Marker (Pulsing Cyan)
@@ -785,3 +1073,4 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
     return markers;
   }
 }
+

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
@@ -82,6 +81,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
   TransitRouteResult? _currentRoute;
   bool _isLoadingRoute = false;
+  bool _isMapInteracting = false;
 
   void _zoomIn(String divId, TransformationController controller) {
     zoomInteractiveMap(divId, 1);
@@ -578,6 +578,9 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 390),
                 child: SingleChildScrollView(
+                  physics: _isMapInteracting
+                      ? const NeverScrollableScrollPhysics()
+                      : const BouncingScrollPhysics(),
                   padding: const EdgeInsets.only(
                     left: 16,
                     right: 16,
@@ -1286,7 +1289,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
           // Real Map Canvas with Google Static Map tile showing street-accurate driving polyline
           Container(
-            height: 220,
+            height: 290,
             width: double.infinity,
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
@@ -1303,13 +1306,15 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   // Real Interactive Google Maps Engine Vector Canvas
                   if (TransitMapConfig.hasGoogleMapsApiKey)
                     Positioned.fill(
-                      child: RawGestureDetector(
-                        gestures: {
-                          EagerGestureRecognizer:
-                              GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
-                            () => EagerGestureRecognizer(),
-                            (EagerGestureRecognizer instance) {},
-                          ),
+                      child: Listener(
+                        onPointerDown: (_) {
+                          if (!_isMapInteracting) setState(() => _isMapInteracting = true);
+                        },
+                        onPointerUp: (_) {
+                          if (_isMapInteracting) setState(() => _isMapInteracting = false);
+                        },
+                        onPointerCancel: (_) {
+                          if (_isMapInteracting) setState(() => _isMapInteracting = false);
                         },
                         child: InteractiveGoogleMapView(
                           divId: 'transit_map_corridor',
@@ -2119,13 +2124,15 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     (route.encodedPolyline.isNotEmpty || _transitResult != null) &&
                     TransitMapConfig.hasGoogleMapsApiKey)
                   Positioned.fill(
-                    child: RawGestureDetector(
-                      gestures: {
-                        EagerGestureRecognizer:
-                            GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
-                          () => EagerGestureRecognizer(),
-                          (EagerGestureRecognizer instance) {},
-                        ),
+                    child: Listener(
+                      onPointerDown: (_) {
+                        if (!_isMapInteracting) setState(() => _isMapInteracting = true);
+                      },
+                      onPointerUp: (_) {
+                        if (_isMapInteracting) setState(() => _isMapInteracting = false);
+                      },
+                      onPointerCancel: (_) {
+                        if (_isMapInteracting) setState(() => _isMapInteracting = false);
                       },
                       child: InteractiveGoogleMapView(
                         divId: 'transit_map_explore',
