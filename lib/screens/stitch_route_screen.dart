@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
@@ -1302,15 +1303,24 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   // Real Interactive Google Maps Engine Vector Canvas
                   if (TransitMapConfig.hasGoogleMapsApiKey)
                     Positioned.fill(
-                      child: InteractiveGoogleMapView(
-                        divId: 'transit_map_corridor',
-                        route: route,
-                        isSatellite: _satelliteMode,
-                        scope: _mapScope,
-                        gpsLocation: _currentGps,
-                        isDarkMode: false,
-                        transitResultJson: _transitLegsJson,
-                        transformationController: _corridorMapController,
+                      child: RawGestureDetector(
+                        gestures: {
+                          EagerGestureRecognizer:
+                              GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                            () => EagerGestureRecognizer(),
+                            (EagerGestureRecognizer instance) {},
+                          ),
+                        },
+                        child: InteractiveGoogleMapView(
+                          divId: 'transit_map_corridor',
+                          route: route,
+                          isSatellite: _satelliteMode,
+                          scope: _mapScope,
+                          gpsLocation: _currentGps,
+                          isDarkMode: false,
+                          transitResultJson: _transitLegsJson,
+                          transformationController: _corridorMapController,
+                        ),
                       ),
                     )
                   else
@@ -2109,14 +2119,23 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                     (route.encodedPolyline.isNotEmpty || _transitResult != null) &&
                     TransitMapConfig.hasGoogleMapsApiKey)
                   Positioned.fill(
-                    child: InteractiveGoogleMapView(
-                      divId: 'transit_map_explore',
-                      route: route,
-                      isSatellite: _satelliteMode,
-                      scope: _mapScope,
-                      gpsLocation: _currentGps,
-                      isDarkMode: dark,
-                      transformationController: _exploreMapController,
+                    child: RawGestureDetector(
+                      gestures: {
+                        EagerGestureRecognizer:
+                            GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                          () => EagerGestureRecognizer(),
+                          (EagerGestureRecognizer instance) {},
+                        ),
+                      },
+                      child: InteractiveGoogleMapView(
+                        divId: 'transit_map_explore',
+                        route: route,
+                        isSatellite: _satelliteMode,
+                        scope: _mapScope,
+                        gpsLocation: _currentGps,
+                        isDarkMode: dark,
+                        transformationController: _exploreMapController,
+                      ),
                     ),
                   )
                 else

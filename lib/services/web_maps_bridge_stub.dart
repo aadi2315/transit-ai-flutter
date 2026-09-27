@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'native_map_registry.dart';
 
-/// Stub implementation for non-web platforms (e.g. Flutter VM / unit tests)
+/// Stub / Native VM implementation for non-web platforms (e.g. Flutter mobile APK / unit tests)
 Future<Map<String, dynamic>?> queryJsDirections({
   required String origin,
   required String destination,
@@ -18,7 +19,7 @@ Future<Map<String, dynamic>?> queryJsCurrentLocation() async {
 }
 
 bool initInteractiveMap(String divId, {bool isSatellite = false}) {
-  return false;
+  return true;
 }
 
 bool updateInteractiveRoute(
@@ -29,20 +30,39 @@ bool updateInteractiveRoute(
   double? destLat,
   double? destLng,
 ) {
-  return false;
+  return NativeMapRegistry.updateRoute(
+    divId,
+    polylineEnc,
+    originLat,
+    originLng,
+    destLat,
+    destLng,
+  );
 }
 
-void setInteractiveMapScope(String divId, String scope) {}
+void setInteractiveMapScope(String divId, String scope) {
+  NativeMapRegistry.setScope(divId, scope);
+}
 
-void setInteractiveMapType(String divId, bool isSatellite) {}
+void setInteractiveMapType(String divId, bool isSatellite) {
+  NativeMapRegistry.setType(divId, isSatellite);
+}
 
-void zoomInteractiveMap(String divId, int delta) {}
+void zoomInteractiveMap(String divId, int delta) {
+  NativeMapRegistry.zoom(divId, delta);
+}
 
-void resetInteractiveMap(String divId) {}
+void resetInteractiveMap(String divId) {
+  NativeMapRegistry.reset(divId);
+}
 
-void updateInteractiveGps(String divId, double lat, double lng) {}
+void updateInteractiveGps(String divId, double lat, double lng) {
+  NativeMapRegistry.updateGps(divId, lat, lng);
+}
 
-void centerInteractiveGps(String divId, double lat, double lng) {}
+void centerInteractiveGps(String divId, double lat, double lng) {
+  NativeMapRegistry.centerGps(divId, lat, lng);
+}
 
 bool updateTransitRoute(
   String divId,
@@ -52,7 +72,17 @@ bool updateTransitRoute(
   double? destLat,
   double? destLng,
 }) {
-  return false;
+  return NativeMapRegistry.updateTransitRoute(
+    divId,
+    legsJson,
+    originLat: originLat,
+    originLng: originLng,
+    destLat: destLat,
+    destLng: destLng,
+  );
 }
 
-void clearInteractiveRoute(String divId) {}
+void clearInteractiveRoute(String divId) {
+  NativeMapRegistry.clearRoute(divId);
+}
+
