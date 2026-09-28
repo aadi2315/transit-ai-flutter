@@ -37,8 +37,28 @@ Map<String, String> _loadDotEnv() {
 
 /// Retrieve environment value on IO platforms (VM, Desktop, tests, Mobile)
 String getEnvValue(String key, {String fallback = ''}) {
-  // 1. Check compile-time --dart-define or --dart-define-from-file
-  final envVal = String.fromEnvironment(key);
+  // 1. Check known compile-time --dart-define
+  String envVal = '';
+  switch (key) {
+    case 'GOOGLE_MAPS_API_KEY':
+      envVal = const String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+      break;
+    case 'SUPABASE_URL':
+      envVal = const String.fromEnvironment('SUPABASE_URL');
+      break;
+    case 'SUPABASE_ANON_KEY':
+      envVal = const String.fromEnvironment('SUPABASE_ANON_KEY');
+      break;
+    case 'GEMINI_API_KEY':
+      envVal = const String.fromEnvironment('GEMINI_API_KEY');
+      break;
+    case 'RAZORPAY_KEY_ID':
+      envVal = const String.fromEnvironment('RAZORPAY_KEY_ID');
+      break;
+    case 'RAZORPAY_KEY_SECRET':
+      envVal = const String.fromEnvironment('RAZORPAY_KEY_SECRET');
+      break;
+  }
   if (envVal.isNotEmpty) return envVal;
 
   // 2. Check locally loaded .env file
