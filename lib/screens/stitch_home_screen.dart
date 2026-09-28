@@ -680,7 +680,15 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
 
                       // 2. BIG VIBRANT GRADIENT BUTTON: Book Instant Ticket (₹9.00)
                       GestureDetector(
-                        onTap: widget.onNavigateToWallet,
+                        onTap: () {
+                          final origin = _originController.text.trim();
+                          final dest = _destController.text.trim();
+                          if (origin.isNotEmpty && dest.isNotEmpty && widget.onSearchRoute != null) {
+                            widget.onSearchRoute!(origin, dest);
+                          } else {
+                            widget.onNavigateToWallet();
+                          }
+                        },
                         child: Container(
                           height: 52,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -797,7 +805,17 @@ class _StitchHomeScreenState extends State<StitchHomeScreen> {
                                     fare: j['fare'] ?? '₹9.00',
                                     badgeText: j['badgeText'] ?? 'Completed',
                                     timeText: j['timeText'] ?? 'Recent',
-                                    onRebook: widget.onNavigateToWallet,
+                                    onRebook: () {
+                                      final title = (j['title'] as String?) ?? '';
+                                      if (title.contains('→') && widget.onSearchRoute != null) {
+                                        final parts = title.split('→');
+                                        if (parts.length >= 2) {
+                                          widget.onSearchRoute!(parts[0].trim(), parts[1].trim());
+                                          return;
+                                        }
+                                      }
+                                      widget.onNavigateToWallet();
+                                    },
                                   ),
                                 );
                               })

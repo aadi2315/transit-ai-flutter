@@ -10,6 +10,8 @@ import 'screens/stitch_passes_screen.dart';
 import 'screens/stitch_payment_qr_screen.dart';
 import 'screens/pravha_splash_screen.dart';
 import 'services/supabase_service.dart';
+import 'services/google_directions_service.dart';
+import 'services/transit_routing_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +58,8 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
   String? _focusedIncident;
   String? _searchedOrigin;
   String? _searchedDestination;
+  TransitRouteResult? _activeRoute;
+  TransitRoutingResult? _activeTransitResult;
 
   void _toggleTheme() {
     setState(() {
@@ -72,10 +76,38 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
     });
   }
 
+  void _bookTicket(TransitRouteResult? route, TransitRoutingResult? transitResult) {
+    setState(() {
+      _activeRoute = route;
+      _activeTransitResult = transitResult;
+      if (route != null) {
+        _searchedOrigin = route.origin;
+        _searchedDestination = route.destination;
+      }
+      if (_currentScreenIndex != 5 && _currentScreenIndex != 6) {
+        _previousScreenIndex = _currentScreenIndex;
+      }
+      _currentScreenIndex = 4;
+    });
+  }
+
+  void _onRouteUpdated(TransitRouteResult? route, TransitRoutingResult? transitResult) {
+    setState(() {
+      _activeRoute = route;
+      _activeTransitResult = transitResult;
+      if (route != null) {
+        _searchedOrigin = route.origin;
+        _searchedDestination = route.destination;
+      }
+    });
+  }
+
   void _navigateToRouteWithSearch(String origin, String destination) {
     setState(() {
       _searchedOrigin = origin;
       _searchedDestination = destination;
+      _activeRoute = null;
+      _activeTransitResult = null;
       if (_currentScreenIndex != 5 && _currentScreenIndex != 6) {
         _previousScreenIndex = _currentScreenIndex;
       }
@@ -147,6 +179,8 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
           onClearFocus: _clearRouteFocus,
           initialOrigin: _searchedOrigin,
           initialDestination: _searchedDestination,
+          onRouteChanged: _onRouteUpdated,
+          onBookTicket: _bookTicket,
         );
         break;
       case 2:
@@ -184,6 +218,10 @@ class _StitchTransitAppState extends State<StitchTransitApp> {
           onNavigateToProfile: _openProfile,
           onToggleTheme: _toggleTheme,
           isDarkMode: isDark,
+          activeRoute: _activeRoute,
+          activeTransitResult: _activeTransitResult,
+          searchedOrigin: _searchedOrigin,
+          searchedDestination: _searchedDestination,
         );
         break;
       case 5:

@@ -8,6 +8,8 @@ import '../widgets/stitch_background.dart';
 import '../widgets/stitch_profile_button.dart';
 import '../services/razorpay_service.dart';
 import '../services/supabase_service.dart';
+import '../services/google_directions_service.dart';
+import '../services/transit_routing_service.dart';
 import '../config/razorpay_config.dart';
 import '../core/crypto/hmac_signer.dart';
 import '../core/storage/local_transit_vault.dart';
@@ -21,6 +23,10 @@ class StitchPaymentQrScreen extends StatefulWidget {
   final VoidCallback? onToggleTheme;
   final bool isDarkMode;
   final bool initialIsTicketView;
+  final TransitRouteResult? activeRoute;
+  final TransitRoutingResult? activeTransitResult;
+  final String? searchedOrigin;
+  final String? searchedDestination;
 
   const StitchPaymentQrScreen({
     super.key,
@@ -32,6 +38,10 @@ class StitchPaymentQrScreen extends StatefulWidget {
     this.onToggleTheme,
     required this.isDarkMode,
     this.initialIsTicketView = false,
+    this.activeRoute,
+    this.activeTransitResult,
+    this.searchedOrigin,
+    this.searchedDestination,
   });
 
   @override
@@ -61,6 +71,119 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   Map<String, dynamic>? _activePass;
   bool get _hasActivePass =>
       _activePass != null && _activePass!['status'] == 'active';
+
+  String get _effectiveOrigin {
+    if (widget.activeRoute != null && widget.activeRoute!.origin.isNotEmpty) {
+      return widget.activeRoute!.origin;
+    }
+    if (widget.searchedOrigin != null &&
+        widget.searchedOrigin!.trim().isNotEmpty) {
+      return widget.searchedOrigin!.trim();
+    }
+    if (widget.activeTransitResult != null &&
+        widget.activeTransitResult!.legs.isNotEmpty) {
+      return widget.activeTransitResult!.legs.first.boardStop.name;
+    }
+    return 'Sola Crossroad';
+  }
+
+  String get _effectiveDestination {
+    if (widget.activeRoute != null &&
+        widget.activeRoute!.destination.isNotEmpty) {
+      return widget.activeRoute!.destination;
+    }
+    if (widget.searchedDestination != null &&
+        widget.searchedDestination!.trim().isNotEmpty) {
+      return widget.searchedDestination!.trim();
+    }
+    if (widget.activeTransitResult != null &&
+        widget.activeTransitResult!.legs.isNotEmpty) {
+      return widget.activeTransitResult!.legs.last.alightStop.name;
+    }
+    return 'Iskcon Circle';
+  }
+
+  double get _effectiveFare {
+    if (widget.activeRoute != null && widget.activeRoute!.fareAmount > 0) {
+      return widget.activeRoute!.fareAmount;
+    }
+    if (widget.activeTransitResult != null &&
+        widget.activeTransitResult!.legs.isNotEmpty) {
+      return 5.0 * widget.activeTransitResult!.legs.length;
+    }
+    return 9.0;
+  }
+
+  int get _effectiveDurationMins {
+    if (widget.activeRoute != null && widget.activeRoute!.durationMins > 0) {
+      return widget.activeRoute!.durationMins;
+    }
+    if (widget.activeTransitResult != null &&
+        widget.activeTransitResult!.totalDurationMinutes > 0) {
+      return widget.activeTransitResult!.totalDurationMinutes.round();
+    }
+    return 24;
+  }
+
+  String get _effectiveDurationText {
+    if (widget.activeRoute != null &&
+        widget.activeRoute!.durationText.isNotEmpty) {
+      return widget.activeRoute!.durationText;
+    }
+    if (widget.activeTransitResult != null &&
+        widget.activeTransitResult!.totalDurationMinutes > 0) {
+      return '${widget.activeTransitResult!.totalDurationMinutes.round()} mins';
+    }
+    return '24 mins';
+  }
+
+  String get _effectiveDistanceText {
+    if (widget.activeRoute != null &&
+        widget.activeRoute!.distanceText.isNotEmpty) {
+      return widget.activeRoute!.distanceText;
+    }
+    return '8.4 km';
+  }
+
+  List<String> get _effectiveBusNumbers {
+    if (widget.activeTransitResult != null &&
+        widget.activeTransitResult!.busNumbers.isNotEmpty) {
+      return widget.activeTransitResult!.busNumbers;
+    }
+    return ['9U', '8D'];
+  }
+
+  String get _effectiveTransferSubtitle {
+    if (widget.activeTransitResult != null) {
+      if (widget.activeTransitResult!.requiresTransfer) {
+        if (widget.activeTransitResult!.transferPoints.isNotEmpty) {
+          return 'Interchange at ${widget.activeTransitResult!.transferPoints.first.name}';
+        } else if (widget.activeTransitResult!.legs.length > 1) {
+          return 'Interchange at ${widget.activeTransitResult!.legs.first.alightStop.name}';
+        }
+      } else {
+        final buses = widget.activeTransitResult!.busNumbers.isNotEmpty
+            ? widget.activeTransitResult!.busNumbers.join(', ')
+            : 'Direct';
+        return 'Direct Route • Bus $buses';
+      }
+    }
+    if (widget.activeRoute != null) {
+      return 'Unified Transit Corridor';
+    }
+    return 'Interchange at Shivranjani';
+  }
+
+  @override
+  void didUpdateWidget(covariant StitchPaymentQrScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.activeRoute != oldWidget.activeRoute ||
+        widget.activeTransitResult != oldWidget.activeTransitResult ||
+        widget.searchedOrigin != oldWidget.searchedOrigin ||
+        widget.searchedDestination != oldWidget.searchedDestination) {
+      _updateDynamicPayload();
+    }
+  }
 
   @override
   void initState() {
@@ -121,10 +244,13 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   Future<void> _loadOfflineActiveTicket() async {
     final activePass = await LocalTransitVault.instance.getActivePass();
     final cached = await LocalTransitVault.instance.getActiveTicket();
+    final isNewCheckout = widget.activeRoute != null ||
+        widget.activeTransitResult != null ||
+        (widget.searchedOrigin != null && widget.searchedOrigin!.isNotEmpty);
     if (mounted) {
       setState(() {
         _activePass = activePass;
-        if (cached != null) {
+        if (cached != null && !isNewCheckout) {
           _hasPaid = true;
           _isTicketView = true;
           if (cached['ticket_id'] != null) {
@@ -157,10 +283,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
     await LocalTransitVault.instance.saveActiveTicket({
       'ticket_id': 'TKT-${_paymentId.toUpperCase()}',
-      'origin': 'Sola Bhagwat',
-      'destination': 'Iskcon Cross Rd',
+      'origin': _effectiveOrigin,
+      'destination': _effectiveDestination,
       'fare': 0.0,
-      'line_info': '$op Corridor Pass Journey',
+      'line_info': '$op Corridor Pass Journey • ${_effectiveBusNumbers.join(" ➔ ")}',
       'created_at': DateTime.now().toIso8601String(),
       'pass_number': passNum,
       'payment_method': _paymentMethodUsed,
@@ -175,23 +301,25 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
   }
 
   void _updateDynamicPayload() {
+    final fare = _paymentMethodUsed.contains('Pass') ? 0.0 : _effectiveFare;
     _dynamicPayload = HmacTokenSigner.generateDynamicTicketPayload(
       ticketId: 'TKT-${_paymentId.toUpperCase()}',
-      origin: 'Sola Bhagwat',
-      destination: 'Iskcon Cross Rd',
-      fare: _paymentMethodUsed.contains('Pass') ? 0.0 : 9.0,
-      lineInfo: 'BRTS 9U + Feeder 8D',
+      origin: _effectiveOrigin,
+      destination: _effectiveDestination,
+      fare: fare,
+      lineInfo: 'BRTS ${_effectiveBusNumbers.join(" + ")}',
     );
   }
 
   Future<void> _syncTicketToSupabase() async {
     try {
+      final fare = _paymentMethodUsed.contains('Pass') ? 0.0 : _effectiveFare;
       await SupabaseService.instance.saveTicket(
         ticketId: 'TKT-${_paymentId.toUpperCase()}',
-        origin: 'Sola Bhagwat',
-        destination: 'Iskcon Cross Rd',
-        fare: _paymentMethodUsed.contains('Pass') ? 0.0 : 9.0,
-        lineInfo: 'BRTS 9U + Feeder 8D',
+        origin: _effectiveOrigin,
+        destination: _effectiveDestination,
+        fare: fare,
+        lineInfo: 'BRTS ${_effectiveBusNumbers.join(" + ")}',
         qrPayload: _dynamicPayload,
         hmacSignature: _dynamicPayload.split('|').last,
       );
@@ -533,6 +661,319 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
     );
   }
 
+  Widget _buildRouteLegsList() {
+    if (widget.activeTransitResult != null &&
+        widget.activeTransitResult!.legs.isNotEmpty) {
+      final legs = widget.activeTransitResult!.legs;
+      const legColors = [
+        Color(0xFF0891B2),
+        Color(0xFF06B6D4),
+        Color(0xFFEA580C),
+        Color(0xFFD97706),
+      ];
+      final perLegFare = _effectiveFare / legs.length;
+
+      return Column(
+        children: List.generate(legs.length, (i) {
+          final leg = legs[i];
+          final color = legColors[i % legColors.length];
+          final isLast = i == legs.length - 1;
+
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      leg.routeShortName,
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${leg.boardStop.name} → ${leg.alightStop.name}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        ),
+                        Text(
+                          '${leg.estimatedMinutes.round()} min transit leg',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '₹${perLegFare.toStringAsFixed(2)}',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              if (!isLast) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFEFF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFA5F3FC)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.transfer_within_a_station_rounded,
+                        size: 13,
+                        color: Color(0xFF0891B2),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Interchange at ${leg.alightStop.name}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '3 min walk',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0891B2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ],
+          );
+        }),
+      );
+    }
+
+    if (widget.activeRoute != null) {
+      return Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0891B2),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'BRTS',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${widget.activeRoute!.origin} → ${widget.activeRoute!.destination}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+                Text(
+                  '${widget.activeRoute!.distanceText} • ${widget.activeRoute!.durationText}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '₹${_effectiveFare.toStringAsFixed(2)}',
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Default Fallback (for tests and direct entry)
+    return Column(
+      children: [
+        // Leg 1
+        Row(
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0891B2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '9U',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sola Crossroad → Shivranjani',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '₹5.00',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: const Color(0xFFECFEFF),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFA5F3FC)),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.transfer_within_a_station_rounded,
+                size: 13,
+                color: Color(0xFF0891B2),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Interchange at Shivranjani Junction',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              Text(
+                '3 min walk',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0891B2),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF06B6D4),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '8D',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Shivranjani → Iskcon Circle',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                  Text(
+                    'Feeder Bypass • 3 stops (3.6 km, 8 min)',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '₹4.00',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildCheckoutView() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -584,7 +1025,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Sola Crossroad → Iskcon Circle',
+                      '$_effectiveOrigin → $_effectiveDestination',
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: GoogleFonts.plusJakartaSans(
@@ -595,7 +1036,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Interchange at Shivranjani',
+                      _effectiveTransferSubtitle,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: GoogleFonts.plusJakartaSans(
@@ -613,7 +1054,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'ETA: 4 MIN',
+                    'ETA: $_effectiveDurationMins MIN',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 8.5,
                       fontWeight: FontWeight.w700,
@@ -626,7 +1067,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '₹9.00',
+                          '₹${_effectiveFare.toStringAsFixed(2)}',
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 9.5,
                             fontWeight: FontWeight.w600,
@@ -647,7 +1088,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     ),
                   ] else ...[
                     Text(
-                      '₹9.00',
+                      '₹${_effectiveFare.toStringAsFixed(2)}',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -836,7 +1277,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       runSpacing: 4,
                       children: [
                         Text(
-                          'ROUTE BREAKDOWN • 2 LEGS',
+                          'ROUTE BREAKDOWN • ${widget.activeTransitResult?.legs.length ?? (widget.activeRoute != null ? 1 : 2)} ${((widget.activeTransitResult?.legs.length ?? (widget.activeRoute != null ? 1 : 2)) == 1) ? "LEG" : "LEGS"}',
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
@@ -844,7 +1285,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                           ),
                         ),
                         Text(
-                          '8.4 km • ~24 mins',
+                          '$_effectiveDistanceText • ~$_effectiveDurationText',
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 9,
                             fontWeight: FontWeight.w600,
@@ -855,147 +1296,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     ),
                     const SizedBox(height: 10),
 
-                    // Leg 1
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0891B2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '9U',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Sola Crossroad → Shivranjani',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF0F172A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '₹5.00',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Concourse transfer
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFECFEFF),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFA5F3FC)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.transfer_within_a_station_rounded,
-                            size: 13,
-                            color: Color(0xFF0891B2),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Interchange at Shivranjani Junction',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF0F172A),
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '3 min walk',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF0891B2),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Leg 2
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF06B6D4),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '8D',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Shivranjani → Iskcon Circle',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF0F172A),
-                                ),
-                              ),
-                              Text(
-                                'Feeder Bypass • 3 stops (3.6 km, 8 min)',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 9,
-                                  color: const Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '₹4.00',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildRouteLegsList(),
 
                     const Divider(color: Color(0xFFE2E8F0), height: 18),
 
@@ -1011,7 +1312,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             ),
                           ),
                           Text(
-                            '₹9.00',
+                            '₹${_effectiveFare.toStringAsFixed(2)}',
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -1042,7 +1343,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             ],
                           ),
                           Text(
-                            '-₹9.00',
+                            '-₹${_effectiveFare.toStringAsFixed(2)}',
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -1115,7 +1416,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                             ),
                           ),
                           Text(
-                            'INR ₹9.00',
+                            'INR ₹${_effectiveFare.toStringAsFixed(2)}',
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
@@ -1239,8 +1540,8 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     ? null
                     : () {
                         _startRazorpayPayment(
-                          amount: 9,
-                          description: 'Transit Fare ₹9.00 via $_selectedUpi',
+                          amount: _hasActivePass ? 0 : _effectiveFare.round(),
+                          description: 'Transit Fare ₹${_effectiveFare.toStringAsFixed(2)} via $_selectedUpi',
                         );
                       },
                 child: Container(
@@ -1291,7 +1592,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Pay ₹9.00 via $_selectedUpi',
+                            'Pay ₹${_effectiveFare.toStringAsFixed(2)} via $_selectedUpi',
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
@@ -1308,7 +1609,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
 
               const SizedBox(height: 16),
 
-              // DEDICATED UPI PAYMENT QR SECTION (For scanning & paying ₹9.00)
+              // DEDICATED UPI PAYMENT QR SECTION (For scanning & paying)
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -1358,7 +1659,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Scan this payment QR with GPay, PhonePe, Paytm, or any UPI app to pay ₹9.00. Your ticket QR unlocks in the Ticket section once payment is confirmed.',
+                      'Scan this payment QR with GPay, PhonePe, Paytm, or any UPI app to pay ₹${_effectiveFare.toStringAsFixed(2)}. Your ticket QR unlocks in the Ticket section once payment is confirmed.',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
                         color: const Color(0xFF64748B),
@@ -1382,7 +1683,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         ),
                         child: QrImageView(
                           data:
-                              'upi://pay?pa=pravha.rzp@icici&pn=PRAVHA&am=9.00&cu=INR&tn=Ticket-Sola-Iskcon',
+                              'upi://pay?pa=pravha.rzp@icici&pn=PRAVHA&am=${_effectiveFare.toStringAsFixed(2)}&cu=INR&tn=Ticket-${_effectiveOrigin.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "")}-${_effectiveDestination.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "")}',
                           version: QrVersions.auto,
                           size: 140.0,
                           backgroundColor: Colors.white,
@@ -1400,7 +1701,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     const SizedBox(height: 8),
                     Center(
                       child: Text(
-                        'UPI ID: pravha.rzp@icici • Fare: ₹9.00',
+                        'UPI ID: pravha.rzp@icici • Fare: ₹${_effectiveFare.toStringAsFixed(2)}',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
@@ -1702,7 +2003,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Sola Crossroad → Iskcon Circle',
+                        '$_effectiveOrigin → $_effectiveDestination',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
@@ -1712,7 +2013,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'Fare: ₹9.00 • 2 Legs (9U ➔ 8D)',
+                        'Fare: ₹${_effectiveFare.toStringAsFixed(2)} • ${_effectiveBusNumbers.length} ${_effectiveBusNumbers.length == 1 ? "Leg" : "Legs"} (${_effectiveBusNumbers.join(" ➔ ")})',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w600,
@@ -1723,7 +2024,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   ),
                 ),
                 Text(
-                  '₹9.00',
+                  '₹${_effectiveFare.toStringAsFixed(2)}',
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -1812,7 +2113,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      'Proceed to Payment (₹9.00)',
+                      'Proceed to Payment (₹${_effectiveFare.toStringAsFixed(2)})',
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -1974,7 +2275,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                   runSpacing: 4,
                   children: [
                     Text(
-                      'Sola Bhagwat',
+                      _effectiveOrigin,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1984,7 +2285,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     const Icon(Icons.arrow_forward_rounded,
                         size: 14, color: Color(0xFF0891B2)),
                     Text(
-                      'Iskcon Cross Rd',
+                      _effectiveDestination,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -2009,7 +2310,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                         border: Border.all(color: const Color(0xFFA5F3FC)),
                       ),
                       child: Text(
-                        'AC Electric • 9U ➔ 8D',
+                        'AC Electric • ${_effectiveBusNumbers.join(" ➔ ")}',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
@@ -2036,7 +2337,7 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                     Text(
                       _paymentMethodUsed.contains('Pass')
                           ? 'Covered by Pass • ₹0.00'
-                          : '₹9.00 Paid',
+                          : '₹${_effectiveFare.toStringAsFixed(2)} Paid',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -2317,10 +2618,10 @@ class _StitchPaymentQrScreenState extends State<StitchPaymentQrScreen>
                       children: [
                         const Divider(
                             color: Color(0xFFE2E8F0), height: 12),
-                        _buildReceiptRow('Base Transit Fare', '₹9.00'),
+                        _buildReceiptRow('Base Transit Fare', '₹${_effectiveFare.toStringAsFixed(2)}'),
                         if (_paymentMethodUsed.contains('Pass')) ...[
                           _buildReceiptRow(
-                              'Pass Holder Subsidy', '-₹9.00 (100% Waiver)'),
+                              'Pass Holder Subsidy', '-₹${_effectiveFare.toStringAsFixed(2)} (100% Waiver)'),
                           _buildReceiptRow('Net Fare Charged', '₹0.00 (Free)'),
                           _buildReceiptRow('Pass Reference',
                               _activePass?['pass_number'] ?? 'PASS-ACTIVE'),

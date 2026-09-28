@@ -31,6 +31,8 @@ class StitchRouteScreen extends StatefulWidget {
   final VoidCallback? onClearFocus;
   final String? initialOrigin;
   final String? initialDestination;
+  final Function(TransitRouteResult? route, TransitRoutingResult? transitResult)? onRouteChanged;
+  final Function(TransitRouteResult? route, TransitRoutingResult? transitResult)? onBookTicket;
 
   const StitchRouteScreen({
     super.key,
@@ -46,6 +48,8 @@ class StitchRouteScreen extends StatefulWidget {
     this.onClearFocus,
     this.initialOrigin,
     this.initialDestination,
+    this.onRouteChanged,
+    this.onBookTicket,
   });
 
   @override
@@ -398,6 +402,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                   _currentRoute = mapRoute;
                   _isLoadingRoute = false;
                 });
+                widget.onRouteChanged?.call(mapRoute, result);
                 // Push multi-leg transit route to all map canvases
                 _pushTransitRouteToMaps(result, legsJson);
               }
@@ -426,6 +431,7 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           _transitLegsJson = null;
           _isLoadingRoute = false;
         });
+        widget.onRouteChanged?.call(route, null);
         _pushDrivingRouteToMaps(route);
       }
     } catch (e) {
@@ -650,7 +656,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
               } else if (index == 3) {
                 widget.onNavigateToPasses();
               } else if (index == 4) {
-                widget.onNavigateToWallet();
+                if (widget.onBookTicket != null && _currentRoute != null) {
+                  widget.onBookTicket!(_currentRoute, _transitResult);
+                } else {
+                  widget.onNavigateToWallet();
+                }
               }
             },
           ),
@@ -1553,83 +1563,92 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
       modeLabel = 'Transit Route';
     }
 
-    return StitchGlassCard(
-      isDarkMode: false,
-      borderRadius: 22,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFECFEFF),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0891B2),
-                        shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: () {
+        if (widget.onBookTicket != null && _currentRoute != null) {
+          widget.onBookTicket!(_currentRoute, _transitResult);
+        } else {
+          widget.onNavigateToWallet();
+        }
+      },
+      child: StitchGlassCard(
+        isDarkMode: false,
+        borderRadius: 22,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFEFF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF0891B2),
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      modeLabel,
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0891B2),
+                      const SizedBox(width: 4),
+                      Text(
+                        modeLabel,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0891B2),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              if (route != null)
-                Text(
-                  '₹${route.fareAmount.toStringAsFixed(2)}',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0891B2),
+                    ],
                   ),
                 ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            route != null
-                ? '${route.origin} → ${route.destination}'
-                : (_originController.text.isNotEmpty && _destController.text.isNotEmpty
-                    ? '${_originController.text} → ${_destController.text}'
-                    : 'Search a Corridor in Ahmedabad'),
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF0F172A),
+                if (route != null)
+                  Text(
+                    '₹${route.fareAmount.toStringAsFixed(2)}',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF0891B2),
+                    ),
+                  ),
+              ],
             ),
-          ),
 
-          const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
-          // Real metric counters
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildMetric('DURATION', route?.durationText ?? '--', Icons.schedule_rounded),
-              _buildMetric('DISTANCE', route?.distanceText ?? '--', Icons.route_rounded),
-              _buildMetric('UNIFIED FARE', route != null ? '₹${route.fareAmount.toStringAsFixed(2)}' : '--', Icons.currency_rupee_rounded),
-            ],
-          ),
-        ],
+            Text(
+              route != null
+                  ? '${route.origin} → ${route.destination}'
+                  : (_originController.text.isNotEmpty && _destController.text.isNotEmpty
+                      ? '${_originController.text} → ${_destController.text}'
+                      : 'Search a Corridor in Ahmedabad'),
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // Real metric counters
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildMetric('DURATION', route?.durationText ?? '--', Icons.schedule_rounded),
+                _buildMetric('DISTANCE', route?.distanceText ?? '--', Icons.route_rounded),
+                _buildMetric('UNIFIED FARE', route != null ? '₹${route.fareAmount.toStringAsFixed(2)}' : '--', Icons.currency_rupee_rounded),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2062,7 +2081,13 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
         : 'Book Instant QR Ticket';
 
     return GestureDetector(
-      onTap: widget.onNavigateToWallet,
+      onTap: () {
+        if (widget.onBookTicket != null) {
+          widget.onBookTicket!(_currentRoute, _transitResult);
+        } else {
+          widget.onNavigateToWallet();
+        }
+      },
       child: Container(
         height: 52,
         decoration: BoxDecoration(
