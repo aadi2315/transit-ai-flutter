@@ -3,6 +3,19 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js' as js;
 
+/// Injects Google Maps JavaScript SDK dynamically using the configured API Key
+void injectWebMapsSdk(String apiKey) {
+  try {
+    if (apiKey.trim().isNotEmpty &&
+        !apiKey.contains('YOUR_') &&
+        apiKey.length > 15) {
+      if (js.context.hasProperty('loadGoogleMapsSdk')) {
+        js.context.callMethod('loadGoogleMapsSdk', [apiKey]);
+      }
+    }
+  } catch (_) {}
+}
+
 /// Web implementation using Google Maps JavaScript SDK bridge without CORS limitations
 Future<Map<String, dynamic>?> queryJsDirections({
   required String origin,

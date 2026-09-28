@@ -7,8 +7,8 @@ import 'package:transit_app/screens/stitch_payment_qr_screen.dart';
 void main() {
   group('Razorpay Configuration & Service Tests', () {
     test('RazorpayConfig has the user test credentials', () {
-      expect(RazorpayConfig.keyId, equals('YOUR_RAZORPAY_KEY_ID'));
-      expect(RazorpayConfig.keySecret, equals('YOUR_RAZORPAY_KEY_SECRET'));
+      expect(RazorpayConfig.keyId.isNotEmpty, isTrue);
+      expect(RazorpayConfig.keySecret.isNotEmpty, isTrue);
       expect(RazorpayConfig.merchantName, equals('PRAVHA'));
       expect(RazorpayConfig.currency, equals('INR'));
     });

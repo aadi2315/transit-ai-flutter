@@ -1,6 +1,6 @@
 -- ====================================================================
 -- TRANSIT AI: SUPABASE MULTIMODAL ROUTE-STOP SEQUENCE & DIJKSTRA MIGRATION
--- Project URL: https://your-project-id.supabase.co
+-- Project URL: https://<your-project-id>.supabase.co
 -- How to run: Supabase Dashboard -> SQL Editor -> Paste & Run (▶)
 -- ====================================================================
 

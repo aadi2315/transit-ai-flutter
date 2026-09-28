@@ -103,8 +103,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
 
     // Verify user credentials in config
-    expect(SupabaseConfig.supabaseUrl, 'https://your-project-id.supabase.co');
-    expect(SupabaseConfig.supabaseAnonKey, 'your_supabase_anon_public_key_here');
+    expect(SupabaseConfig.supabaseUrl.isNotEmpty, isTrue);
+    expect(SupabaseConfig.supabaseAnonKey.isNotEmpty, isTrue);
     expect(SupabaseConfig.isConfigured, isTrue);
 
     // Test profile registration with locality

@@ -1,7 +1,13 @@
+import 'app_env.dart';
+import '../services/web_maps_bridge.dart';
+
 /// Configuration and setup for Google Maps integration in Transit AI
 class TransitMapConfig {
-  /// Google Maps API Key provided for Transit AI:
-  static String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
+  /// Google Maps API Key provided for Transit AI loaded dynamically:
+  static String googleMapsApiKey = AppEnv.get(
+    'GOOGLE_MAPS_API_KEY',
+    fallback: 'YOUR_GOOGLE_MAPS_API_KEY',
+  );
 
   /// Returns true if a valid Google Maps API Key is configured
   static bool get hasGoogleMapsApiKey =>
@@ -12,6 +18,14 @@ class TransitMapConfig {
   /// Update the API key dynamically from UI or at runtime
   static void setApiKey(String key) {
     googleMapsApiKey = key.trim();
+    initializeWebMaps();
+  }
+
+  /// Ensure web maps JS SDK is loaded on Web platform
+  static void initializeWebMaps() {
+    if (hasGoogleMapsApiKey) {
+      injectWebMapsSdk(googleMapsApiKey);
+    }
   }
 
   /// Builds a Google Directions API URL in DRIVING mode with intermediate transit waypoints

@@ -1,10 +1,10 @@
 -- ====================================================================
 -- TRANSIT AI - SUPABASE DATABASE SCHEMA
--- Project URL: https://your-project-id.supabase.co
+-- Project URL: https://<your-project-id>.supabase.co
 --
 -- HOW TO RUN:
 -- 1. Log in to your Supabase Dashboard: https://supabase.com/dashboard
--- 2. Select project 'your-project-id'
+-- 2. Select your project
 -- 3. Click "SQL Editor" in the left sidebar
 -- 4. Click "New Query", paste this entire file, and click "Run" (▶)
 -- ====================================================================

@@ -32,8 +32,17 @@
   <title>PRAVHA</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Google Maps JavaScript API with Places and Geometry libraries -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry"></script>
+  <!-- Dynamic Google Maps JavaScript SDK loader (Keys loaded safely from .env / AppEnv) -->
+  <script>
+    window.loadGoogleMapsSdk = function(apiKey) {
+      if (!apiKey || apiKey.indexOf('YOUR_') >= 0 || window.isGoogleMapsScriptInjected) return;
+      window.isGoogleMapsScriptInjected = true;
+      var script = document.createElement('script');
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(apiKey) + '&libraries=places,geometry';
+      script.async = true;
+      document.head.appendChild(script);
+    };
+  </script>
   <!-- Clean, professional Google Maps embedded styling -->
   <style>
     .gm-style-cc,

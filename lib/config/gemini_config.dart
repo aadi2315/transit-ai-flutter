@@ -1,11 +1,12 @@
+import 'app_env.dart';
+
 /// Configuration and API key storage for Google Gemini AI in Transit AI
-///
-/// WHERE THE GEMINI KEY IS STORED:
-/// File Path: `lib/config/gemini_config.dart`
 class GeminiConfig {
-  /// Google Gemini API Key configured for live AI reasoning
-  static String geminiApiKey =
-      'YOUR_GEMINI_API_KEY';
+  /// Google Gemini API Key configured from environment
+  static String geminiApiKey = AppEnv.get(
+    'GEMINI_API_KEY',
+    fallback: 'YOUR_GEMINI_API_KEY',
+  );
 
   /// Returns true if a valid Google Gemini API Key is configured
   static bool get hasKey =>

@@ -1,7 +1,7 @@
 -- ====================================================================
 -- TRANSIT AI - SUPABASE ROUTE POLYLINE CACHE MIGRATION
 -- Enables Fetch-Once-and-Store for Google Directions API Polylines
--- Project: https://your-project-id.supabase.co
+-- Project: https://<your-project-id>.supabase.co
 -- ====================================================================
 
 -- 1. Upgrade gtfs_routes table with driving route & caching columns

@@ -12,6 +12,7 @@ import 'screens/pravha_splash_screen.dart';
 import 'services/supabase_service.dart';
 import 'services/google_directions_service.dart';
 import 'services/transit_routing_service.dart';
+import 'config/transit_map_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,9 @@ void main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
+
+  // Initialize dynamic web Google Maps loader if key is present
+  TransitMapConfig.initializeWebMaps();
 
   // Initialize Supabase Cloud Backend
   try {

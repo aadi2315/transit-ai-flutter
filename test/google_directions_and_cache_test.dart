@@ -8,7 +8,7 @@ import 'package:transit_app/services/google_directions_service.dart';
 void main() {
   group('TransitMapConfig & Google Maps Key Tests', () {
     test('TransitMapConfig holds valid configured Google Maps API Key', () {
-      expect(TransitMapConfig.googleMapsApiKey, equals('YOUR_GOOGLE_MAPS_API_KEY'));
+      expect(TransitMapConfig.googleMapsApiKey.isNotEmpty, isTrue);
       expect(TransitMapConfig.hasGoogleMapsApiKey, isTrue);
     });
 
@@ -20,7 +20,7 @@ void main() {
       );
 
       expect(url.contains('mode=driving'), isTrue, reason: 'Must use DRIVING mode, NOT transit mode');
-      expect(url.contains('key=YOUR_GOOGLE_MAPS_API_KEY'), isTrue);
+      expect(url.contains('key=${TransitMapConfig.googleMapsApiKey}'), isTrue);
       expect(url.contains('origin=Sola%20Bhagwat'), isTrue);
       expect(url.contains('destination=Iskcon%20Cross%20Road'), isTrue);
       expect(url.contains('waypoints=Shivranjani'), isTrue);
@@ -119,7 +119,7 @@ void main() {
 
       final mockClient = MockClient((request) async {
         expect(request.url.queryParameters['mode'], equals('driving'));
-        expect(request.url.queryParameters['key'], equals('YOUR_GOOGLE_MAPS_API_KEY'));
+        expect(request.url.queryParameters['key'], equals(TransitMapConfig.googleMapsApiKey));
         return http.Response(jsonEncode(mockResponseJson), 200);
       });
 

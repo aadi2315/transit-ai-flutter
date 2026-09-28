@@ -2,6 +2,7 @@ import 'dart:async';
 import 'native_map_registry.dart';
 
 /// Stub / Native VM implementation for non-web platforms (e.g. Flutter mobile APK / unit tests)
+void injectWebMapsSdk(String apiKey) {}
 Future<Map<String, dynamic>?> queryJsDirections({
   required String origin,
   required String destination,

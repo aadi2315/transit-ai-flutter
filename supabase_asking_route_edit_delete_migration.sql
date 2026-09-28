@@ -4,7 +4,7 @@
 --
 -- INSTRUCTIONS TO RUN:
 -- 1. Open Supabase Dashboard: https://supabase.com/dashboard
--- 2. Select your project: 'your-project-id'
+-- 2. Select your project
 -- 3. Click "SQL Editor" on the left navigation bar
 -- 4. Click "New Query", paste this entire script, and click "Run" (▶)
 -- ====================================================================

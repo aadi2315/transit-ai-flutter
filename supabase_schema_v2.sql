@@ -1,11 +1,11 @@
 -- ====================================================================
 -- TRANSIT AI - PRODUCTION SUPABASE DATABASE SCHEMA v2.0
 -- Unified Multimodal AMTS / Janmarg BRTS Architecture
--- Project URL: https://your-project-id.supabase.co
+-- Project URL: https://<your-project-id>.supabase.co
 --
 -- INSTRUCTIONS TO RUN:
 -- 1. Log in to your Supabase Dashboard: https://supabase.com/dashboard
--- 2. Select project 'your-project-id'
+-- 2. Select your project
 -- 3. In the left navigation bar, click on "SQL Editor"
 -- 4. Click "New Query", paste this entire script, and click "Run" (▶)
 -- ====================================================================

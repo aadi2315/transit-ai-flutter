@@ -1,7 +1,15 @@
+import 'app_env.dart';
+
 class RazorpayConfig {
-  // Test API credentials provided by user
-  static const String keyId = 'YOUR_RAZORPAY_KEY_ID';
-  static const String keySecret = 'YOUR_RAZORPAY_KEY_SECRET';
+  // Test API credentials loaded dynamically from environment
+  static String get keyId => AppEnv.get(
+        'RAZORPAY_KEY_ID',
+        fallback: 'YOUR_RAZORPAY_KEY_ID',
+      );
+  static String get keySecret => AppEnv.get(
+        'RAZORPAY_KEY_SECRET',
+        fallback: 'YOUR_RAZORPAY_KEY_SECRET',
+      );
 
   // Merchant details
   static const String merchantName = 'PRAVHA';
