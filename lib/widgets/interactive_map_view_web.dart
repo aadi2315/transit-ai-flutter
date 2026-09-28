@@ -20,6 +20,8 @@ Widget buildPlatformMapView({
   required bool isDarkMode,
   String? transitResultJson,
   VoidCallback? onMapReady,
+  bool isNavigating = false,
+  double? navigationProgress,
 }) {
   return _WebInteractiveMapView(
     key: key,
@@ -31,6 +33,8 @@ Widget buildPlatformMapView({
     isDarkMode: isDarkMode,
     transitResultJson: transitResultJson,
     onMapReady: onMapReady,
+    isNavigating: isNavigating,
+    navigationProgress: navigationProgress,
   );
 }
 
@@ -43,6 +47,8 @@ class _WebInteractiveMapView extends StatefulWidget {
   final bool isDarkMode;
   final String? transitResultJson;
   final VoidCallback? onMapReady;
+  final bool isNavigating;
+  final double? navigationProgress;
 
   const _WebInteractiveMapView({
     super.key,
@@ -54,6 +60,8 @@ class _WebInteractiveMapView extends StatefulWidget {
     required this.isDarkMode,
     this.transitResultJson,
     this.onMapReady,
+    this.isNavigating = false,
+    this.navigationProgress,
   });
 
   @override

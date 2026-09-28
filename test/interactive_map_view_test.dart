@@ -181,6 +181,35 @@ void main() {
       expect(find.text('8D'), findsWidgets); // Transfer bus badge & route midpoint badge
       expect(find.text('9U'), findsOneWidget); // Route midpoint badge for Leg 1
     });
+
+    testWidgets('Renders dynamic path completion polyline during active navigation mode', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 600,
+              height: 600,
+              child: InteractiveGoogleMapView(
+                divId: 'nav_mode_map',
+                route: testRoute,
+                gpsLocation: testGps,
+                isNavigating: true,
+                navigationProgress: 0.5,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FlutterMap), findsOneWidget);
+      expect(find.byType(PolylineLayer), findsOneWidget);
+      final polyLayer = tester.widget<PolylineLayer>(find.byType(PolylineLayer));
+      expect(polyLayer.polylines.isNotEmpty, isTrue);
+      // Verify that completed green polyline exists
+      final hasCompletedLine = polyLayer.polylines.any((p) => p.color == const Color(0xFF10B981));
+      expect(hasCompletedLine, isTrue);
+    });
   });
 }
 

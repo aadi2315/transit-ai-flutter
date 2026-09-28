@@ -22,6 +22,8 @@ Widget buildPlatformMapView({
   required bool isDarkMode,
   String? transitResultJson,
   VoidCallback? onMapReady,
+  bool isNavigating = false,
+  double? navigationProgress,
 }) {
   return _NativeInteractiveMapView(
     key: key,
@@ -33,6 +35,8 @@ Widget buildPlatformMapView({
     isDarkMode: isDarkMode,
     transitResultJson: transitResultJson,
     onMapReady: onMapReady,
+    isNavigating: isNavigating,
+    navigationProgress: navigationProgress,
   );
 }
 
@@ -95,6 +99,8 @@ class _NativeInteractiveMapView extends StatefulWidget {
   final bool isDarkMode;
   final String? transitResultJson;
   final VoidCallback? onMapReady;
+  final bool isNavigating;
+  final double? navigationProgress;
 
   const _NativeInteractiveMapView({
     super.key,
@@ -106,6 +112,8 @@ class _NativeInteractiveMapView extends StatefulWidget {
     required this.isDarkMode,
     this.transitResultJson,
     this.onMapReady,
+    this.isNavigating = false,
+    this.navigationProgress,
   });
 
   @override
@@ -222,6 +230,11 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
 
     if (widget.gpsLocation != oldWidget.gpsLocation) {
       setState(() => _gpsLocation = widget.gpsLocation);
+    }
+
+    if (widget.isNavigating != oldWidget.isNavigating ||
+        widget.navigationProgress != oldWidget.navigationProgress) {
+      setState(() {});
     }
 
     if (widget.route != oldWidget.route ||
@@ -697,54 +710,305 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
     );
   }
 
+  /// Splits a polyline into [completed] and [remaining] segments based on GPS or progress
+  ({List<LatLng> completed, List<LatLng> remaining}) _splitPolylineByGps(
+    List<LatLng> points,
+    LatLng? userGps,
+    double? explicitProgress,
+  ) {
+    if (points.length < 2) {
+      return (completed: <LatLng>[], remaining: points);
+    }
+
+    // 1. Explicit progress fraction (0.0 -> 1.0)
+    if (explicitProgress != null && explicitProgress > 0) {
+      final totalSegs = points.length - 1;
+      final targetIndex = (explicitProgress * totalSegs).clamp(0.0, totalSegs.toDouble());
+      final baseIndex = targetIndex.floor();
+      final frac = targetIndex - baseIndex;
+
+      final completed = points.sublist(0, baseIndex + 1).toList();
+      if (frac > 0 && baseIndex < totalSegs) {
+        final mid = LatLng(
+          points[baseIndex].latitude + (points[baseIndex + 1].latitude - points[baseIndex].latitude) * frac,
+          points[baseIndex].longitude + (points[baseIndex + 1].longitude - points[baseIndex].longitude) * frac,
+        );
+        completed.add(mid);
+        final remaining = <LatLng>[mid, ...points.sublist(baseIndex + 1)];
+        return (completed: completed, remaining: remaining);
+      } else {
+        final remaining = points.sublist(baseIndex);
+        return (completed: completed, remaining: remaining);
+      }
+    }
+
+    // 2. Hardware GPS projection onto polyline
+    if (userGps != null) {
+      double bestDistSq = double.infinity;
+      int bestSeg = 0;
+      double bestFrac = 0.0;
+      LatLng bestProj = points.first;
+
+      final uLat = userGps.latitude;
+      final uLng = userGps.longitude;
+
+      for (int i = 0; i < points.length - 1; i++) {
+        final p1 = points[i];
+        final p2 = points[i + 1];
+
+        final dx = p2.longitude - p1.longitude;
+        final dy = p2.latitude - p1.latitude;
+        final lenSq = dx * dx + dy * dy;
+
+        double frac;
+        if (lenSq == 0) {
+          frac = 0;
+        } else {
+          frac = (((uLng - p1.longitude) * dx) + ((uLat - p1.latitude) * dy)) / lenSq;
+          if (frac < 0) frac = 0;
+          if (frac > 1) frac = 1;
+        }
+
+        final projLng = p1.longitude + frac * dx;
+        final projLat = p1.latitude + frac * dy;
+        final distSq = (uLng - projLng) * (uLng - projLng) + (uLat - projLat) * (uLat - projLat);
+
+        if (distSq < bestDistSq) {
+          bestDistSq = distSq;
+          bestSeg = i;
+          bestFrac = frac;
+          bestProj = LatLng(projLat, projLng);
+        }
+      }
+
+      final completed = points.sublist(0, bestSeg + 1).toList();
+      if (bestFrac > 0) {
+        completed.add(bestProj);
+      }
+      final remaining = <LatLng>[bestProj, ...points.sublist(bestSeg + 1)];
+      return (completed: completed, remaining: remaining);
+    }
+
+    return (completed: <LatLng>[], remaining: points);
+  }
+
   List<Polyline> _buildPolylines() {
     final polylines = <Polyline>[];
 
     // Single driving route corridor
     if (_drivingPolylinePoints.isNotEmpty) {
-      // Outer casing for contrast
-      polylines.add(
-        Polyline(
-          points: _drivingPolylinePoints,
-          strokeWidth: 8.0,
-          color: const Color(0x550284C7),
-          strokeCap: StrokeCap.round,
-          strokeJoin: StrokeJoin.round,
-        ),
-      );
-      // Inner vibrant line
-      polylines.add(
-        Polyline(
-          points: _drivingPolylinePoints,
-          strokeWidth: 5.0,
-          color: const Color(0xFF2563EB),
-          strokeCap: StrokeCap.round,
-          strokeJoin: StrokeJoin.round,
-        ),
-      );
+      if (widget.isNavigating) {
+        final userCoord = _gpsLocation != null
+            ? LatLng(_gpsLocation!.latitude, _gpsLocation!.longitude)
+            : null;
+        final split = _splitPolylineByGps(_drivingPolylinePoints, userCoord, widget.navigationProgress);
+
+        // A. Completed path (traversed): Radiant Emerald Green with cyan glow
+        if (split.completed.length >= 2) {
+          polylines.add(
+            Polyline(
+              points: split.completed,
+              strokeWidth: 9.0,
+              color: const Color(0x6610B981),
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+          polylines.add(
+            Polyline(
+              points: split.completed,
+              strokeWidth: 5.5,
+              color: const Color(0xFF10B981),
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+        }
+
+        // B. Remaining path: Original Route Blue
+        if (split.remaining.length >= 2) {
+          polylines.add(
+            Polyline(
+              points: split.remaining,
+              strokeWidth: 7.0,
+              color: const Color(0x442563EB),
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+          polylines.add(
+            Polyline(
+              points: split.remaining,
+              strokeWidth: 5.0,
+              color: const Color(0xFF2563EB),
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+        }
+      } else {
+        // Standard view: Outer casing for contrast
+        polylines.add(
+          Polyline(
+            points: _drivingPolylinePoints,
+            strokeWidth: 8.0,
+            color: const Color(0x550284C7),
+            strokeCap: StrokeCap.round,
+            strokeJoin: StrokeJoin.round,
+          ),
+        );
+        // Inner vibrant line
+        polylines.add(
+          Polyline(
+            points: _drivingPolylinePoints,
+            strokeWidth: 5.0,
+            color: const Color(0xFF2563EB),
+            strokeCap: StrokeCap.round,
+            strokeJoin: StrokeJoin.round,
+          ),
+        );
+      }
     }
 
     // Multimodal transit legs
-    for (final leg in _transitLegs) {
-      if (leg.points.isNotEmpty) {
-        polylines.add(
-          Polyline(
-            points: leg.points,
-            strokeWidth: 8.0,
-            color: leg.color.withValues(alpha: 0.35),
-            strokeCap: StrokeCap.round,
-            strokeJoin: StrokeJoin.round,
-          ),
-        );
-        polylines.add(
-          Polyline(
-            points: leg.points,
-            strokeWidth: 5.0,
-            color: leg.color,
-            strokeCap: StrokeCap.round,
-            strokeJoin: StrokeJoin.round,
-          ),
-        );
+    if (widget.isNavigating && _transitLegs.isNotEmpty) {
+      final userCoord = _gpsLocation != null
+          ? LatLng(_gpsLocation!.latitude, _gpsLocation!.longitude)
+          : null;
+
+      // Determine active leg index
+      int activeLegIdx = 0;
+      if (widget.navigationProgress != null && widget.navigationProgress! > 0) {
+        activeLegIdx = (widget.navigationProgress! * _transitLegs.length).floor().clamp(0, _transitLegs.length - 1);
+      } else if (userCoord != null) {
+        double minLegDistSq = double.infinity;
+        for (int l = 0; l < _transitLegs.length; l++) {
+          final pts = _transitLegs[l].points;
+          for (final pt in pts) {
+            final dSq = (userCoord.latitude - pt.latitude) * (userCoord.latitude - pt.latitude) +
+                (userCoord.longitude - pt.longitude) * (userCoord.longitude - pt.longitude);
+            if (dSq < minLegDistSq) {
+              minLegDistSq = dSq;
+              activeLegIdx = l;
+            }
+          }
+        }
+      }
+
+      for (int i = 0; i < _transitLegs.length; i++) {
+        final leg = _transitLegs[i];
+        if (leg.points.isEmpty) continue;
+
+        if (i < activeLegIdx) {
+          // Completed Leg: Emerald Green
+          polylines.add(
+            Polyline(
+              points: leg.points,
+              strokeWidth: 8.0,
+              color: const Color(0x6610B981),
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+          polylines.add(
+            Polyline(
+              points: leg.points,
+              strokeWidth: 5.0,
+              color: const Color(0xFF10B981),
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+        } else if (i == activeLegIdx) {
+          // Active Leg: Split completed vs remaining
+          final legProgress = (widget.navigationProgress != null && widget.navigationProgress! > 0)
+              ? (widget.navigationProgress! * _transitLegs.length - activeLegIdx).clamp(0.0, 1.0)
+              : null;
+          final split = _splitPolylineByGps(leg.points, userCoord, legProgress);
+          if (split.completed.length >= 2) {
+            polylines.add(
+              Polyline(
+                points: split.completed,
+                strokeWidth: 8.0,
+                color: const Color(0x6610B981),
+                strokeCap: StrokeCap.round,
+                strokeJoin: StrokeJoin.round,
+              ),
+            );
+            polylines.add(
+              Polyline(
+                points: split.completed,
+                strokeWidth: 5.0,
+                color: const Color(0xFF10B981),
+                strokeCap: StrokeCap.round,
+                strokeJoin: StrokeJoin.round,
+              ),
+            );
+          }
+          if (split.remaining.length >= 2) {
+            polylines.add(
+              Polyline(
+                points: split.remaining,
+                strokeWidth: 8.0,
+                color: leg.color.withValues(alpha: 0.35),
+                strokeCap: StrokeCap.round,
+                strokeJoin: StrokeJoin.round,
+              ),
+            );
+            polylines.add(
+              Polyline(
+                points: split.remaining,
+                strokeWidth: 5.0,
+                color: leg.color,
+                strokeCap: StrokeCap.round,
+                strokeJoin: StrokeJoin.round,
+              ),
+            );
+          }
+        } else {
+          // Future Leg: Original Color
+          polylines.add(
+            Polyline(
+              points: leg.points,
+              strokeWidth: 8.0,
+              color: leg.color.withValues(alpha: 0.35),
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+          polylines.add(
+            Polyline(
+              points: leg.points,
+              strokeWidth: 5.0,
+              color: leg.color,
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+        }
+      }
+    } else {
+      for (final leg in _transitLegs) {
+        if (leg.points.isNotEmpty) {
+          polylines.add(
+            Polyline(
+              points: leg.points,
+              strokeWidth: 8.0,
+              color: leg.color.withValues(alpha: 0.35),
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+          polylines.add(
+            Polyline(
+              points: leg.points,
+              strokeWidth: 5.0,
+              color: leg.color,
+              strokeCap: StrokeCap.round,
+              strokeJoin: StrokeJoin.round,
+            ),
+          );
+        }
       }
     }
 

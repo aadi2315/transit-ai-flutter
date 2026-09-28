@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/stitch_glass_card.dart';
 import '../widgets/stitch_bottom_dock.dart';
@@ -63,7 +64,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
   TransitGpsLocation? _currentGps;
   StreamSubscription<TransitGpsLocation>? _gpsSubscription;
-  Timer? _gpsDebounce; // Prevents per-tick setState rebuilds
+  bool _isGpsServiceDisabled = false;
+
+  // Active Route Navigation Mode
+  bool _isNavigating = false;
+  double _navigationProgress = 0.0;
 
   // Dijkstra transit result (bus legs)
   TransitRoutingResult? _transitResult;
@@ -100,16 +105,43 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   }
 
   Future<void> _locateUser() async {
-    final loc = await TransitGpsService.instance.getCurrentLocation();
+    final serviceEnabled = await TransitGpsService.instance.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showEnableGpsDialog();
+      return;
+    }
+
+    final perm = await TransitGpsService.instance.checkPermission();
+    if (perm == LocationPermission.denied) {
+      final req = await TransitGpsService.instance.requestPermission();
+      if (req == LocationPermission.denied || req == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Location permission is needed to pinpoint your position.'),
+            action: SnackBarAction(
+              label: 'SETTINGS',
+              textColor: const Color(0xFF00E5FF),
+              onPressed: () => TransitGpsService.instance.openAppSettings(),
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    final loc = await TransitGpsService.instance.getCurrentLocation(requestIfNeeded: true);
     if (!mounted) return;
     setState(() {
       _currentGps = loc;
       _mapScope = 'corridor';
+      _isGpsServiceDisabled = false;
     });
     _corridorMapController.value = Matrix4.identity();
     _exploreMapController.value = Matrix4.identity();
     centerInteractiveGps('transit_map_corridor', loc.latitude, loc.longitude);
     centerInteractiveGps('transit_map_explore', loc.latitude, loc.longitude);
+    centerInteractiveGps('transit_map_fullscreen', loc.latitude, loc.longitude);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -130,6 +162,116 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     );
   }
 
+  void _showEnableGpsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.location_off_rounded, color: Color(0xFF00E5FF), size: 22),
+            const SizedBox(width: 10),
+            Text(
+              'Turn On Location',
+              style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Text(
+          'Device GPS location services are turned off. Please enable location to track your transit route in real-time.',
+          style: GoogleFonts.spaceGrotesk(color: const Color(0xFF94A3B8), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel', style: GoogleFonts.spaceGrotesk(color: const Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0891B2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              TransitGpsService.instance.openLocationSettings();
+            },
+            child: Text('Open Settings', style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startRouteNavigation() async {
+    final serviceEnabled = await TransitGpsService.instance.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showEnableGpsDialog();
+      return;
+    }
+
+    final perm = await TransitGpsService.instance.requestPermission();
+    if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Location permission is required for live route navigation.'),
+            action: SnackBarAction(
+              label: 'SETTINGS',
+              textColor: const Color(0xFF00E5FF),
+              onPressed: () => TransitGpsService.instance.openAppSettings(),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    final loc = await TransitGpsService.instance.getCurrentLocation(requestIfNeeded: true);
+    if (!mounted) return;
+    setState(() {
+      _isNavigating = true;
+      _navigationProgress = 0.0;
+      _currentGps = loc;
+    });
+
+    centerInteractiveGps('transit_map_corridor', loc.latitude, loc.longitude);
+    centerInteractiveGps('transit_map_explore', loc.latitude, loc.longitude);
+    centerInteractiveGps('transit_map_fullscreen', loc.latitude, loc.longitude);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.navigation_rounded, color: Color(0xFF10B981), size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'Route Navigation Active • Tracking Live Movement',
+              style: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xEE064E3B),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _stopRouteNavigation() {
+    setState(() {
+      _isNavigating = false;
+      _navigationProgress = 0.0;
+    });
+  }
+
+  void _advanceSimulatedProgress() {
+    setState(() {
+      _navigationProgress = (_navigationProgress + 0.15).clamp(0.0, 1.0);
+    });
+  }
+
   void _openFullScreenMap(BuildContext context, bool dark) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -140,6 +282,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           initialSatelliteMode: _satelliteMode,
           initialGps: _currentGps,
           initialScope: _mapScope,
+          isNavigating: _isNavigating,
+          navigationProgress: _navigationProgress,
         ),
       ),
     );
@@ -196,23 +340,40 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
     // Initialize transit routing graph
     TransitRoutingService.instance.init();
 
-    // Live GPS tracking — debounced to prevent per-tick setState rebuilds
-    TransitGpsService.instance.getCurrentLocation().then((loc) {
+    // Check if location services are enabled
+    TransitGpsService.instance.isLocationServiceEnabled().then((enabled) {
+      if (mounted) setState(() => _isGpsServiceDisabled = !enabled);
+    });
+
+    // Live GPS tracking from real hardware stream
+    TransitGpsService.instance.getCurrentLocation(requestIfNeeded: true).then((loc) {
       if (mounted) setState(() => _currentGps = loc);
     });
+
+    DateTime lastGpsUpdate = DateTime.fromMillisecondsSinceEpoch(0);
     _gpsSubscription = TransitGpsService.instance.streamLocation().listen((loc) {
-      // Only update state if location changed meaningfully (>30m) or after 5s
-      _gpsDebounce?.cancel();
-      _gpsDebounce = Timer(const Duration(seconds: 5), () {
-        if (!mounted) return;
-        final prev = _currentGps;
-        final distM = (prev == null)
-            ? double.infinity
-            : _haversineM(prev.latitude, prev.longitude, loc.latitude, loc.longitude);
-        if (distM > 30) {
-          setState(() => _currentGps = loc);
+      if (!mounted) return;
+      final now = DateTime.now();
+      final prev = _currentGps;
+      final distM = (prev == null)
+          ? double.infinity
+          : _haversineM(prev.latitude, prev.longitude, loc.latitude, loc.longitude);
+
+      if (prev == null || distM >= 2.0 || now.difference(lastGpsUpdate).inMilliseconds >= 2000) {
+        lastGpsUpdate = now;
+        setState(() {
+          _currentGps = loc;
+          _isGpsServiceDisabled = false;
+        });
+        updateInteractiveGps('transit_map_corridor', loc.latitude, loc.longitude);
+        updateInteractiveGps('transit_map_explore', loc.latitude, loc.longitude);
+        updateInteractiveGps('transit_map_fullscreen', loc.latitude, loc.longitude);
+
+        if (_isNavigating) {
+          centerInteractiveGps('transit_map_corridor', loc.latitude, loc.longitude);
+          centerInteractiveGps('transit_map_fullscreen', loc.latitude, loc.longitude);
         }
-      });
+      }
     });
   }
 
@@ -224,7 +385,6 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
   @override
   void dispose() {
     _gpsSubscription?.cancel();
-    _gpsDebounce?.cancel();
     _corridorMapController.dispose();
     _exploreMapController.dispose();
     _originController.dispose();
@@ -1335,6 +1495,8 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                           isDarkMode: false,
                           transitResultJson: _transitLegsJson,
                           transformationController: _corridorMapController,
+                          isNavigating: _isNavigating,
+                          navigationProgress: _navigationProgress,
                         ),
                       ),
                     )
@@ -1647,6 +1809,219 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
                 _buildMetric('UNIFIED FARE', route != null ? '₹${route.fareAmount.toStringAsFixed(2)}' : '--', Icons.currency_rupee_rounded),
               ],
             ),
+
+            // GPS service disabled warning banner
+            if (_isGpsServiceDisabled) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_off_rounded, size: 16, color: Color(0xFFD97706)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'GPS is off. Turn on location for live tracking.',
+                        style: GoogleFonts.spaceGrotesk(fontSize: 11, color: const Color(0xFF92400E)),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => TransitGpsService.instance.openLocationSettings(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD97706),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'TURN ON',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Navigation CTA & Active HUD
+            if (route != null) ...[
+              const SizedBox(height: 14),
+              if (!_isNavigating)
+                GestureDetector(
+                  onTap: _startRouteNavigation,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF00E5FF), Color(0xFF0891B2), Color(0xFF0284C7)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x330891B2),
+                          blurRadius: 10,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.navigation_rounded, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Start Route Navigation',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF10B981),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'NAVIGATION ACTIVE',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF059669),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '${(_navigationProgress * 100).toInt()}% Done',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF059669),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: _navigationProgress,
+                          backgroundColor: const Color(0xFFDCFCE7),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                          minHeight: 6,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Completed path is drawn in Green. Moving forward completes path in real-time.',
+                        style: GoogleFonts.spaceGrotesk(fontSize: 11, color: const Color(0xFF475569)),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _stopRouteNavigation,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.stop_circle_rounded, size: 16, color: Color(0xFFEF4444)),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'End Route',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFFEF4444),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _advanceSimulatedProgress,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0FDF4),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFF86EFAC)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.directions_walk_rounded, size: 16, color: Color(0xFF059669)),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Test Walk (+15%)',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF059669),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ],
         ),
       ),
@@ -2401,6 +2776,8 @@ class _FullScreenMapViewer extends StatefulWidget {
   final TransitGpsLocation? initialGps;
   final String? initialScope;
   final String? transitResultJson;
+  final bool isNavigating;
+  final double? navigationProgress;
 
   const _FullScreenMapViewer({
     required this.route,
@@ -2409,6 +2786,8 @@ class _FullScreenMapViewer extends StatefulWidget {
     this.initialGps,
     this.initialScope,
     this.transitResultJson,
+    this.isNavigating = false,
+    this.navigationProgress,
   });
 
   @override
@@ -2548,6 +2927,8 @@ class _FullScreenMapViewerState extends State<_FullScreenMapViewer> {
               isDarkMode: widget.dark,
               transitResultJson: widget.transitResultJson,
               transformationController: _controller,
+              isNavigating: widget.isNavigating,
+              navigationProgress: widget.navigationProgress,
             ),
           ),
 

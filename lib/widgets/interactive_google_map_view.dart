@@ -26,6 +26,8 @@ class InteractiveGoogleMapView extends StatefulWidget {
   final String? transitResultJson;
   // Kept for API compatibility — no longer used (real map handles pan natively)
   final TransformationController? transformationController;
+  final bool isNavigating;
+  final double? navigationProgress;
   final VoidCallback? onMapReady;
 
   const InteractiveGoogleMapView({
@@ -39,6 +41,8 @@ class InteractiveGoogleMapView extends StatefulWidget {
     this.transitResultJson,
     this.transformationController, // kept for API compat, not used
     this.onMapReady,
+    this.isNavigating = false,
+    this.navigationProgress,
   });
 
   @override
@@ -62,6 +66,8 @@ class _InteractiveGoogleMapViewState extends State<InteractiveGoogleMapView> {
       isDarkMode: widget.isDarkMode,
       transitResultJson: widget.transitResultJson,
       onMapReady: widget.onMapReady,
+      isNavigating: widget.isNavigating,
+      navigationProgress: widget.navigationProgress,
     );
   }
 }
