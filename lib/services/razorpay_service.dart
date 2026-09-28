@@ -81,15 +81,16 @@ class RazorpayService {
   /// triggers onDesktopFallbackSimulateSuccess so workflows can be verified.
   void openPayment({
     required int amount,
-    String keyId = RazorpayConfig.keyId,
+    String? keyId,
     String? orderId,
     String description = RazorpayConfig.ticketBookingDescription,
     String? contact,
     String? email,
     VoidCallback? onDesktopFallbackSimulateSuccess,
   }) {
+    final effectiveKey = (keyId != null && keyId.isNotEmpty) ? keyId : RazorpayConfig.keyId;
     final options = {
-      'key': keyId,
+      'key': effectiveKey,
       'amount': amount * 100, // Amount in paise
       'currency': RazorpayConfig.currency,
       'name': RazorpayConfig.merchantName,
