@@ -367,6 +367,14 @@ class TransitRoutingService {
       const LatLon(23.027200, 72.580100), // Gandhi Road
       const LatLon(23.029856, 72.598858), // Kalupur Railway Station
     ];
+    final polyGotaToKalupur = <LatLon>[
+      const LatLon(23.098822, 72.531666), // Gota Cross Road
+      const LatLon(23.096500, 72.530780), // SG Hwy S-bound
+      const LatLon(23.094220, 72.529950), // Near Sargasan
+      const LatLon(23.091900, 72.529280), // SG Hwy curve
+      const LatLon(23.089580, 72.528810), // Near Vasantnagar Township
+      ...polySolaToKalupur,
+    ];
 
     List<LatLon> reversePoly(List<LatLon> pts) => pts.reversed.toList();
 
@@ -616,20 +624,28 @@ class TransitRoutingService {
       );
     }
 
-    // 5. Sola Bhagwat <-> Kalupur Railway Station (Direct 9U corridor)
-    if ((origStop == stopSolaBhagwat && destStop == stopKalupur) ||
-        (origStop == stopKalupur && destStop == stopSolaBhagwat)) {
-      final isForward = origStop == stopSolaBhagwat;
-      final poly = isForward ? polySolaToKalupur : reversePoly(polySolaToKalupur);
-      const leg = TripLeg(
+    // 5. Sola Bhagwat / Gota Cross Road / Vasantnagar <-> Kalupur Railway Station (Direct 9U corridor)
+    final isKalupurDest = destStop == stopKalupur;
+    final isKalupurOrig = origStop == stopKalupur;
+    final isHub9U = origStop == stopSolaBhagwat || origStop == stopGota || origStop == stopVasantnagar;
+    final isDestHub9U = destStop == stopSolaBhagwat || destStop == stopGota || destStop == stopVasantnagar;
+
+    if ((isHub9U && isKalupurDest) || (isKalupurOrig && isDestHub9U)) {
+      final isForward = isKalupurDest;
+      final isGotaOrVasant = (origStop == stopGota || origStop == stopVasantnagar || destStop == stopGota || destStop == stopVasantnagar);
+      final basePoly = isGotaOrVasant ? polyGotaToKalupur : polySolaToKalupur;
+      final poly = isForward ? basePoly : reversePoly(basePoly);
+      final estSecs = isGotaOrVasant ? 1800.0 : 1500.0;
+      final estMins = isGotaOrVasant ? 30.0 : 25.0;
+      final leg = TripLeg(
         routeId: 'ROUTE_9U',
         routeShortName: '9U',
-        boardStopId: 'STOP_SOLA_BHAGWAT',
-        alightStopId: 'STOP_KALUPUR',
-        estimatedSeconds: 1800,
+        boardStopId: origStop.stopId,
+        alightStopId: destStop.stopId,
+        estimatedSeconds: estSecs,
       );
       return TransitRoutingResult(
-        itinerary: const Itinerary(legs: [leg], estimatedTotalSeconds: 1800),
+        itinerary: Itinerary(legs: [leg], estimatedTotalSeconds: estSecs),
         displaySegments: [
           MapDisplaySegment(
             routeShortName: '9U',
@@ -645,13 +661,13 @@ class TransitRoutingService {
             routeShortName: '9U',
             boardStop: origStop,
             alightStop: destStop,
-            estimatedMinutes: 30,
+            estimatedMinutes: estMins.toDouble(),
             clippedPolyline: poly,
           ),
         ],
         busNumbers: const ['9U'],
         transferPoints: const [],
-        totalDurationMinutes: 30,
+        totalDurationMinutes: estMins.toDouble(),
         requiresTransfer: false,
       );
     }

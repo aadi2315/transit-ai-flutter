@@ -286,7 +286,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           navigationProgress: _navigationProgress,
         ),
       ),
-    );
+    ).then((_) {
+      if (mounted) {
+        resetInteractiveMap('transit_map_corridor');
+      }
+    });
   }
 
   @override
@@ -634,27 +638,33 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
 
     final firstLeg = result.legs.first;
     final lastLeg = result.legs.last;
-    for (final divId in [
-      'transit_map_corridor',
-      'transit_map_explore',
-      'transit_map_fullscreen'
-    ]) {
-      updateTransitRoute(
-        divId,
-        legsJson,
-        originLat: firstLeg.boardStop.lat,
-        originLng: firstLeg.boardStop.lon,
-        destLat: lastLeg.alightStop.lat,
-        destLng: lastLeg.alightStop.lon,
-      );
+
+    void push() {
+      for (final divId in [
+        'transit_map_corridor',
+        'transit_map_explore',
+        'transit_map_fullscreen'
+      ]) {
+        updateTransitRoute(
+          divId,
+          legsJson,
+          originLat: firstLeg.boardStop.lat,
+          originLng: firstLeg.boardStop.lon,
+          destLat: lastLeg.alightStop.lat,
+          destLng: lastLeg.alightStop.lon,
+        );
+      }
     }
+
+    push();
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) push();
+    });
   }
 
   /// Pushes driving or cached corridor route to all map canvases via JS bridge.
   void _pushDrivingRouteToMaps(TransitRouteResult route) {
-    // Small delay to let the Flutter widget render into the DOM before pushing JS route
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (!mounted) return;
+    void push() {
       for (final divId in [
         'transit_map_corridor',
         'transit_map_explore',
@@ -669,6 +679,11 @@ class _StitchRouteScreenState extends State<StitchRouteScreen> {
           route.destLng,
         );
       }
+    }
+
+    push();
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) push();
     });
   }
 

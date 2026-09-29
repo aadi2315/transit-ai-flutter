@@ -167,9 +167,14 @@ class _WebInteractiveMapViewState extends State<_WebInteractiveMapView> {
       setInteractiveMapType(widget.divId, widget.isSatellite);
     }
 
-    if (widget.transitResultJson != oldWidget.transitResultJson &&
-        widget.transitResultJson != null &&
-        widget.transitResultJson!.isNotEmpty) {
+    final hasTransit = widget.transitResultJson != null &&
+        widget.transitResultJson!.isNotEmpty;
+    final hadTransit = oldWidget.transitResultJson != null &&
+        oldWidget.transitResultJson!.isNotEmpty;
+
+    if (hasTransit &&
+        (widget.transitResultJson != oldWidget.transitResultJson ||
+            widget.route != oldWidget.route)) {
       updateTransitRoute(
         widget.divId,
         widget.transitResultJson!,
@@ -178,7 +183,9 @@ class _WebInteractiveMapViewState extends State<_WebInteractiveMapView> {
         destLat: widget.route?.destLat,
         destLng: widget.route?.destLng,
       );
-    } else if (widget.route != oldWidget.route && widget.route != null) {
+    } else if (!hasTransit &&
+        (widget.route != oldWidget.route || hadTransit) &&
+        widget.route != null) {
       final r = widget.route!;
       updateInteractiveRoute(
         widget.divId,

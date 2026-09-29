@@ -284,7 +284,13 @@ class GoogleDirectionsService {
         );
 
         if (jsResult != null && jsResult['status'] == 'OK') {
-          final encPoly = (jsResult['encodedPolyline'] ?? '').toString();
+          String encPoly = '';
+          final rawPoly = jsResult['encodedPolyline'];
+          if (rawPoly is String) {
+            encPoly = rawPoly;
+          } else if (rawPoly is Map && rawPoly['points'] is String) {
+            encPoly = rawPoly['points'] as String;
+          }
           final distKm = (jsResult['distanceKm'] as num?)?.toDouble() ?? 10.0;
           final durMins = (jsResult['durationMins'] as num?)?.toInt() ?? 25;
           final fare = _calculateStageFare(distKm);

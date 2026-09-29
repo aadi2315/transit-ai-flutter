@@ -124,8 +124,12 @@
           }, function(response, status) {
             if (status === google.maps.DirectionsStatus.OK && response && response.routes && response.routes.length > 0) {
               var route = response.routes[0];
-              var overviewPoly = route.overview_polyline;
-              if (!overviewPoly && google.maps.geometry && google.maps.geometry.encoding && route.overview_path) {
+              var overviewPoly = '';
+              if (typeof route.overview_polyline === 'string') {
+                overviewPoly = route.overview_polyline;
+              } else if (route.overview_polyline && typeof route.overview_polyline.points === 'string') {
+                overviewPoly = route.overview_polyline.points;
+              } else if (google.maps.geometry && google.maps.geometry.encoding && route.overview_path) {
                 overviewPoly = google.maps.geometry.encoding.encodePath(route.overview_path);
               }
               var legs = route.legs || [];
@@ -272,24 +276,44 @@
       if (!instance || !instance.map) return;
       var map = instance.map;
 
+      // Validate inputs: safeguard against NaN / 999 / missing / out-of-region coordinates
+      if (typeof minLat !== 'number' || isNaN(minLat) || minLat === 999 || minLat < 21.0 || minLat > 25.0) {
+        minLat = 23.030;
+      }
+      if (typeof maxLat !== 'number' || isNaN(maxLat) || maxLat === -999 || maxLat < 21.0 || maxLat > 25.0) {
+        maxLat = 23.105;
+      }
+      if (typeof minLng !== 'number' || isNaN(minLng) || minLng === 999 || minLng < 71.0 || minLng > 75.0) {
+        minLng = 72.490;
+      }
+      if (typeof maxLng !== 'number' || isNaN(maxLng) || maxLng === -999 || maxLng < 71.0 || maxLng > 75.0) {
+        maxLng = 72.610;
+      }
+      if (minLat > maxLat) { var t = minLat; minLat = maxLat; maxLat = t; }
+      if (minLng > maxLng) { var t2 = minLng; minLng = maxLng; maxLng = t2; }
+
       var centerLat = (minLat + maxLat) / 2;
       var centerLng = (minLng + maxLng) / 2;
       var spanLat = Math.max(Math.abs(maxLat - minLat), 0.005);
       var spanLng = Math.max(Math.abs(maxLng - minLng), 0.005);
       var maxSpan = Math.max(spanLat, spanLng);
 
-      // Compute exact zoom from bounding degree span
-      var zoom = 14;
-      if (maxSpan > 10.0) zoom = 5;
-      else if (maxSpan > 5.0) zoom = 6;
-      else if (maxSpan > 2.5) zoom = 7;
-      else if (maxSpan > 1.2) zoom = 8;
-      else if (maxSpan > 0.6) zoom = 9;
-      else if (maxSpan > 0.3) zoom = 11;
-      else if (maxSpan > 0.15) zoom = 12;
-      else if (maxSpan > 0.07) zoom = 13;
-      else if (maxSpan > 0.035) zoom = 14;
-      else zoom = 15;
+      // Compute exact zoom from bounding degree span (Ahmedabad corridor scale)
+      // Designed for 290px-350px card height so entire corridor fits with comfortable margin
+      var zoom = 13;
+      if (maxSpan > 0.16) {
+        zoom = 11;
+      } else if (maxSpan > 0.065) {
+        zoom = 12;
+      } else if (maxSpan > 0.02) {
+        zoom = 13;
+      } else {
+        zoom = 14;
+      }
+
+      // Hard clamp zoom strictly between 11 and 15 (never zoom to 0, never zoom to extreme 16)
+      if (zoom < 11) zoom = 11;
+      if (zoom > 15) zoom = 15;
 
       instance.routeBounds = bounds;
       instance.routeCenter = { lat: centerLat, lng: centerLng };
@@ -305,26 +329,19 @@
       map.setZoom(zoom);
       google.maps.event.trigger(map, 'resize');
 
-      // 2. Refine with fitBounds once layout is established
-      setTimeout(function() {
-        try {
-          google.maps.event.trigger(map, 'resize');
-          var div = map.getDiv();
-          if (div && div.offsetWidth > 100 && div.offsetHeight > 80 && bounds && !bounds.isEmpty()) {
-            map.fitBounds(bounds, { top: 25, bottom: 25, left: 25, right: 25 });
-            // Guard against world-zoom/Russia fallback
-            setTimeout(function() {
-              try {
-                var z = map.getZoom();
-                if ((z < 10 && maxSpan < 0.1) || z < 3) {
-                  map.setCenter({ lat: centerLat, lng: centerLng });
-                  map.setZoom(zoom);
-                }
-              } catch(e) {}
-            }, 60);
-          }
-        } catch(e) {}
-      }, 120);
+      // 2. Schedule multiple resize & recenter passes so tiles load immediately even during Flutter rebuilds
+      [50, 150, 300].forEach(function(delay) {
+        setTimeout(function() {
+          try {
+            google.maps.event.trigger(map, 'resize');
+            map.setCenter({ lat: centerLat, lng: centerLng });
+            var curZ = map.getZoom();
+            if (!curZ || curZ < 11) {
+              map.setZoom(zoom);
+            }
+          } catch(e) {}
+        }, delay);
+      });
     };
 
     // Get active map or initialize a fresh one on the currently attached DOM element.
@@ -344,9 +361,10 @@
       }
       if (!el) return null;
 
+      var isConnected = (el.isConnected !== undefined) ? el.isConnected : (document.contains ? document.contains(el) : true);
       var instance = window.transitMaps[divId];
       // If map already exists AND is attached to this exact DOM element that is still connected
-      if (instance && instance.map && instance.map.getDiv() === el && document.contains(el)) {
+      if (instance && instance.map && instance.map.getDiv() === el && isConnected) {
         return instance;
       }
 
@@ -356,11 +374,14 @@
           try { instance.resizeObserver.disconnect(); } catch(e) {}
         }
 
+        var safeZoom = (instance && instance.routeZoom && instance.routeZoom >= 11 && instance.routeZoom <= 15) ? instance.routeZoom : 13;
+        var safeCenter = (instance && instance.routeCenter) ? instance.routeCenter : { lat: 23.0827, lng: 72.5284 };
+
         var mapOptions = {
-          center: (instance && instance.routeCenter) ? instance.routeCenter : { lat: 23.0827, lng: 72.5284 },
-          zoom: (instance && instance.routeZoom) ? instance.routeZoom : 14,
-          minZoom: 3,
-          maxZoom: 20,
+          center: safeCenter,
+          zoom: safeZoom,
+          minZoom: 11,
+          maxZoom: 19,
           disableDefaultUI: true,
           zoomControl: false,
           gestureHandling: 'greedy',
@@ -369,6 +390,14 @@
         };
 
         var map = new google.maps.Map(el, mapOptions);
+
+        // Strict guard: if zoom ever drops below 11 under any circumstance, immediately restore it
+        google.maps.event.addListener(map, 'zoom_changed', function() {
+          var z = map.getZoom();
+          if (z !== undefined && z < 11) {
+            map.setZoom((instance && instance.routeZoom && instance.routeZoom >= 11) ? instance.routeZoom : 13);
+          }
+        });
 
         instance = {
           map: map,
@@ -399,6 +428,12 @@
               var entry = entries[i];
               if (entry.contentRect && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
                 google.maps.event.trigger(map, 'resize');
+                if (instance.routeCenter) {
+                  map.setCenter(instance.routeCenter);
+                  if (instance.routeZoom && instance.routeZoom >= 11) {
+                    map.setZoom(instance.routeZoom);
+                  }
+                }
               }
             }
           });
@@ -432,12 +467,19 @@
 
     window.transitRegisterElement = function(id, el) {
       window.transitDomElements[id] = el;
-      var instance = window.transitMaps[id];
-      if (!instance || !instance.map || instance.map.getDiv() !== el) {
-        window.transitGetOrInitMap(id, instance ? instance.isSatellite : false);
-      } else {
-        google.maps.event.trigger(instance.map, 'resize');
-      }
+      setTimeout(function() {
+        var instance = window.transitMaps[id];
+        if (!instance || !instance.map || instance.map.getDiv() !== el) {
+          window.transitGetOrInitMap(id, instance ? instance.isSatellite : false);
+        } else {
+          google.maps.event.trigger(instance.map, 'resize');
+          if (instance.routeCenter) {
+            instance.map.setCenter(instance.routeCenter);
+            var safeZ = (instance.routeZoom && instance.routeZoom >= 11 && instance.routeZoom <= 15) ? instance.routeZoom : 13;
+            instance.map.setZoom(safeZ);
+          }
+        }
+      }, 50);
     };
 
     window.transitInitMap = function(divId, isSatellite) {
@@ -469,44 +511,64 @@
         instance.transitPolylines = [];
         instance.transitMarkers = [];
 
+        var cleanPoly = polylineEnc;
+        if (cleanPoly && typeof cleanPoly === 'object' && cleanPoly.points) {
+          cleanPoly = cleanPoly.points;
+        } else if (typeof cleanPoly === 'string' && cleanPoly.trim().startsWith('{')) {
+          try {
+            var parsed = JSON.parse(cleanPoly);
+            if (parsed && parsed.points) cleanPoly = parsed.points;
+          } catch(e) {}
+        }
+
         var bounds = new google.maps.LatLngBounds();
         var hasPath = false;
         var minLat = 999, maxLat = -999, minLng = 999, maxLng = -999;
         function trackPt(lat, lng) {
-          if (!lat || !lng) return;
+          if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+          // Guard: ignore coordinates outside Ahmedabad / Gujarat metro region
+          if (lat < 21.0 || lat > 25.0 || lng < 71.0 || lng > 75.0) return;
           if (lat < minLat) minLat = lat;
           if (lat > maxLat) maxLat = lat;
           if (lng < minLng) minLng = lng;
           if (lng > maxLng) maxLng = lng;
         }
 
-        if (polylineEnc) {
+        if (cleanPoly && typeof cleanPoly === 'string' && cleanPoly.length > 2) {
           try {
-            var decodedPath = google.maps.geometry.encoding.decodePath(polylineEnc);
+            var decodedPath = google.maps.geometry.encoding.decodePath(cleanPoly);
             if (decodedPath && decodedPath.length > 0) {
-              var polyline = new google.maps.Polyline({
-                path: decodedPath,
-                geodesic: true,
-                strokeColor: '#2563EB',
-                strokeOpacity: 0.95,
-                strokeWeight: 6,
-                zIndex: 60,
-                map: map
-              });
-              instance.polyline = polyline;
+              var validPath = [];
               for (var i = 0; i < decodedPath.length; i++) {
-                bounds.extend(decodedPath[i]);
-                trackPt(decodedPath[i].lat(), decodedPath[i].lng());
+                var pLat = decodedPath[i].lat();
+                var pLng = decodedPath[i].lng();
+                if (pLat >= 21.0 && pLat <= 25.0 && pLng >= 71.0 && pLng <= 75.0) {
+                  validPath.push(decodedPath[i]);
+                  bounds.extend(decodedPath[i]);
+                  trackPt(pLat, pLng);
+                }
               }
-              hasPath = true;
+              if (validPath.length > 0) {
+                var polyline = new google.maps.Polyline({
+                  path: validPath,
+                  geodesic: true,
+                  strokeColor: '#2563EB',
+                  strokeOpacity: 0.95,
+                  strokeWeight: 6,
+                  zIndex: 60,
+                  map: map
+                });
+                instance.polyline = polyline;
+                hasPath = true;
+              }
             }
           } catch(e) {}
         }
 
-        var oLat = (originLat && originLat !== 0) ? originLat : 23.086257;
-        var oLng = (originLng && originLng !== 0) ? originLng : 72.528383;
-        var dLat = (destLat && destLat !== 0) ? destLat : 23.064879;
-        var dLng = (destLng && destLng !== 0) ? destLng : 72.529577;
+        var oLat = (typeof originLat === 'number' && originLat >= 21.0 && originLat <= 25.0) ? originLat : 23.098822;
+        var oLng = (typeof originLng === 'number' && originLng >= 71.0 && originLng <= 75.0) ? originLng : 72.531666;
+        var dLat = (typeof destLat === 'number' && destLat >= 21.0 && destLat <= 25.0) ? destLat : 23.029856;
+        var dLng = (typeof destLng === 'number' && destLng >= 71.0 && destLng <= 75.0) ? destLng : 72.598858;
 
         var originPt = new google.maps.LatLng(oLat, oLng);
         var destPt = new google.maps.LatLng(dLat, dLng);
@@ -623,7 +685,8 @@
         var legColors = ['#1A73E8','#EA4335','#34A853','#FBBC05','#9B59B6'];
         var minLat = 999, maxLat = -999, minLng = 999, maxLng = -999;
         function trackPt(lat, lng) {
-          if (!lat || !lng) return;
+          if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+          if (lat < 21.0 || lat > 25.0 || lng < 71.0 || lng > 75.0) return;
           if (lat < minLat) minLat = lat;
           if (lat > maxLat) maxLat = lat;
           if (lng < minLng) minLng = lng;
@@ -816,9 +879,10 @@
       var instance = window.transitGetOrInitMap(divId);
       if (!instance || !instance.map) return;
       var currentZoom = instance.map.getZoom() || 14;
+      if (currentZoom < 11) currentZoom = 13;
       var targetZoom = currentZoom + delta;
-      if (targetZoom < 3) targetZoom = 3;
-      if (targetZoom > 20) targetZoom = 20;
+      if (targetZoom < 11) targetZoom = 11;
+      if (targetZoom > 19) targetZoom = 19;
       instance.map.setZoom(targetZoom);
     };
 
@@ -829,32 +893,21 @@
       var map = instance.map;
       google.maps.event.trigger(map, 'resize');
 
-      if (instance.routeCenter && instance.routeZoom) {
-        map.setCenter(instance.routeCenter);
-        map.setZoom(instance.routeZoom);
-        if (instance.routeBounds && !instance.routeBounds.isEmpty()) {
-          try {
-            map.fitBounds(instance.routeBounds, { top: 25, bottom: 25, left: 25, right: 25 });
-            setTimeout(function() {
-              var z = map.getZoom();
-              if (z < 10 && instance.routeZoom >= 12) {
-                map.setCenter(instance.routeCenter);
-                map.setZoom(instance.routeZoom);
-              }
-            }, 60);
-          } catch(e) {}
-        }
-      } else if (instance.routeBounds && !instance.routeBounds.isEmpty()) {
+      var targetCenter = instance.routeCenter || { lat: 23.0827, lng: 72.5284 };
+      var targetZoom = (instance.routeZoom && instance.routeZoom >= 11) ? instance.routeZoom : 13;
+
+      map.setCenter(targetCenter);
+      map.setZoom(targetZoom);
+
+      setTimeout(function() {
         try {
-          map.fitBounds(instance.routeBounds, { top: 25, bottom: 25, left: 25, right: 25 });
-        } catch(e) {
-          map.setCenter({ lat: 23.0827, lng: 72.5284 });
-          map.setZoom(14);
-        }
-      } else {
-        map.setCenter({ lat: 23.0827, lng: 72.5284 });
-        map.setZoom(14);
-      }
+          google.maps.event.trigger(map, 'resize');
+          map.setCenter(targetCenter);
+          if (map.getZoom() < 11) {
+            map.setZoom(targetZoom);
+          }
+        } catch(e) {}
+      }, 80);
     };
 
     window.transitUpdateGps = function(divId, lat, lng) {
