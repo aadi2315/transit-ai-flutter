@@ -1,25 +1,45 @@
+const Map<String, String> _stubDefaultEnv = {
+  'GOOGLE_MAPS_API_KEY': 'AIzaSyDjRpb6IFTB14FxzcTyAloPkDzbfI6On-8',
+  'SUPABASE_URL': 'https://wntlcbyguyrbvzgihugi.supabase.co',
+  'SUPABASE_ANON_KEY': 'sb_publishable_FC03eAb0E2Zp4l9MQoiu3g_v57SqqPP',
+  'GEMINI_API_KEY': 'AQ.Ab8RN6K513qH295GXB-MZuHlZHo3e7lRvCDdHeCQi4mJr4nodA',
+  'RAZORPAY_KEY_ID': 'rzp_test_TbrlMReRXsMgY6',
+  'RAZORPAY_KEY_SECRET': 'UkBhByyF1s0eyXsbMXzMu8ES',
+};
+
+Map<String, String> getPlatformEnvMap() => const {};
+
 /// Stub implementation for non-web, non-io platforms
 String getEnvValue(String key, {String fallback = ''}) {
+  String val = '';
   switch (key) {
     case 'GOOGLE_MAPS_API_KEY':
-      const val = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
-      return val.isNotEmpty ? val : fallback;
+      val = const String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+      break;
     case 'SUPABASE_URL':
-      const val = String.fromEnvironment('SUPABASE_URL');
-      return val.isNotEmpty ? val : fallback;
+      val = const String.fromEnvironment('SUPABASE_URL');
+      break;
     case 'SUPABASE_ANON_KEY':
-      const val = String.fromEnvironment('SUPABASE_ANON_KEY');
-      return val.isNotEmpty ? val : fallback;
+      val = const String.fromEnvironment('SUPABASE_ANON_KEY');
+      break;
     case 'GEMINI_API_KEY':
-      const val = String.fromEnvironment('GEMINI_API_KEY');
-      return val.isNotEmpty ? val : fallback;
+      val = const String.fromEnvironment('GEMINI_API_KEY');
+      break;
     case 'RAZORPAY_KEY_ID':
-      const val = String.fromEnvironment('RAZORPAY_KEY_ID');
-      return val.isNotEmpty ? val : fallback;
+      val = const String.fromEnvironment('RAZORPAY_KEY_ID');
+      break;
     case 'RAZORPAY_KEY_SECRET':
-      const val = String.fromEnvironment('RAZORPAY_KEY_SECRET');
-      return val.isNotEmpty ? val : fallback;
-    default:
-      return fallback;
+      val = const String.fromEnvironment('RAZORPAY_KEY_SECRET');
+      break;
   }
+
+  if (val.isNotEmpty && !val.contains('YOUR_') && !val.contains('your_')) {
+    return val;
+  }
+
+  if (_stubDefaultEnv.containsKey(key)) {
+    return _stubDefaultEnv[key]!;
+  }
+
+  return fallback;
 }

@@ -1,9 +1,20 @@
 import 'dart:io';
 
+const Map<String, String> _ioDefaultEnv = {
+  'GOOGLE_MAPS_API_KEY': 'AIzaSyDjRpb6IFTB14FxzcTyAloPkDzbfI6On-8',
+  'SUPABASE_URL': 'https://wntlcbyguyrbvzgihugi.supabase.co',
+  'SUPABASE_ANON_KEY': 'sb_publishable_FC03eAb0E2Zp4l9MQoiu3g_v57SqqPP',
+  'GEMINI_API_KEY': 'AQ.Ab8RN6K513qH295GXB-MZuHlZHo3e7lRvCDdHeCQi4mJr4nodA',
+  'RAZORPAY_KEY_ID': 'rzp_test_TbrlMReRXsMgY6',
+  'RAZORPAY_KEY_SECRET': 'UkBhByyF1s0eyXsbMXzMu8ES',
+};
+
 final Map<String, String> _loadedEnv = _loadDotEnv();
 
+Map<String, String> getPlatformEnvMap() => _loadedEnv;
+
 Map<String, String> _loadDotEnv() {
-  final map = <String, String>{};
+  final map = Map<String, String>.from(_ioDefaultEnv);
   try {
     final candidates = [
       File('.env'),
@@ -25,7 +36,9 @@ Map<String, String> _loadDotEnv() {
                 (v.startsWith("'") && v.endsWith("'"))) {
               v = v.substring(1, v.length - 1);
             }
-            map[k] = v;
+            if (v.isNotEmpty) {
+              map[k] = v;
+            }
           }
         }
         break; // Successfully loaded from the first existing .env file
@@ -59,11 +72,16 @@ String getEnvValue(String key, {String fallback = ''}) {
       envVal = const String.fromEnvironment('RAZORPAY_KEY_SECRET');
       break;
   }
-  if (envVal.isNotEmpty) return envVal;
+  if (envVal.isNotEmpty && !envVal.contains('YOUR_') && !envVal.contains('your_')) {
+    return envVal;
+  }
 
-  // 2. Check locally loaded .env file
+  // 2. Check locally loaded .env file or default
   if (_loadedEnv.containsKey(key) && _loadedEnv[key]!.isNotEmpty) {
-    return _loadedEnv[key]!;
+    final val = _loadedEnv[key]!;
+    if (!val.contains('YOUR_') && !val.contains('your_')) {
+      return val;
+    }
   }
 
   // 3. Fallback

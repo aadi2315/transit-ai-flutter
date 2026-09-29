@@ -458,10 +458,11 @@ class GoogleDirectionsService {
             isFromSupabaseCache: false,
           );
         } else {
-          debugPrint('[GoogleDirectionsService] Google Directions API returned status: $status. Falling back to Ahmedabad street vector synthesis.');
+          debugPrint('[GoogleDirectionsService] Google Directions API returned status: $status. Details: ${data['error_message'] ?? 'No extra message'}');
+          debugPrint('[GoogleDirectionsService] Falling back to Ahmedabad street vector synthesis.');
         }
       } else {
-        debugPrint('[GoogleDirectionsService] API HTTP Error ${response.statusCode}');
+        debugPrint('[GoogleDirectionsService] API HTTP Error ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       debugPrint('[GoogleDirectionsService] Exception calling Google Directions API: $e');

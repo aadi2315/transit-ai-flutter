@@ -6,7 +6,7 @@ class TransitMapConfig {
   /// Google Maps API Key provided for Transit AI loaded dynamically:
   static String googleMapsApiKey = AppEnv.get(
     'GOOGLE_MAPS_API_KEY',
-    fallback: 'YOUR_GOOGLE_MAPS_API_KEY',
+    fallback: 'AIzaSyDjRpb6IFTB14FxzcTyAloPkDzbfI6On-8',
   );
 
   /// Returns true if a valid Google Maps API Key is configured

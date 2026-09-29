@@ -537,14 +537,15 @@ class _NativeInteractiveMapViewState extends State<_NativeInteractiveMapView> {
               },
             ),
             children: [
-              // 1. Google Maps Vector & Hybrid Tiles with CartoDB & OSM fallback
+              // 1. Google Maps Vector & Hybrid Tiles with resilient multi-subdomain and OSM fallback
               TileLayer(
                 urlTemplate: _isSatellite
-                    ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
-                    : 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                    ? 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+                    : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                subdomains: const ['0', '1', '2', '3'],
                 fallbackUrl: _isSatellite
                     ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                    : 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.pravha.transit_app',
                 maxZoom: 19,
               ),

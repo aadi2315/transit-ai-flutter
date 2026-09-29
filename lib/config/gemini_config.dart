@@ -5,7 +5,7 @@ class GeminiConfig {
   /// Google Gemini API Key configured from environment
   static String geminiApiKey = AppEnv.get(
     'GEMINI_API_KEY',
-    fallback: 'YOUR_GEMINI_API_KEY',
+    fallback: 'AQ.Ab8RN6K513qH295GXB-MZuHlZHo3e7lRvCDdHeCQi4mJr4nodA',
   );
 
   /// Returns true if a valid Google Gemini API Key is configured

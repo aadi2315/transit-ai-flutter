@@ -12,6 +12,7 @@ import 'screens/pravha_splash_screen.dart';
 import 'services/supabase_service.dart';
 import 'services/google_directions_service.dart';
 import 'services/transit_routing_service.dart';
+import 'config/app_env.dart';
 import 'config/transit_map_config.dart';
 
 void main() async {
@@ -22,6 +23,10 @@ void main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
+
+  // Initialize environment variables (.env bundled asset, compile flags, and fallbacks)
+  await AppEnv.init();
+  TransitMapConfig.googleMapsApiKey = AppEnv.get('GOOGLE_MAPS_API_KEY');
 
   // Initialize dynamic web Google Maps loader if key is present
   TransitMapConfig.initializeWebMaps();

@@ -4,11 +4,11 @@ class RazorpayConfig {
   // Test API credentials loaded dynamically from environment
   static String get keyId => AppEnv.get(
         'RAZORPAY_KEY_ID',
-        fallback: 'YOUR_RAZORPAY_KEY_ID',
+        fallback: 'rzp_test_TbrlMReRXsMgY6',
       );
   static String get keySecret => AppEnv.get(
         'RAZORPAY_KEY_SECRET',
-        fallback: 'YOUR_RAZORPAY_KEY_SECRET',
+        fallback: 'UkBhByyF1s0eyXsbMXzMu8ES',
       );
 
   // Merchant details
